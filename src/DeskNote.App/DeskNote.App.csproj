@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>DeskNote.App</RootNamespace>
+    <AssemblyName>DeskNote</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <UseWinUI>true</UseWinUI>
+
+    <!--
+      Unpackaged + self-contained Windows App SDK: the app runs straight from `dotnet run`
+      without a separately installed Windows App SDK runtime, which is what makes a
+      Visual-Studio-free development loop possible. MSIX packaging is added for release (M6+).
+    -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
+    <EnableMsixTooling>false</EnableMsixTooling>
+
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DeskNote.Core\DeskNote.Core.csproj" />
+    <ProjectReference Include="..\DeskNote.Data\DeskNote.Data.csproj" />
+  </ItemGroup>
+
+</Project>

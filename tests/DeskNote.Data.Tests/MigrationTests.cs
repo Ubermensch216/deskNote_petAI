@@ -1,0 +1,114 @@
+using Dapper;
+
+namespace DeskNote.Data.Tests;
+
+public class MigrationTests
+{
+    private static string NewDirectory()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "desknote-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        return directory;
+    }
+
+    [Fact]
+    public async Task First_run_creates_the_schema_and_records_the_version()
+    {
+        var factory = new SqliteConnectionFactory(Path.Combine(NewDirectory(), "notes.db"));
+
+        var result = await new MigrationRunner(factory).MigrateAsync();
+
+        Assert.Equal(0, result.FromVersion);
+        Assert.Equal(1, result.ToVersion);
+        Assert.True(result.AppliedAnything);
+        Assert.Null(result.BackupPath); // Nothing existed yet, so there was nothing to back up.
+
+        await using var connection = await factory.OpenAsync();
+        var tables = (await connection.QueryAsync<string>(
+            "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name;")).ToList();
+
+        Assert.Contains("notes", tables);
+        Assert.Contains("notes_fts", tables);
+        Assert.Contains("tags", tables);
+        Assert.Contains("reminders", tables);
+        Assert.Contains("note_revisions", tables);
+        Assert.Contains("schema_version", tables);
+    }
+
+    [Fact]
+    public async Task Running_again_applies_nothing()
+    {
+        var factory = new SqliteConnectionFactory(Path.Combine(NewDirectory(), "notes.db"));
+        var runner = new MigrationRunner(factory);
+        await runner.MigrateAsync();
+
+        var second = await runner.MigrateAsync();
+
+        Assert.False(second.AppliedAnything);
+        Assert.Equal(1, second.FromVersion);
+        Assert.Equal(1, second.ToVersion);
+    }
+
+    [Fact]
+    public async Task Write_ahead_logging_and_foreign_keys_are_on()
+    {
+        var factory = new SqliteConnectionFactory(Path.Combine(NewDirectory(), "notes.db"));
+        await new MigrationRunner(factory).MigrateAsync();
+
+        await using var connection = await factory.OpenAsync();
+
+        Assert.Equal("wal", await connection.ExecuteScalarAsync<string>("PRAGMA journal_mode;"));
+        Assert.Equal(1, await connection.ExecuteScalarAsync<long>("PRAGMA foreign_keys;"));
+    }
+
+    /// <summary>
+    /// Report p6: a WAL-reset defect shipped through SQLite 3.51.2. The bundled build is asserted
+    /// at runtime rather than assumed from the package graph, so an unexpected downgrade is caught.
+    /// </summary>
+    [Fact]
+    public async Task Bundled_sqlite_is_past_the_wal_reset_fix()
+    {
+        var factory = new SqliteConnectionFactory(Path.Combine(NewDirectory(), "notes.db"));
+
+        var result = await new MigrationRunner(factory).MigrateAsync();
+
+        Assert.False(
+            MigrationRunner.IsSqliteVersionRisky(result.SqliteVersion),
+            $"Bundled SQLite {result.SqliteVersion} predates {MigrationRunner.MinimumSafeSqliteVersion}.");
+    }
+
+    [Fact]
+    public void Version_check_flags_affected_builds_and_clears_fixed_ones()
+    {
+        Assert.True(MigrationRunner.IsSqliteVersionRisky("3.51.2"));
+        Assert.True(MigrationRunner.IsSqliteVersionRisky("3.50.0"));
+        Assert.False(MigrationRunner.IsSqliteVersionRisky("3.51.3"));
+        Assert.False(MigrationRunner.IsSqliteVersionRisky("3.52.0"));
+    }
+
+    [Fact]
+    public async Task Deleting_a_note_cascades_to_its_children()
+    {
+        var factory = new SqliteConnectionFactory(Path.Combine(NewDirectory(), "notes.db"));
+        await new MigrationRunner(factory).MigrateAsync();
+
+        await using var connection = await factory.OpenAsync();
+        var noteId = Guid.NewGuid().ToString();
+        var now = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
+
+        await connection.ExecuteAsync(
+            "INSERT INTO notes(id, created_at, updated_at) VALUES (@id, @now, @now);",
+            new { id = noteId, now });
+        await connection.ExecuteAsync(
+            "INSERT INTO reminders(id, note_id, due_at) VALUES (@id, @noteId, @now);",
+            new { id = Guid.NewGuid().ToString(), noteId, now });
+        await connection.ExecuteAsync(
+            "INSERT INTO checklist_items(id, note_id, text) VALUES (@id, @noteId, 'x');",
+            new { id = Guid.NewGuid().ToString(), noteId });
+
+        await connection.ExecuteAsync("DELETE FROM notes WHERE id = @id;", new { id = noteId });
+
+        Assert.Equal(0, await connection.ExecuteScalarAsync<long>("SELECT COUNT(*) FROM reminders;"));
+        Assert.Equal(0, await connection.ExecuteScalarAsync<long>("SELECT COUNT(*) FROM checklist_items;"));
+    }
+}

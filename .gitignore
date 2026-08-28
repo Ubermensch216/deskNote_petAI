@@ -1,0 +1,30 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+*.user
+*.suo
+.vs/
+.vscode/
+
+# NuGet
+*.nupkg
+packages/
+
+# DeskNote local data — never commit user notes
+*.db
+*.db-wal
+*.db-shm
+*.journal
+local/
+
+# Local AI models — never bundled in the repo (report p12: LLM을 앱 본체에 번들링하지 않는다)
+models/
+*.gguf
+*.onnx
+
+# OS
+Thumbs.db
+desktop.ini

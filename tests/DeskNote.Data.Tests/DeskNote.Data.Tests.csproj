@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+
+    <!-- .NET 10 dropped VSTest support for Microsoft.Testing.Platform; xunit.v3 hosts its own runner. -->
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+
+    <!--
+      xUnit1051 asks every awaited call to thread TestContext.Current.CancellationToken. These
+      tests run against a local temp-file SQLite database and finish in milliseconds, so the
+      token would add noise to roughly a hundred call sites without making anything more
+      cancellable. Revisit if a test ever starts hanging on a database lock.
+    -->
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DeskNote.Data\DeskNote.Data.csproj" />
+  </ItemGroup>
+
+</Project>

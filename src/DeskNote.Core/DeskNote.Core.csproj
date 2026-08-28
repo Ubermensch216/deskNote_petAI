@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Domain models and interfaces only. This project deliberately references nothing: no UI, no
+    database, no AI SDK. Everything else depends inward on it.
+  -->
+
+</Project>

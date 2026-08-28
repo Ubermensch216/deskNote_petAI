@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="Dapper" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DeskNote.Core\DeskNote.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Migrations ship inside the assembly so there is no loose-file deployment step to get wrong. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Migrations\*.sql" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,161 @@
+<Window
+    x:Class="DeskNote.App.Views.NoteWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:views="using:DeskNote.App.Views">
+
+    <!--
+        The window itself is transparent; this Border is the visible note. Painting the paper here
+        rather than on the window is what lets per-note opacity apply to the surface alone while
+        the text above it stays fully opaque (report p4).
+    -->
+    <Border
+        x:Name="Surface"
+        CornerRadius="8"
+        BorderThickness="1"
+        PointerEntered="OnPointerEntered"
+        PointerExited="OnPointerExited">
+
+        <Grid Padding="10,6,10,10" RowSpacing="4">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!--
+                Drag handle, title and command bar in one strip (report p6 mock-up).
+                Pointer events are handled here rather than through Window.SetTitleBar: with the
+                caption removed by the presenter there is no title bar for a XAML drag region to
+                attach to, and the note could not be moved at all.
+            -->
+            <Grid
+                x:Name="DragStrip"
+                Grid.Row="0"
+                Height="28"
+                Background="Transparent"
+                ColumnSpacing="4"
+                DoubleTapped="OnDragStripDoubleTapped"
+                PointerPressed="OnDragStripPointerPressed"
+                PointerMoved="OnDragStripPointerMoved"
+                PointerReleased="OnDragStripPointerReleased"
+                PointerCaptureLost="OnDragStripPointerReleased">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBox
+                    x:Name="TitleBox"
+                    Grid.Column="0"
+                    VerticalAlignment="Center"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Padding="2,0"
+                    FontWeight="SemiBold"
+                    TextWrapping="NoWrap"
+                    PlaceholderText="제목 / Title"
+                    IsHitTestVisible="False"
+                    GotFocus="OnEditorFocusChanged"
+                    LostFocus="OnEditorFocusChanged"
+                    TextChanged="OnTextChanged" />
+
+                <!--
+                    Hidden at rest so the note's content is the visual centre, revealed on hover or
+                    keyboard focus (report p4). Opacity rather than Visibility keeps the layout from
+                    shifting as the buttons appear.
+                -->
+                <StackPanel
+                    x:Name="CommandBar"
+                    Grid.Column="1"
+                    Orientation="Horizontal"
+                    Spacing="2"
+                    Opacity="0">
+
+                    <ToggleButton
+                        x:Name="PinButton"
+                        Padding="6,2"
+                        FontSize="12"
+                        Content="&#x1F4CC;"
+                        Click="OnPinClicked" />
+
+                    <Button x:Name="ColorButton" Padding="6,2" FontSize="12" Content="&#x25D0;">
+                        <Button.Flyout>
+                            <Flyout x:Name="ColorFlyout" Placement="Bottom">
+                              <StackPanel Spacing="10" Width="168">
+                                <!--
+                                    Plain buttons rather than a GridView: the list is eight fixed
+                                    swatches with no selection state worth keeping, and GridViewItem
+                                    chrome padded them wide enough to reflow into three columns and
+                                    push the last colours behind a scrollbar.
+                                -->
+                                <ItemsControl x:Name="ColorChoices">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <VariableSizedWrapGrid
+                                                Orientation="Horizontal"
+                                                MaximumRowsOrColumns="4" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="views:NoteColorChoice">
+                                            <Button
+                                                Width="32"
+                                                Height="32"
+                                                Margin="3"
+                                                Padding="0"
+                                                CornerRadius="16"
+                                                BorderThickness="1"
+                                                Background="{x:Bind Brush}"
+                                                Tag="{x:Bind Key}"
+                                                Click="OnColorChosen" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <!--
+                                    Opacity floors at Note.MinOpacity rather than 0: report p4
+                                    allows the surface to be translucent but never at the cost of
+                                    text contrast, and a fully transparent note is unreadable.
+                                -->
+                                <Slider
+                                    x:Name="OpacitySlider"
+                                    StepFrequency="5"
+                                    Header="Opacity"
+                                    ValueChanged="OnOpacityChanged" />
+                              </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+
+                    <!-- Disabled until a local model is present; the note app never depends on AI. -->
+                    <Button
+                        x:Name="AiButton"
+                        Padding="6,2"
+                        FontSize="12"
+                        Content="&#x2726;"
+                        IsEnabled="False" />
+
+                    <Button x:Name="MoreButton" Padding="6,2" FontSize="12" Content="&#x22EF;">
+                        <Button.Flyout>
+                            <MenuFlyout x:Name="MoreMenu" Placement="BottomEdgeAlignedRight" />
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <TextBox
+                x:Name="ContentBox"
+                Grid.Row="1"
+                AcceptsReturn="True"
+                TextWrapping="Wrap"
+                Background="Transparent"
+                BorderThickness="0"
+                Padding="2,0"
+                ScrollViewer.VerticalScrollBarVisibility="Auto"
+                PlaceholderText="메모를 입력하세요 / Write a note"
+                GotFocus="OnEditorFocusChanged"
+                LostFocus="OnEditorFocusChanged"
+                TextChanged="OnTextChanged" />
+        </Grid>
+    </Border>
+</Window>

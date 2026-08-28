@@ -1,0 +1,33 @@
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup Label="UI">
+    <PackageVersion Include="Microsoft.WindowsAppSDK" Version="2.4.0" />
+    <PackageVersion Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2526" />
+  </ItemGroup>
+
+  <!--
+    Report p6 warns that a WAL-reset defect shipped through SQLite 3.51.2. The SQLite build is
+    whatever SQLitePCLRaw bundles, so the version is pinned here and MigrationRunner additionally
+    asserts sqlite_version() at startup rather than trusting the package graph.
+  -->
+  <ItemGroup Label="Persistence">
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.11" />
+    <PackageVersion Include="Dapper" Version="2.1.79" />
+  </ItemGroup>
+
+  <ItemGroup Label="Hosting">
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup Label="Testing">
+    <PackageVersion Include="xunit.v3" Version="4.0.0" />
+  </ItemGroup>
+
+</Project>
