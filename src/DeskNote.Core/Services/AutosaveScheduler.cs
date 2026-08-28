@@ -25,13 +25,16 @@ public sealed class AutosaveScheduler : IAsyncDisposable
     private readonly ConcurrentDictionary<Guid, PendingSave> _pending = new();
     private readonly TimeSpan _debounce;
     private readonly Func<Guid, string, string, CancellationToken, Task> _save;
+    private readonly CrashJournal? _journal;
 
     public AutosaveScheduler(
         Func<Guid, string, string, CancellationToken, Task> save,
-        TimeSpan? debounce = null)
+        TimeSpan? debounce = null,
+        CrashJournal? journal = null)
     {
         _save = save;
         _debounce = debounce ?? DefaultDebounce;
+        _journal = journal;
     }
 
     /// <summary>Raised when a scheduled write fails, so the UI can warn instead of losing text silently.</summary>
@@ -94,14 +97,20 @@ public sealed class AutosaveScheduler : IAsyncDisposable
 
     private async Task SaveSafelyAsync(Guid noteId, string title, string content, CancellationToken cancellationToken)
     {
+        // Journal first, clear after: a leftover entry then means the write below never completed,
+        // which is precisely the case recovery exists for.
+        _journal?.Record(noteId, title, content);
+
         try
         {
             await _save(noteId, title, content, cancellationToken).ConfigureAwait(false);
+            _journal?.Clear(noteId);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // A failed autosave must never take the note window down with it; the user's text is
-            // still on screen and the next keystroke will schedule another attempt.
+            // still on screen, the journal entry survives, and the next keystroke schedules
+            // another attempt.
             SaveFailed?.Invoke(this, ex);
         }
     }

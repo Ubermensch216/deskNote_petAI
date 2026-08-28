@@ -40,6 +40,22 @@ Visual Studio는 필요 없다. WinUI 3의 XAML 컴파일러와 Windows SDK 빌�
 dotnet test
 ```
 
+## 편집 단축키
+
+| 키 | 동작 |
+|---|---|
+| `Ctrl+B` / `Ctrl+I` | 굵게 / 기울임 |
+| `Ctrl+Shift+K` | 인라인 코드 |
+| `Ctrl+K` | 링크 |
+| `Ctrl+1` / `Ctrl+2` / `Ctrl+3` | 제목 1·2·3 |
+| `Ctrl+Shift+L` | 글머리 목록 |
+| `Ctrl+Shift+C` | 체크리스트 |
+| `Ctrl+Enter` | 커서 줄의 체크박스 토글 |
+| `Enter` | 목록 안에서 다음 항목 이어쓰기 (빈 항목에서는 목록 종료) |
+
+메모 본문은 Markdown 원문 그대로 저장된다. 체크리스트도 본문 안의 `- [ ]` 가 유일한 원본이며,
+`checklist_items` 테이블은 저장 시 본문에서 다시 만들어지는 조회용 투영이다.
+
 ## 데이터 위치
 
 `%LOCALAPPDATA%\DeskNote\notes.db` (WAL). 로그는 `%LOCALAPPDATA%\DeskNote\logs\desknote.log`.

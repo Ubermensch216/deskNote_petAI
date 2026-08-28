@@ -1,6 +1,7 @@
 using Dapper;
 using DeskNote.Core.Abstractions;
 using DeskNote.Core.Models;
+using DeskNote.Core.Services;
 
 namespace DeskNote.Data;
 
@@ -106,18 +107,87 @@ public sealed class SqliteNoteRepository(SqliteConnectionFactory connectionFacto
             cancellationToken).ConfigureAwait(false);
     }
 
-    public Task UpdateContentAsync(Guid id, string title, string content, CancellationToken cancellationToken = default) =>
-        ExecuteAsync(
+    /// <remarks>
+    /// The note body and its checklist projection are written in one transaction, so the
+    /// <c>checklist_items</c> rows can never describe a version of the note that is not the stored
+    /// one.
+    /// </remarks>
+    public async Task UpdateContentAsync(
+        Guid id,
+        string title,
+        string content,
+        CancellationToken cancellationToken = default)
+    {
+        var normalized = NoteContent.NormalizeLineEndings(content);
+
+        await using var connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+
+        await connection.ExecuteAsync(new CommandDefinition(
             "UPDATE notes SET title = @title, content = @content, updated_at = @updatedAt, rev = rev + 1 " +
             "WHERE id = @id;",
             new
             {
                 id = id.ToString(),
                 title,
-                content = NoteContent.NormalizeLineEndings(content),
+                content = normalized,
                 updatedAt = SqliteTime.ToDb(clock.UtcNow),
             },
-            cancellationToken);
+            (Microsoft.Data.Sqlite.SqliteTransaction)transaction,
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        await SyncChecklistAsync(connection, (Microsoft.Data.Sqlite.SqliteTransaction)transaction, id, normalized, cancellationToken)
+            .ConfigureAwait(false);
+
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Rebuilds a note's rows in <c>checklist_items</c> from its Markdown.
+    /// </summary>
+    /// <remarks>
+    /// The Markdown body is the single source of truth; these rows exist so questions like "what
+    /// is still unchecked across every note" do not require scanning note bodies. Rebuilding
+    /// wholesale rather than diffing keeps the two in step no matter how the text changed — a
+    /// hand edit, a paste, or a future AI rewrite.
+    /// </remarks>
+    private static async Task SyncChecklistAsync(
+        Microsoft.Data.Sqlite.SqliteConnection connection,
+        Microsoft.Data.Sqlite.SqliteTransaction transaction,
+        Guid noteId,
+        string content,
+        CancellationToken cancellationToken)
+    {
+        await connection.ExecuteAsync(new CommandDefinition(
+            "DELETE FROM checklist_items WHERE note_id = @noteId;",
+            new { noteId = noteId.ToString() },
+            transaction,
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        var items = ChecklistParser.Parse(content);
+        if (items.Count == 0)
+        {
+            return;
+        }
+
+        // Ordinal is the item's position among the note's checklist items, which is what
+        // ChecklistParser returns them in; the line it lives on is recovered from the body.
+        var rows = items.Select((item, index) => new
+        {
+            id = Guid.CreateVersion7().ToString(),
+            noteId = noteId.ToString(),
+            ordinal = index,
+            text = item.Text,
+            isDone = item.IsDone ? 1 : 0,
+        }).ToList();
+
+        await connection.ExecuteAsync(new CommandDefinition(
+            "INSERT INTO checklist_items (id, note_id, ordinal, text, is_done) " +
+            "VALUES (@id, @noteId, @ordinal, @text, @isDone);",
+            rows,
+            transaction,
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+    }
 
     /// <remarks>
     /// Deliberately leaves <c>rev</c> and <c>updated_at</c> alone. Dragging a note is not an edit;

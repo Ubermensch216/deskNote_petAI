@@ -55,12 +55,23 @@ public partial class App : Application
 
             IClock clock = SystemClock.Instance;
             INoteRepository notes = new SqliteNoteRepository(connections, clock);
+            INoteRevisionStore revisions = new SqliteNoteRevisionStore(connections);
+
+            var journal = new CrashJournal(AppPaths.JournalDirectory);
+            var pipeline = new NoteSavePipeline(notes, revisions, new RevisionPolicy(), clock);
 
             _autosave = new AutosaveScheduler(
-                (id, title, content, token) => notes.UpdateContentAsync(id, title, content, token));
+                (id, title, content, token) => pipeline.SaveAsync(id, title, content, cancellationToken: token),
+                debounce: null,
+                journal: journal);
             _autosave.SaveFailed += (_, ex) => CrashLog.Write("Autosave failed", ex);
 
-            _windows = new NoteWindowManager(notes, clock, _autosave);
+            _windows = new NoteWindowManager(notes, clock, _autosave, pipeline);
+
+            // Recovery runs before the notes are shown, so a restored window opens already holding
+            // the text that was rescued rather than flashing the stale version first.
+            await RecoverUnsavedWorkAsync(journal, notes, pipeline).ConfigureAwait(true);
+
             await _windows.RestoreAsync().ConfigureAwait(true);
 
             // A first run has nothing to restore; open one note so the desktop is never empty.
@@ -74,5 +85,50 @@ public partial class App : Application
             CrashLog.Write("Startup failed", ex);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Restores note text that was journalled but never made it into the database.
+    /// </summary>
+    /// <remarks>
+    /// The recovered text is applied rather than offered as a prompt. A leftover entry only exists
+    /// when a save failed or was interrupted, so it is strictly newer than what is stored, and the
+    /// checkpoint taken here means the stored version is still reachable from the note's history —
+    /// which is a better answer than a startup dialog asking a question the user cannot evaluate
+    /// before seeing either version.
+    /// </remarks>
+    private static async Task RecoverUnsavedWorkAsync(
+        CrashJournal journal,
+        INoteRepository notes,
+        NoteSavePipeline pipeline)
+    {
+        var entries = journal.ReadAll();
+        if (entries.Count == 0)
+        {
+            return;
+        }
+
+        var stored = new Dictionary<Guid, Core.Models.Note>();
+        foreach (var entry in entries)
+        {
+            if (await notes.GetAsync(entry.NoteId).ConfigureAwait(true) is { } note)
+            {
+                stored[entry.NoteId] = note;
+            }
+        }
+
+        foreach (var recoverable in CrashRecovery.FindUnsavedWork(entries, stored))
+        {
+            await pipeline.SaveAsync(
+                recoverable.NoteId,
+                recoverable.RecoveredTitle,
+                recoverable.RecoveredContent,
+                RevisionReason.BulkReplace,
+                actionName: "crash-recovery").ConfigureAwait(true);
+
+            CrashLog.Write($"Recovered unsaved text for note {recoverable.NoteId}.");
+        }
+
+        journal.ClearAll();
     }
 }

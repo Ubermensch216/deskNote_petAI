@@ -6,10 +6,12 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI;
 using Windows.Graphics;
+using Windows.System;
 
 namespace DeskNote.App.Views;
 
@@ -183,6 +185,111 @@ public sealed partial class NoteWindow : Window
         }
 
         TextChanged?.Invoke(this, new NoteText(TitleBox.Text, ContentBox.Text));
+    }
+
+    private NoteTextState EditorState() =>
+        new(ContentBox.Text, ContentBox.SelectionStart, ContentBox.SelectionLength);
+
+    /// <summary>
+    /// Applies a transformed state to the editor as a selection replacement.
+    /// </summary>
+    /// <remarks>
+    /// Assigning <c>Text</c> directly would clear the TextBox's undo history, so Ctrl+Z after
+    /// bolding a word would do nothing. Replacing only the span that actually changed keeps the
+    /// edit on the editor's own undo stack, which is what report p5 asks for when it pairs
+    /// Undo/Redo with revisions.
+    /// </remarks>
+    private void ApplyEditorState(NoteTextState next)
+    {
+        var edit = TextDiff.Minimal(ContentBox.Text, next.Text);
+
+        if (!edit.IsEmpty)
+        {
+            ContentBox.Select(edit.Start, edit.Length);
+            ContentBox.SelectedText = edit.Insert;
+        }
+
+        ContentBox.Select(next.SelectionStart, next.SelectionLength);
+    }
+
+    private void RunEditorCommand(Func<NoteTextState, NoteTextState> command, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        ApplyEditorState(command(EditorState()));
+    }
+
+    private void OnBoldInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) =>
+        RunEditorCommand(MarkdownEditing.ToggleBold, args);
+
+    private void OnItalicInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) =>
+        RunEditorCommand(MarkdownEditing.ToggleItalic, args);
+
+    private void OnCodeInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) =>
+        RunEditorCommand(MarkdownEditing.ToggleInlineCode, args);
+
+    private void OnLinkInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) =>
+        RunEditorCommand(state => MarkdownEditing.InsertLink(state), args);
+
+    private void OnHeading1Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) =>
+        RunEditorCommand(state => MarkdownEditing.ApplyLineStyle(state, LineStyle.Heading1), args);
+
+    private void OnHeading2Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) =>
+        RunEditorCommand(state => MarkdownEditing.ApplyLineStyle(state, LineStyle.Heading2), args);
+
+    private void OnHeading3Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) =>
+        RunEditorCommand(state => MarkdownEditing.ApplyLineStyle(state, LineStyle.Heading3), args);
+
+    private void OnBulletInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) =>
+        RunEditorCommand(state => MarkdownEditing.ApplyLineStyle(state, LineStyle.Bullet), args);
+
+    private void OnChecklistInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) =>
+        RunEditorCommand(state => MarkdownEditing.ApplyLineStyle(state, LineStyle.Checklist), args);
+
+    private void OnToggleCheckInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        if (MarkdownEditing.ToggleChecklistItemAtCaret(EditorState()) is { } toggled)
+        {
+            ApplyEditorState(toggled);
+        }
+    }
+
+    /// <summary>
+    /// Continues a list when Enter is pressed inside one.
+    /// </summary>
+    /// <remarks>
+    /// Handled in PreviewKeyDown so the TextBox never inserts its own newline first, which would
+    /// otherwise leave the caret on a fresh line before the continuation is worked out.
+    /// <para>
+    /// Korean IME composition is the case to watch here, since Enter is also how a candidate is
+    /// committed. Driving the Microsoft Korean IME through this path shows the syllable committed
+    /// and the list continued from one Enter, with nothing lost; if that ever regresses, this
+    /// handler is where composition state would have to be consulted before intercepting the key.
+    /// </para>
+    /// </remarks>
+    private void OnContentPreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key != VirtualKey.Enter || IsModifierDown())
+        {
+            return;
+        }
+
+        if (MarkdownEditing.ContinueListOnEnter(EditorState()) is not { } continued)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        ApplyEditorState(continued);
+    }
+
+    private static bool IsModifierDown()
+    {
+        var states = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
+            | InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
+            | InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Menu);
+
+        return states.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
     }
 
     private void OnPinClicked(object sender, RoutedEventArgs e)

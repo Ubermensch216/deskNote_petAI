@@ -13,7 +13,11 @@ namespace DeskNote.App.Services;
 /// so there is one place that decides what a user gesture means: closing a note hides it, the
 /// More menu deletes it, dragging it stores geometry without touching its revision.
 /// </remarks>
-public sealed class NoteWindowManager(INoteRepository notes, IClock clock, AutosaveScheduler autosave)
+public sealed class NoteWindowManager(
+    INoteRepository notes,
+    IClock clock,
+    AutosaveScheduler autosave,
+    NoteSavePipeline savePipeline)
 {
     private readonly Dictionary<Guid, NoteWindow> _windows = [];
     private int _cascadeIndex;
@@ -150,6 +154,10 @@ public sealed class NoteWindowManager(INoteRepository notes, IClock clock, Autos
 
         await autosave.FlushAsync(noteId).ConfigureAwait(true);
         await notes.SetOpenAsync(noteId, isOpen: false).ConfigureAwait(true);
+
+        // The next edit after reopening deserves a checkpoint rather than inheriting a timer from
+        // a session that may have ended hours ago.
+        savePipeline.Forget(noteId);
     }
 
     private async Task OnDeleteRequestedAsync(Guid noteId)

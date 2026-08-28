@@ -153,9 +153,29 @@
                 Padding="2,0"
                 ScrollViewer.VerticalScrollBarVisibility="Auto"
                 PlaceholderText="메모를 입력하세요 / Write a note"
+                PreviewKeyDown="OnContentPreviewKeyDown"
                 GotFocus="OnEditorFocusChanged"
                 LostFocus="OnEditorFocusChanged"
-                TextChanged="OnTextChanged" />
+                TextChanged="OnTextChanged">
+
+                <!--
+                    Formatting is bound as accelerators on the editor rather than as toolbar
+                    buttons: a note that has to be usable within a second of appearing should not
+                    grow a ribbon (report p4 keeps the chrome hidden until hover).
+                -->
+                <TextBox.KeyboardAccelerators>
+                    <KeyboardAccelerator Modifiers="Control" Key="B" Invoked="OnBoldInvoked" />
+                    <KeyboardAccelerator Modifiers="Control" Key="I" Invoked="OnItalicInvoked" />
+                    <KeyboardAccelerator Modifiers="Control" Key="K" Invoked="OnLinkInvoked" />
+                    <KeyboardAccelerator Modifiers="Control,Shift" Key="K" Invoked="OnCodeInvoked" />
+                    <KeyboardAccelerator Modifiers="Control" Key="Number1" Invoked="OnHeading1Invoked" />
+                    <KeyboardAccelerator Modifiers="Control" Key="Number2" Invoked="OnHeading2Invoked" />
+                    <KeyboardAccelerator Modifiers="Control" Key="Number3" Invoked="OnHeading3Invoked" />
+                    <KeyboardAccelerator Modifiers="Control,Shift" Key="L" Invoked="OnBulletInvoked" />
+                    <KeyboardAccelerator Modifiers="Control,Shift" Key="C" Invoked="OnChecklistInvoked" />
+                    <KeyboardAccelerator Modifiers="Control" Key="Enter" Invoked="OnToggleCheckInvoked" />
+                </TextBox.KeyboardAccelerators>
+            </TextBox>
         </Grid>
     </Border>
 </Window>
