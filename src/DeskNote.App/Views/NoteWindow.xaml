@@ -13,6 +13,9 @@
         x:Name="Surface"
         CornerRadius="8"
         BorderThickness="1"
+        AllowDrop="True"
+        DragOver="OnSurfaceDragOver"
+        Drop="OnSurfaceDrop"
         PointerEntered="OnPointerEntered"
         PointerExited="OnPointerExited">
 
@@ -154,6 +157,7 @@
                 ScrollViewer.VerticalScrollBarVisibility="Auto"
                 PlaceholderText="메모를 입력하세요 / Write a note"
                 PreviewKeyDown="OnContentPreviewKeyDown"
+                Paste="OnPasteRequested"
                 GotFocus="OnEditorFocusChanged"
                 LostFocus="OnEditorFocusChanged"
                 TextChanged="OnTextChanged">

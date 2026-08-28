@@ -11,6 +11,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI;
 using Windows.Graphics;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 
 namespace DeskNote.App.Views;
@@ -117,6 +118,12 @@ public sealed partial class NoteWindow : Window
 
     /// <summary>Raised when the user asks to delete the note.</summary>
     public event EventHandler? DeleteRequested;
+
+    /// <summary>Raised when the user asks to open the note library.</summary>
+    public event EventHandler? LibraryRequested;
+
+    /// <summary>Raised when the user asks to set a reminder, with how far ahead it should fire.</summary>
+    public event EventHandler<TimeSpan>? ReminderRequested;
 
     public string CurrentTitle => TitleBox.Text;
 
@@ -290,6 +297,89 @@ public sealed partial class NoteWindow : Window
             | InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Menu);
 
         return states.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+    }
+
+    /// <summary>Raised when files or a pasted image should be attached to this note.</summary>
+    public event EventHandler<AttachmentRequest>? AttachmentRequested;
+
+    /// <summary>Inserts text at the caret, as an ordinary undoable edit.</summary>
+    public void InsertAtCaret(string text)
+    {
+        var state = EditorState();
+        var updated = state.Text
+            .Remove(state.SelectionStart, state.SelectionLength)
+            .Insert(state.SelectionStart, text);
+
+        ApplyEditorState(new NoteTextState(updated, state.SelectionStart + text.Length, 0));
+        TextChanged?.Invoke(this, new NoteText(TitleBox.Text, ContentBox.Text));
+    }
+
+    private void OnSurfaceDragOver(object sender, DragEventArgs e)
+    {
+        if (e.DataView.Contains(StandardDataFormats.StorageItems))
+        {
+            e.AcceptedOperation = DataPackageOperation.Copy;
+            e.DragUIOverride.Caption = "메모에 첨부 / Attach to note";
+        }
+    }
+
+    private async void OnSurfaceDrop(object sender, DragEventArgs e)
+    {
+        if (!e.DataView.Contains(StandardDataFormats.StorageItems))
+        {
+            return;
+        }
+
+        var deferral = e.GetDeferral();
+
+        try
+        {
+            var items = await e.DataView.GetStorageItemsAsync();
+            var paths = items.OfType<Windows.Storage.StorageFile>().Select(f => f.Path).ToList();
+
+            if (paths.Count > 0)
+            {
+                AttachmentRequested?.Invoke(this, new AttachmentRequest(NoteId, paths, null, null));
+            }
+        }
+        finally
+        {
+            deferral.Complete();
+        }
+    }
+
+    /// <summary>
+    /// Attaches an image pasted from the clipboard.
+    /// </summary>
+    /// <remarks>
+    /// Handled before the TextBox sees the paste only when the clipboard actually holds a bitmap;
+    /// otherwise the ordinary text paste is left completely alone, including its undo entry.
+    /// </remarks>
+    private async void OnPasteRequested(object sender, TextControlPasteEventArgs args)
+    {
+        var clipboard = Clipboard.GetContent();
+        if (!clipboard.Contains(StandardDataFormats.Bitmap))
+        {
+            return;
+        }
+
+        args.Handled = true;
+
+        try
+        {
+            var reference = await clipboard.GetBitmapAsync();
+            using var stream = await reference.OpenReadAsync();
+            var bytes = new byte[stream.Size];
+            using var reader = new Windows.Storage.Streams.DataReader(stream.GetInputStreamAt(0));
+            await reader.LoadAsync((uint)stream.Size);
+            reader.ReadBytes(bytes);
+
+            AttachmentRequested?.Invoke(this, new AttachmentRequest(NoteId, [], bytes, "pasted-image.png"));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Services.CrashLog.Write("Pasting an image failed", ex);
+        }
     }
 
     private void OnPinClicked(object sender, RoutedEventArgs e)
@@ -533,7 +623,32 @@ public sealed partial class NoteWindow : Window
 
         MoreMenu.Items.Add(new MenuFlyoutSeparator());
 
-        var delete = new MenuFlyoutItem { Text = "Delete" };
+        // Relative offsets rather than a date picker: a sticky note reminder is almost always
+        // "later today" or "tomorrow morning", and a full scheduling dialog on a note this small
+        // would cost more attention than the reminder is worth.
+        var reminders = new MenuFlyoutSubItem { Text = "알림 / Remind me" };
+        foreach (var (label, delay) in new (string, TimeSpan)[]
+                 {
+                     ("10분 뒤 / in 10 min", TimeSpan.FromMinutes(10)),
+                     ("1시간 뒤 / in 1 hour", TimeSpan.FromHours(1)),
+                     ("내일 아침 9시 / tomorrow 9am", TimeSpan.Zero),
+                 })
+        {
+            var item = new MenuFlyoutItem { Text = label };
+            var offset = delay;
+            item.Click += (_, _) => ReminderRequested?.Invoke(this, offset);
+            reminders.Items.Add(item);
+        }
+
+        MoreMenu.Items.Add(reminders);
+
+        var library = new MenuFlyoutItem { Text = "메모 라이브러리 / Notes Explorer" };
+        library.Click += (_, _) => LibraryRequested?.Invoke(this, EventArgs.Empty);
+        MoreMenu.Items.Add(library);
+
+        MoreMenu.Items.Add(new MenuFlyoutSeparator());
+
+        var delete = new MenuFlyoutItem { Text = "삭제 / Delete" };
         delete.Click += (_, _) => DeleteRequested?.Invoke(this, EventArgs.Empty);
         MoreMenu.Items.Add(delete);
     }
@@ -542,6 +657,17 @@ public sealed partial class NoteWindow : Window
 
 /// <summary>One color swatch in a note's color picker.</summary>
 public sealed record NoteColorChoice(string Key, SolidColorBrush Brush);
+
+/// <summary>Files or image bytes the user wants attached to a note.</summary>
+/// <param name="NoteId">The note receiving the attachment.</param>
+/// <param name="FilePaths">Dropped files, if any.</param>
+/// <param name="ImageBytes">Pasted image bytes, if any.</param>
+/// <param name="ImageName">File name to give pasted bytes.</param>
+public readonly record struct AttachmentRequest(
+    Guid NoteId,
+    IReadOnlyList<string> FilePaths,
+    byte[]? ImageBytes,
+    string? ImageName);
 
 /// <summary>Appearance values a note window reports back for persistence.</summary>
 public readonly record struct NoteAppearance(string ColorKey, double Opacity, bool AlwaysOnTop);

@@ -139,6 +139,9 @@ public sealed class SqliteNoteRepository(SqliteConnectionFactory connectionFacto
         await SyncChecklistAsync(connection, (Microsoft.Data.Sqlite.SqliteTransaction)transaction, id, normalized, cancellationToken)
             .ConfigureAwait(false);
 
+        await SyncTagsAsync(connection, (Microsoft.Data.Sqlite.SqliteTransaction)transaction, id, normalized, cancellationToken)
+            .ConfigureAwait(false);
+
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -262,6 +265,58 @@ public sealed class SqliteNoteRepository(SqliteConnectionFactory connectionFacto
             "DELETE FROM notes WHERE id = @id AND deleted_at IS NOT NULL;",
             new { id = id.ToString() },
             cancellationToken);
+
+    /// <summary>
+    /// Rebuilds a note's rows in <c>tags</c> and <c>note_tags</c> from the hashtags in its body.
+    /// </summary>
+    /// <remarks>
+    /// Tag rows themselves are never deleted here. A tag the user has stopped using still belongs
+    /// in the tag list they pick from, and deleting it would renumber nothing but would lose the
+    /// original spelling the first note gave it.
+    /// </remarks>
+    private static async Task SyncTagsAsync(
+        Microsoft.Data.Sqlite.SqliteConnection connection,
+        Microsoft.Data.Sqlite.SqliteTransaction transaction,
+        Guid noteId,
+        string content,
+        CancellationToken cancellationToken)
+    {
+        await connection.ExecuteAsync(new CommandDefinition(
+            "DELETE FROM note_tags WHERE note_id = @noteId;",
+            new { noteId = noteId.ToString() },
+            transaction,
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        var mentions = TagParser.Parse(content);
+        if (mentions.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var mention in mentions)
+        {
+            // The first note to use a spelling defines it; later notes writing it differently
+            // still resolve to the same tag through normalized_name.
+            await connection.ExecuteAsync(new CommandDefinition(
+                "INSERT INTO tags (id, name, normalized_name) VALUES (@id, @name, @normalized) " +
+                "ON CONFLICT(normalized_name) DO NOTHING;",
+                new
+                {
+                    id = Guid.CreateVersion7().ToString(),
+                    name = mention.Name,
+                    normalized = mention.NormalizedName,
+                },
+                transaction,
+                cancellationToken: cancellationToken)).ConfigureAwait(false);
+        }
+
+        await connection.ExecuteAsync(new CommandDefinition(
+            "INSERT INTO note_tags (note_id, tag_id) " +
+            "SELECT @noteId, id FROM tags WHERE normalized_name = @normalized;",
+            mentions.Select(m => new { noteId = noteId.ToString(), normalized = m.NormalizedName }).ToList(),
+            transaction,
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+    }
 
     private static (string Where, DynamicParameters Parameters) BuildFilter(NoteQuery query)
     {

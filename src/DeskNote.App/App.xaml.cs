@@ -10,6 +10,7 @@ public partial class App : Application
 {
     private AutosaveScheduler? _autosave;
     private NoteWindowManager? _windows;
+    private ReminderService? _reminders;
 
     public App()
     {
@@ -56,6 +57,9 @@ public partial class App : Application
             IClock clock = SystemClock.Instance;
             INoteRepository notes = new SqliteNoteRepository(connections, clock);
             INoteRevisionStore revisions = new SqliteNoteRevisionStore(connections);
+            INoteLibrary library = new SqliteNoteLibrary(connections, clock);
+            IReminderRepository reminders = new SqliteReminderRepository(connections);
+            var attachmentStore = new AttachmentStore(new SqliteAttachmentRepository(connections), clock);
 
             var journal = new CrashJournal(AppPaths.JournalDirectory);
             var pipeline = new NoteSavePipeline(notes, revisions, new RevisionPolicy(), clock);
@@ -66,7 +70,8 @@ public partial class App : Application
                 journal: journal);
             _autosave.SaveFailed += (_, ex) => CrashLog.Write("Autosave failed", ex);
 
-            _windows = new NoteWindowManager(notes, clock, _autosave, pipeline);
+            _windows = new NoteWindowManager(
+                notes, clock, _autosave, pipeline, library, reminders, attachmentStore);
 
             // Recovery runs before the notes are shown, so a restored window opens already holding
             // the text that was rescued rather than flashing the stale version first.
@@ -79,6 +84,16 @@ public partial class App : Application
             {
                 await _windows.CreateAsync().ConfigureAwait(true);
             }
+
+            // Started only after the notes are on screen: a reminder is worth 30 seconds of delay,
+            // the notes are not (report p14).
+            _reminders = new ReminderService(
+                reminders,
+                notes,
+                clock,
+                Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread());
+            _reminders.NoteRequested += async (_, noteId) => await _windows.FocusAsync(noteId);
+            _reminders.Start();
         }
         catch (Exception ex)
         {

@@ -1,0 +1,150 @@
+<Window
+    x:Class="DeskNote.App.Views.NotesExplorerWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:abstractions="using:DeskNote.Core.Abstractions"
+    xmlns:views="using:DeskNote.App.Views">
+
+    <Grid x:Name="Root" ColumnSpacing="0">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Scopes: everything, the deleted view, notebooks and tags. -->
+        <Grid Grid.Column="0" Padding="12,16,8,12" RowSpacing="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <ListView
+                x:Name="ScopeList"
+                Grid.Row="0"
+                SelectionMode="Single"
+                SelectionChanged="OnScopeChanged">
+                <ListViewItem Content="모든 메모 / All notes" Tag="all" />
+                <ListViewItem Content="삭제된 메모 / Deleted" Tag="deleted" />
+            </ListView>
+
+            <TextBlock
+                Grid.Row="1"
+                Margin="4,8,0,0"
+                Style="{ThemeResource CaptionTextBlockStyle}"
+                Text="노트북 / Notebooks" />
+
+            <ListView
+                x:Name="NotebookList"
+                Grid.Row="2"
+                SelectionMode="Single"
+                SelectionChanged="OnNotebookChanged">
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="views:NotebookChoice">
+                        <TextBlock Text="{x:Bind Label}" TextTrimming="CharacterEllipsis" />
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
+            <TextBlock
+                Grid.Row="3"
+                Margin="4,8,0,0"
+                Style="{ThemeResource CaptionTextBlockStyle}"
+                Text="태그 / Tags" />
+
+            <ListView
+                x:Name="TagList"
+                Grid.Row="4"
+                SelectionMode="Single"
+                SelectionChanged="OnTagChanged">
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="views:TagChoice">
+                        <TextBlock Text="{x:Bind Label}" TextTrimming="CharacterEllipsis" />
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </Grid>
+
+        <Grid Grid.Column="1" Padding="12,16,16,12" RowSpacing="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <AutoSuggestBox
+                x:Name="SearchBox"
+                Grid.Row="0"
+                QueryIcon="Find"
+                PlaceholderText="검색 / Search notes"
+                TextChanged="OnSearchTextChanged" />
+
+            <ListView
+                x:Name="Results"
+                Grid.Row="1"
+                SelectionMode="Single"
+                IsItemClickEnabled="True"
+                ItemClick="OnResultClicked">
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="abstractions:NoteSummary">
+                        <Grid Padding="4,8" ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Colour chip, so a note is recognisable here the way it is on the desktop. -->
+                            <Border
+                                Grid.Column="0"
+                                Width="10"
+                                Height="34"
+                                VerticalAlignment="Top"
+                                CornerRadius="5"
+                                Background="{x:Bind views:NoteRowFormat.ColorBrush(ColorKey)}" />
+
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock
+                                    FontWeight="SemiBold"
+                                    Text="{x:Bind views:NoteRowFormat.TitleOrFallback(Title, Preview)}"
+                                    TextTrimming="CharacterEllipsis" />
+                                <TextBlock
+                                    Opacity="0.75"
+                                    MaxLines="2"
+                                    Style="{ThemeResource CaptionTextBlockStyle}"
+                                    Text="{x:Bind Preview}"
+                                    TextTrimming="CharacterEllipsis"
+                                    TextWrapping="Wrap" />
+                                <TextBlock
+                                    Opacity="0.6"
+                                    Style="{ThemeResource CaptionTextBlockStyle}"
+                                    Text="{x:Bind views:NoteRowFormat.Metadata(UpdatedAt, ChecklistDone, ChecklistTotal, Tags, NextReminderAt)}"
+                                    TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
+            <Grid Grid.Row="2" ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock
+                    x:Name="StatusText"
+                    Grid.Column="0"
+                    VerticalAlignment="Center"
+                    Opacity="0.7"
+                    Style="{ThemeResource CaptionTextBlockStyle}" />
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="NewNotebookButton" Content="새 노트북 / New notebook" Click="OnNewNotebookClicked" />
+                    <Button x:Name="RestoreButton" Content="복원 / Restore" Click="OnRestoreClicked" Visibility="Collapsed" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>
