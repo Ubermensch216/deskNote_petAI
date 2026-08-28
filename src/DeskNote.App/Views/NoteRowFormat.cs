@@ -1,4 +1,5 @@
 using System.Globalization;
+using DeskNote.App.Services;
 using DeskNote.App.Theming;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
@@ -48,7 +49,7 @@ public static class NoteRowFormat
         }
 
         var firstLine = preview.Split('\n').FirstOrDefault(line => !string.IsNullOrWhiteSpace(line));
-        return string.IsNullOrWhiteSpace(firstLine) ? "빈 메모 / Empty note" : firstLine.Trim();
+        return string.IsNullOrWhiteSpace(firstLine) ? Strings.Get("Row_EmptyNote") : firstLine.Trim();
     }
 
     /// <summary>The muted line under a row: when it changed, checklist progress, tags, next reminder.</summary>
@@ -73,7 +74,8 @@ public static class NoteRowFormat
 
         if (nextReminderAt is { } due)
         {
-            parts.Add("🔔 " + due.ToLocalTime().ToString("M월 d일 HH:mm", CultureInfo.CurrentCulture));
+            // Culture-supplied short date and time, so neither language carries the other's format.
+            parts.Add("🔔 " + due.ToLocalTime().ToString("d MMM HH:mm", CultureInfo.CurrentCulture));
         }
 
         return string.Join("  ·  ", parts);
@@ -85,10 +87,10 @@ public static class NoteRowFormat
 
         return elapsed switch
         {
-            { TotalMinutes: < 1 } => "방금",
-            { TotalHours: < 1 } => $"{(int)elapsed.TotalMinutes}분 전",
-            { TotalDays: < 1 } => $"{(int)elapsed.TotalHours}시간 전",
-            { TotalDays: < 7 } => $"{(int)elapsed.TotalDays}일 전",
+            { TotalMinutes: < 1 } => Strings.Get("Time_JustNow"),
+            { TotalHours: < 1 } => Strings.Format("Time_MinutesAgoFormat", (int)elapsed.TotalMinutes),
+            { TotalDays: < 1 } => Strings.Format("Time_HoursAgoFormat", (int)elapsed.TotalHours),
+            { TotalDays: < 7 } => Strings.Format("Time_DaysAgoFormat", (int)elapsed.TotalDays),
             _ => value.ToLocalTime().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
         };
     }

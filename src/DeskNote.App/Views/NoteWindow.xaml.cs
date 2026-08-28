@@ -87,6 +87,10 @@ public sealed partial class NoteWindow : Window
         OpacitySlider.Value = Math.Clamp(note.Opacity, Note.MinOpacity, 1.0) * 100;
         _suppressChangeEvents = false;
 
+        TitleBox.PlaceholderText = Strings.Get("Note_TitlePlaceholder");
+        ContentBox.PlaceholderText = Strings.Get("Note_ContentPlaceholder");
+        OpacitySlider.Header = Strings.Get("Note_Opacity");
+
         BuildColorChoices();
         BuildMoreMenu();
         ApplySurface();
@@ -128,6 +132,15 @@ public sealed partial class NoteWindow : Window
     public string CurrentTitle => TitleBox.Text;
 
     public string CurrentContent => ContentBox.Text;
+
+    /// <summary>Flips always-on-top, keeping the pin button in step. Used by the global hotkey.</summary>
+    public void ToggleAlwaysOnTop()
+    {
+        var pinned = !(PinButton.IsChecked ?? false);
+        PinButton.IsChecked = pinned;
+        _presenter.IsAlwaysOnTop = pinned;
+        AppearanceChanged?.Invoke(this, new NoteAppearance(_colorKey, _opacity, pinned));
+    }
 
     public void FocusEditor()
     {
@@ -319,7 +332,7 @@ public sealed partial class NoteWindow : Window
         if (e.DataView.Contains(StandardDataFormats.StorageItems))
         {
             e.AcceptedOperation = DataPackageOperation.Copy;
-            e.DragUIOverride.Caption = "메모에 첨부 / Attach to note";
+            e.DragUIOverride.Caption = Strings.Get("Note_AttachDropCaption");
         }
     }
 
@@ -616,7 +629,10 @@ public sealed partial class NoteWindow : Window
         foreach (var preset in new[] { NoteSizePreset.Small, NoteSizePreset.Medium, NoteSizePreset.Large })
         {
             var (width, height) = NoteGeometry.SizeOf(preset);
-            var item = new MenuFlyoutItem { Text = $"{preset} · {width}×{height}" };
+            var item = new MenuFlyoutItem
+            {
+                Text = Strings.Format("Note_SizeFormat", Strings.Get($"Note_Size{preset}"), width, height),
+            };
             item.Click += (_, _) => SetSizePreset(preset);
             MoreMenu.Items.Add(item);
         }
@@ -626,12 +642,12 @@ public sealed partial class NoteWindow : Window
         // Relative offsets rather than a date picker: a sticky note reminder is almost always
         // "later today" or "tomorrow morning", and a full scheduling dialog on a note this small
         // would cost more attention than the reminder is worth.
-        var reminders = new MenuFlyoutSubItem { Text = "알림 / Remind me" };
+        var reminders = new MenuFlyoutSubItem { Text = Strings.Get("Note_Remind") };
         foreach (var (label, delay) in new (string, TimeSpan)[]
                  {
-                     ("10분 뒤 / in 10 min", TimeSpan.FromMinutes(10)),
-                     ("1시간 뒤 / in 1 hour", TimeSpan.FromHours(1)),
-                     ("내일 아침 9시 / tomorrow 9am", TimeSpan.Zero),
+                     (Strings.Get("Note_Remind10Minutes"), TimeSpan.FromMinutes(10)),
+                     (Strings.Get("Note_Remind1Hour"), TimeSpan.FromHours(1)),
+                     (Strings.Get("Note_RemindTomorrow"), TimeSpan.Zero),
                  })
         {
             var item = new MenuFlyoutItem { Text = label };
@@ -642,13 +658,13 @@ public sealed partial class NoteWindow : Window
 
         MoreMenu.Items.Add(reminders);
 
-        var library = new MenuFlyoutItem { Text = "메모 라이브러리 / Notes Explorer" };
+        var library = new MenuFlyoutItem { Text = Strings.Get("Note_Library") };
         library.Click += (_, _) => LibraryRequested?.Invoke(this, EventArgs.Empty);
         MoreMenu.Items.Add(library);
 
         MoreMenu.Items.Add(new MenuFlyoutSeparator());
 
-        var delete = new MenuFlyoutItem { Text = "삭제 / Delete" };
+        var delete = new MenuFlyoutItem { Text = Strings.Get("Note_Delete") };
         delete.Click += (_, _) => DeleteRequested?.Invoke(this, EventArgs.Empty);
         MoreMenu.Items.Add(delete);
     }

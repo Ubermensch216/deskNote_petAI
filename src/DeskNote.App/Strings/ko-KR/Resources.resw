@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Note_TitlePlaceholder" xml:space="preserve"><value>제목</value></data>
+  <data name="Note_ContentPlaceholder" xml:space="preserve"><value>메모를 입력하세요</value></data>
+  <data name="Note_Opacity" xml:space="preserve"><value>투명도</value></data>
+  <data name="Note_SizeFormat" xml:space="preserve"><value>{0} · {1}×{2}</value></data>
+  <data name="Note_SizeSmall" xml:space="preserve"><value>작게</value></data>
+  <data name="Note_SizeMedium" xml:space="preserve"><value>보통</value></data>
+  <data name="Note_SizeLarge" xml:space="preserve"><value>크게</value></data>
+  <data name="Note_Remind" xml:space="preserve"><value>알림</value></data>
+  <data name="Note_Remind10Minutes" xml:space="preserve"><value>10분 뒤</value></data>
+  <data name="Note_Remind1Hour" xml:space="preserve"><value>1시간 뒤</value></data>
+  <data name="Note_RemindTomorrow" xml:space="preserve"><value>내일 아침 9시</value></data>
+  <data name="Note_Library" xml:space="preserve"><value>메모 라이브러리</value></data>
+  <data name="Note_Delete" xml:space="preserve"><value>삭제</value></data>
+  <data name="Note_AttachDropCaption" xml:space="preserve"><value>메모에 첨부</value></data>
+  <data name="Explorer_Title" xml:space="preserve"><value>DeskNote — 메모 라이브러리</value></data>
+  <data name="Explorer_AllNotes" xml:space="preserve"><value>모든 메모</value></data>
+  <data name="Explorer_Deleted" xml:space="preserve"><value>삭제된 메모</value></data>
+  <data name="Explorer_Notebooks" xml:space="preserve"><value>노트북</value></data>
+  <data name="Explorer_Tags" xml:space="preserve"><value>태그</value></data>
+  <data name="Explorer_All" xml:space="preserve"><value>전체</value></data>
+  <data name="Explorer_SearchPlaceholder" xml:space="preserve"><value>메모 검색</value></data>
+  <data name="Explorer_NewNotebook" xml:space="preserve"><value>새 노트북</value></data>
+  <data name="Explorer_NotebookName" xml:space="preserve"><value>노트북 이름</value></data>
+  <data name="Explorer_Create" xml:space="preserve"><value>만들기</value></data>
+  <data name="Explorer_Cancel" xml:space="preserve"><value>취소</value></data>
+  <data name="Explorer_Restore" xml:space="preserve"><value>복원</value></data>
+  <data name="Explorer_SelectToRestore" xml:space="preserve"><value>복원할 메모를 선택하세요</value></data>
+  <data name="Explorer_NoNotes" xml:space="preserve"><value>메모 없음</value></data>
+  <data name="Explorer_NoMatchesFormat" xml:space="preserve"><value>“{0}” 에 해당하는 메모 없음</value></data>
+  <data name="Explorer_CountFormat" xml:space="preserve"><value>{0}개</value></data>
+  <data name="Explorer_TagCountFormat" xml:space="preserve"><value>#{0}  ({1})</value></data>
+  <data name="Row_EmptyNote" xml:space="preserve"><value>빈 메모</value></data>
+  <data name="Time_JustNow" xml:space="preserve"><value>방금</value></data>
+  <data name="Time_MinutesAgoFormat" xml:space="preserve"><value>{0}분 전</value></data>
+  <data name="Time_HoursAgoFormat" xml:space="preserve"><value>{0}시간 전</value></data>
+  <data name="Time_DaysAgoFormat" xml:space="preserve"><value>{0}일 전</value></data>
+  <data name="Tray_Tooltip" xml:space="preserve"><value>DeskNote</value></data>
+  <data name="Tray_NewNote" xml:space="preserve"><value>새 메모</value></data>
+  <data name="Tray_Library" xml:space="preserve"><value>메모 라이브러리</value></data>
+  <data name="Tray_Exit" xml:space="preserve"><value>종료</value></data>
+  <data name="Reminder_Fallback" xml:space="preserve"><value>메모 알림</value></data>
+</root>

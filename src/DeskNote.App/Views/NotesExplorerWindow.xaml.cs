@@ -39,7 +39,14 @@ public sealed partial class NotesExplorerWindow : Window
         _notes = notes;
         _openNote = openNote;
 
-        AppWindow.Title = "DeskNote — 메모 라이브러리";
+        AppWindow.Title = Strings.Get("Explorer_Title");
+        ScopeAll.Content = Strings.Get("Explorer_AllNotes");
+        ScopeDeleted.Content = Strings.Get("Explorer_Deleted");
+        NotebooksHeader.Text = Strings.Get("Explorer_Notebooks");
+        TagsHeader.Text = Strings.Get("Explorer_Tags");
+        SearchBox.PlaceholderText = Strings.Get("Explorer_SearchPlaceholder");
+        NewNotebookButton.Content = Strings.Get("Explorer_NewNotebook");
+        RestoreButton.Content = Strings.Get("Explorer_Restore");
         AppWindow.Resize(new SizeInt32(920, 620));
 
         if (AppWindow.Presenter is OverlappedPresenter presenter)
@@ -77,13 +84,15 @@ public sealed partial class NotesExplorerWindow : Window
 
         _suppressFilterEvents = true;
 
-        NotebookList.ItemsSource = new List<NotebookChoice> { new(null, "전체 / All") }
+        NotebookList.ItemsSource = new List<NotebookChoice> { new(null, Strings.Get("Explorer_All")) }
             .Concat(notebooks.Select(n => new NotebookChoice(n.Id, n.Name)))
             .ToList();
         NotebookList.SelectedIndex = 0;
 
-        TagList.ItemsSource = new List<TagChoice> { new(null, "전체 / All") }
-            .Concat(tags.Select(t => new TagChoice(t.Tag.NormalizedName, $"#{t.Tag.Name}  ({t.NoteCount})")))
+        TagList.ItemsSource = new List<TagChoice> { new(null, Strings.Get("Explorer_All")) }
+            .Concat(tags.Select(t => new TagChoice(
+                t.Tag.NormalizedName,
+                Strings.Format("Explorer_TagCountFormat", t.Tag.Name, t.NoteCount))))
             .ToList();
         TagList.SelectedIndex = 0;
 
@@ -103,9 +112,9 @@ public sealed partial class NotesExplorerWindow : Window
 
         StatusText.Text = rows.Count switch
         {
-            0 when !string.IsNullOrWhiteSpace(text) => $"'{text}' 에 해당하는 메모 없음",
-            0 => "메모 없음",
-            _ => $"{rows.Count}개",
+            0 when !string.IsNullOrWhiteSpace(text) => Strings.Format("Explorer_NoMatchesFormat", text),
+            0 => Strings.Get("Explorer_NoNotes"),
+            _ => Strings.Format("Explorer_CountFormat", rows.Count),
         };
     }
 
@@ -176,7 +185,7 @@ public sealed partial class NotesExplorerWindow : Window
     {
         if (Results.SelectedItem is not NoteSummary summary)
         {
-            StatusText.Text = "복원할 메모를 선택하세요";
+            StatusText.Text = Strings.Get("Explorer_SelectToRestore");
             return;
         }
 
@@ -186,14 +195,14 @@ public sealed partial class NotesExplorerWindow : Window
 
     private async void OnNewNotebookClicked(object sender, RoutedEventArgs e)
     {
-        var input = new TextBox { PlaceholderText = "노트북 이름 / Notebook name" };
+        var input = new TextBox { PlaceholderText = Strings.Get("Explorer_NotebookName") };
         var dialog = new ContentDialog
         {
             XamlRoot = Root.XamlRoot,
-            Title = "새 노트북 / New notebook",
+            Title = Strings.Get("Explorer_NewNotebook"),
             Content = input,
-            PrimaryButtonText = "만들기 / Create",
-            CloseButtonText = "취소 / Cancel",
+            PrimaryButtonText = Strings.Get("Explorer_Create"),
+            CloseButtonText = Strings.Get("Explorer_Cancel"),
             DefaultButton = ContentDialogButton.Primary,
         };
 

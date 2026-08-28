@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Note_TitlePlaceholder" xml:space="preserve"><value>Title</value></data>
+  <data name="Note_ContentPlaceholder" xml:space="preserve"><value>Write a note</value></data>
+  <data name="Note_Opacity" xml:space="preserve"><value>Opacity</value></data>
+  <data name="Note_SizeFormat" xml:space="preserve"><value>{0} · {1}×{2}</value></data>
+  <data name="Note_SizeSmall" xml:space="preserve"><value>Small</value></data>
+  <data name="Note_SizeMedium" xml:space="preserve"><value>Medium</value></data>
+  <data name="Note_SizeLarge" xml:space="preserve"><value>Large</value></data>
+  <data name="Note_Remind" xml:space="preserve"><value>Remind me</value></data>
+  <data name="Note_Remind10Minutes" xml:space="preserve"><value>In 10 minutes</value></data>
+  <data name="Note_Remind1Hour" xml:space="preserve"><value>In 1 hour</value></data>
+  <data name="Note_RemindTomorrow" xml:space="preserve"><value>Tomorrow at 9 AM</value></data>
+  <data name="Note_Library" xml:space="preserve"><value>Notes Explorer</value></data>
+  <data name="Note_Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Note_AttachDropCaption" xml:space="preserve"><value>Attach to note</value></data>
+  <data name="Explorer_Title" xml:space="preserve"><value>DeskNote — Notes</value></data>
+  <data name="Explorer_AllNotes" xml:space="preserve"><value>All notes</value></data>
+  <data name="Explorer_Deleted" xml:space="preserve"><value>Deleted</value></data>
+  <data name="Explorer_Notebooks" xml:space="preserve"><value>Notebooks</value></data>
+  <data name="Explorer_Tags" xml:space="preserve"><value>Tags</value></data>
+  <data name="Explorer_All" xml:space="preserve"><value>All</value></data>
+  <data name="Explorer_SearchPlaceholder" xml:space="preserve"><value>Search notes</value></data>
+  <data name="Explorer_NewNotebook" xml:space="preserve"><value>New notebook</value></data>
+  <data name="Explorer_NotebookName" xml:space="preserve"><value>Notebook name</value></data>
+  <data name="Explorer_Create" xml:space="preserve"><value>Create</value></data>
+  <data name="Explorer_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Explorer_Restore" xml:space="preserve"><value>Restore</value></data>
+  <data name="Explorer_SelectToRestore" xml:space="preserve"><value>Select a note to restore</value></data>
+  <data name="Explorer_NoNotes" xml:space="preserve"><value>No notes</value></data>
+  <data name="Explorer_NoMatchesFormat" xml:space="preserve"><value>No notes match “{0}”</value></data>
+  <data name="Explorer_CountFormat" xml:space="preserve"><value>{0} notes</value></data>
+  <data name="Explorer_TagCountFormat" xml:space="preserve"><value>#{0}  ({1})</value></data>
+  <data name="Row_EmptyNote" xml:space="preserve"><value>Empty note</value></data>
+  <data name="Time_JustNow" xml:space="preserve"><value>just now</value></data>
+  <data name="Time_MinutesAgoFormat" xml:space="preserve"><value>{0} min ago</value></data>
+  <data name="Time_HoursAgoFormat" xml:space="preserve"><value>{0} h ago</value></data>
+  <data name="Time_DaysAgoFormat" xml:space="preserve"><value>{0} d ago</value></data>
+  <data name="Tray_Tooltip" xml:space="preserve"><value>DeskNote</value></data>
+  <data name="Tray_NewNote" xml:space="preserve"><value>New note</value></data>
+  <data name="Tray_Library" xml:space="preserve"><value>Notes Explorer</value></data>
+  <data name="Tray_Exit" xml:space="preserve"><value>Exit</value></data>
+  <data name="Reminder_Fallback" xml:space="preserve"><value>Note reminder</value></data>
+</root>

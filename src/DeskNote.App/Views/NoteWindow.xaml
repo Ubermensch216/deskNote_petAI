@@ -56,7 +56,6 @@
                     Padding="2,0"
                     FontWeight="SemiBold"
                     TextWrapping="NoWrap"
-                    PlaceholderText="제목 / Title"
                     IsHitTestVisible="False"
                     GotFocus="OnEditorFocusChanged"
                     LostFocus="OnEditorFocusChanged"
@@ -123,7 +122,6 @@
                                 <Slider
                                     x:Name="OpacitySlider"
                                     StepFrequency="5"
-                                    Header="Opacity"
                                     ValueChanged="OnOpacityChanged" />
                               </StackPanel>
                             </Flyout>
@@ -155,7 +153,6 @@
                 BorderThickness="0"
                 Padding="2,0"
                 ScrollViewer.VerticalScrollBarVisibility="Auto"
-                PlaceholderText="메모를 입력하세요 / Write a note"
                 PreviewKeyDown="OnContentPreviewKeyDown"
                 Paste="OnPasteRequested"
                 GotFocus="OnEditorFocusChanged"

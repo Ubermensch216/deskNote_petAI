@@ -69,7 +69,7 @@ public readonly record struct HotkeyGesture(HotkeyModifiers Modifiers, string Ke
                         return false;
                     }
 
-                    key = raw.Length == 1 ? raw.ToUpperInvariant() : raw;
+                    key = NormalizeKey(raw);
                     break;
             }
         }
@@ -81,6 +81,30 @@ public readonly record struct HotkeyGesture(HotkeyModifiers Modifiers, string Ke
 
         gesture = new HotkeyGesture(modifiers, key);
         return gesture.IsValid;
+    }
+
+    /// <summary>
+    /// Puts a key name into one canonical spelling.
+    /// </summary>
+    /// <remarks>
+    /// Without this, "f4" and "F4" are different gestures: they compare unequal, so a stored
+    /// binding stops matching the one on screen and two commands on the same physical key are not
+    /// reported as conflicting.
+    /// </remarks>
+    private static string NormalizeKey(string raw)
+    {
+        if (raw.Length == 1)
+        {
+            return raw.ToUpperInvariant();
+        }
+
+        // Function keys read as F1..F24 rather than as a word.
+        if ((raw[0] is 'f' or 'F') && raw.Length <= 3 && raw[1..].All(char.IsAsciiDigit))
+        {
+            return "F" + raw[1..];
+        }
+
+        return string.Concat(char.ToUpperInvariant(raw[0]), raw[1..].ToLowerInvariant());
     }
 }
 

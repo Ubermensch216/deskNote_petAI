@@ -26,15 +26,15 @@
                 Grid.Row="0"
                 SelectionMode="Single"
                 SelectionChanged="OnScopeChanged">
-                <ListViewItem Content="모든 메모 / All notes" Tag="all" />
-                <ListViewItem Content="삭제된 메모 / Deleted" Tag="deleted" />
+                <ListViewItem x:Name="ScopeAll" Tag="all" />
+                <ListViewItem x:Name="ScopeDeleted" Tag="deleted" />
             </ListView>
 
             <TextBlock
                 Grid.Row="1"
                 Margin="4,8,0,0"
                 Style="{ThemeResource CaptionTextBlockStyle}"
-                Text="노트북 / Notebooks" />
+                x:Name="NotebooksHeader" />
 
             <ListView
                 x:Name="NotebookList"
@@ -52,7 +52,7 @@
                 Grid.Row="3"
                 Margin="4,8,0,0"
                 Style="{ThemeResource CaptionTextBlockStyle}"
-                Text="태그 / Tags" />
+                x:Name="TagsHeader" />
 
             <ListView
                 x:Name="TagList"
@@ -78,7 +78,6 @@
                 x:Name="SearchBox"
                 Grid.Row="0"
                 QueryIcon="Find"
-                PlaceholderText="검색 / Search notes"
                 TextChanged="OnSearchTextChanged" />
 
             <ListView
@@ -141,8 +140,8 @@
                     Style="{ThemeResource CaptionTextBlockStyle}" />
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                    <Button x:Name="NewNotebookButton" Content="새 노트북 / New notebook" Click="OnNewNotebookClicked" />
-                    <Button x:Name="RestoreButton" Content="복원 / Restore" Click="OnRestoreClicked" Visibility="Collapsed" />
+                    <Button x:Name="NewNotebookButton" Click="OnNewNotebookClicked" />
+                    <Button x:Name="RestoreButton" Click="OnRestoreClicked" Visibility="Collapsed" />
                 </StackPanel>
             </Grid>
         </Grid>

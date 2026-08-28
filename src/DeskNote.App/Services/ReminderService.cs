@@ -129,7 +129,9 @@ public sealed class ReminderService(
             ? FirstLine(note.Content)
             : note.Title;
 
-        var body = string.IsNullOrWhiteSpace(note.Content) ? "메모 알림" : Excerpt(note.Content);
+        var body = string.IsNullOrWhiteSpace(note.Content)
+            ? Strings.Get("Reminder_Fallback")
+            : Excerpt(note.Content);
 
         var toast = new AppNotificationBuilder()
             .AddArgument(NoteIdArgument, note.Id.ToString())

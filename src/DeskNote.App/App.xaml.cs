@@ -11,6 +11,9 @@ public partial class App : Application
     private AutosaveScheduler? _autosave;
     private NoteWindowManager? _windows;
     private ReminderService? _reminders;
+    private GlobalHotkeyService? _hotkeys;
+    private TrayIconService? _tray;
+    private Microsoft.UI.Dispatching.DispatcherQueue? _dispatcher;
 
     public App()
     {
@@ -54,6 +57,12 @@ public partial class App : Application
                     $"{MigrationRunner.MinimumSafeSqliteVersion}.");
             }
 
+            ISettingsStore settings = new SqliteSettingsStore(connections);
+
+            // Language is chosen before the first window exists, so no text is ever built with the
+            // wrong locale and then left stale on screen.
+            Strings.UseLocale(await settings.GetAsync(SettingKeys.UiLocale).ConfigureAwait(true));
+
             IClock clock = SystemClock.Instance;
             INoteRepository notes = new SqliteNoteRepository(connections, clock);
             INoteRevisionStore revisions = new SqliteNoteRevisionStore(connections);
@@ -94,12 +103,74 @@ public partial class App : Application
                 Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread());
             _reminders.NoteRequested += async (_, noteId) => await _windows.FocusAsync(noteId);
             _reminders.Start();
+
+            _dispatcher = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+
+            var bindings = HotkeyBindings.FromJson(
+                await settings.GetAsync(SettingKeys.Hotkeys).ConfigureAwait(true));
+
+            _hotkeys = new GlobalHotkeyService(RunHotkeyCommand);
+            _hotkeys.Start(bindings);
+
+            foreach (var failure in _hotkeys.Failures)
+            {
+                CrashLog.Write(
+                    $"Hotkey {failure.Gesture} for {failure.Command} is unavailable — " +
+                    "another application already owns it.");
+            }
+
+            _tray = new TrayIconService(
+                onNewNote: () => RunHotkeyCommand(HotkeyCommands.NewNote),
+                onOpenLibrary: () => RunHotkeyCommand(HotkeyCommands.SearchNotes),
+                onExit: () => _dispatcher?.TryEnqueue(Exit));
+            _tray.Start();
+
+
         }
         catch (Exception ex)
         {
             CrashLog.Write("Startup failed", ex);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Runs a command triggered from outside the UI thread.
+    /// </summary>
+    /// <remarks>
+    /// Hotkeys arrive on their own message-loop thread and the tray on another, so everything hops
+    /// onto the dispatcher before touching a window.
+    /// </remarks>
+    private void RunHotkeyCommand(string command)
+    {
+        _dispatcher?.TryEnqueue(async () =>
+        {
+            try
+            {
+                switch (command)
+                {
+                    case HotkeyCommands.NewNote:
+                        await Windows.CreateAsync();
+                        break;
+
+                    case HotkeyCommands.SearchNotes:
+                        Windows.ShowLibrary();
+                        break;
+
+                    case HotkeyCommands.ToggleAlwaysOnTop:
+                        Windows.ToggleActiveNoteAlwaysOnTop();
+                        break;
+
+                    case HotkeyCommands.AddReminder:
+                        await Windows.RemindActiveNoteAsync(TimeSpan.FromHours(1));
+                        break;
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                CrashLog.Write($"Hotkey command {command} failed", ex);
+            }
+        });
     }
 
     /// <summary>

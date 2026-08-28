@@ -72,6 +72,28 @@ public sealed class NoteWindowManager(
     }
 
     /// <summary>
+    /// The note the user is working in, for hotkeys that act on "this note".
+    /// </summary>
+    /// <remarks>
+    /// Tracked from activation rather than read from the OS foreground window: a global hotkey can
+    /// fire while another application is in front, and Ctrl+Shift+P should still pin the note the
+    /// user was last in rather than doing nothing.
+    /// </remarks>
+    public NoteWindow? ActiveNote { get; private set; }
+
+    /// <summary>Pins or unpins the note the user was last working in.</summary>
+    public void ToggleActiveNoteAlwaysOnTop() => ActiveNote?.ToggleAlwaysOnTop();
+
+    /// <summary>Adds a default reminder to the note the user was last working in.</summary>
+    public async Task RemindActiveNoteAsync(TimeSpan offset, CancellationToken cancellationToken = default)
+    {
+        if (ActiveNote is { } note)
+        {
+            await AddReminderAsync(note.NoteId, offset, cancellationToken).ConfigureAwait(true);
+        }
+    }
+
+    /// <summary>
     /// Re-opens the notes that were on screen when the app last ran.
     /// </summary>
     /// <remarks>
@@ -160,6 +182,13 @@ public sealed class NoteWindowManager(
         window.LibraryRequested += (_, _) => ShowLibrary();
         window.ReminderRequested += async (_, offset) => await AddReminderAsync(note.Id, offset);
         window.AttachmentRequested += async (w, request) => await OnAttachmentRequestedAsync(w, request);
+        window.Activated += (w, args) =>
+        {
+            if (args.WindowActivationState != Microsoft.UI.Xaml.WindowActivationState.Deactivated)
+            {
+                ActiveNote = w as NoteWindow;
+            }
+        };
 
         window.Activate();
         return window;
@@ -243,6 +272,11 @@ public sealed class NoteWindowManager(
     /// </summary>
     private async Task OnCloseRequestedAsync(Guid noteId)
     {
+        if (ActiveNote?.NoteId == noteId)
+        {
+            ActiveNote = null;
+        }
+
         _windows.Remove(noteId);
 
         await autosave.FlushAsync(noteId).ConfigureAwait(true);
