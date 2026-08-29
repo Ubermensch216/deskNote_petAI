@@ -79,6 +79,58 @@ dotnet test
 나머지는 원본 위치를 링크한다 (보고서 p5: 대용량은 복사보다 링크 우선). 어느 쪽이든 본문에는
 Markdown 참조가 삽입되므로 `Ctrl+Z` 로 되돌릴 수 있다.
 
+## 전역 단축키와 트레이
+
+| 기본 키 | 동작 |
+|---|---|
+| `Ctrl+Alt+N` | 새 메모 |
+| `Ctrl+Shift+F` | 메모 라이브러리 열기 |
+| `Ctrl+Shift+P` | 마지막으로 쓰던 메모의 항상 위 토글 |
+| `Ctrl+Shift+R` | 마지막으로 쓰던 메모에 1시간 뒤 알림 |
+
+모두 사용자가 바꿀 수 있고, 다른 앱이 이미 그 조합을 쓰고 있어 등록에 실패하면 조용히 넘기지 않고
+로그에 남긴다. `Ctrl+Space`(AI 명령 팔레트)는 보고서에 있지만 **기본 바인딩에 넣지 않았다** —
+아직 호출할 AI 계층이 없어 다른 앱에서 조합만 빼앗게 되기 때문이다.
+
+트레이 아이콘은 더블클릭으로 새 메모, 우클릭으로 새 메모 · 메모 라이브러리 · Windows 시작 시 실행 ·
+종료를 제공한다. 마지막 메모를 닫아도 여기로 돌아올 수 있다.
+
+## 언어
+
+UI 문자열은 `src/DeskNote.App/Strings/{ko-KR,en-US}/Resources.resw` 에 있다. 기본은 Windows 로케일을
+따르고, `settings` 의 `ui.locale` 값으로 수동 전환한다. 하드코딩된 한국어 UI 문자열이 하나라도 생기면
+`LocalizationGuardTests` 가 실패한다.
+
+## 성능 측정 (M6)
+
+```bash
+dotnet run --project tests/DeskNote.Benchmarks -c Release
+```
+
+10,000개 노트를 시드하고 보고서 p13-14의 SLO를 재며, 목표를 놓치면 종료 코드 1을 돌려준다.
+Intel i7 / 16GB / SSD, Release 빌드에서 측정한 값:
+
+| 지표 | 목표 | 실측 p95 | |
+|---|---|---|---|
+| note save (본문 + 체크리스트·태그 투영) | < 30 ms | 1.0 ms | PASS |
+| FTS 검색 (한국어) | < 100 ms | 2.5 ms | PASS |
+| FTS 검색 (영어) | < 100 ms | 5.3 ms | PASS |
+| 시작 시 복원 쿼리 | — | 0.06 ms | PASS |
+| 라이브러리 목록 200행 | < 100 ms | 26.4 ms | PASS |
+| 라이브러리 검색 | < 100 ms | 2.4 ms | PASS |
+| 새 메모 표시 (앱 실측) | < 80 ms | 59.4 ms | PASS |
+| idle CPU (메모 8개 열어둔 채 60초) | < 0.5% | 0.026% | PASS |
+
+10,000개 노트의 DB는 14.6 MB, 메모 8개를 띄운 프로세스의 working set은 159 MB.
+0.25초마다 메모를 만들고 닫는 버스트에서는 `Window.Activate()` 의 포그라운드 전환 경합으로
+p95가 ~540 ms까지 오른다. 사람이 단축키를 누르는 간격에서는 나타나지 않지만 알려진 특성이다.
+
+## 강제 종료 내성
+
+`--crash-writer` 모드로 쓰기 중인 프로세스를 5회 강제 종료한 결과, 매번
+`PRAGMA integrity_check = ok`, 외래키 위반 0, 체크리스트·태그 투영 카운트가 노트와 정확히 일치했다.
+진행 중이던 쓰기 1건만 본문 없이 남아 트랜잭션 경계가 지켜졌다.
+
 ## 데이터 위치
 
 `%LOCALAPPDATA%\DeskNote\notes.db` (WAL). 로그는 `%LOCALAPPDATA%\DeskNote\logs\desknote.log`.

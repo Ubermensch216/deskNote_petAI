@@ -74,4 +74,10 @@
   <data name="Tray_Library" xml:space="preserve"><value>메모 라이브러리</value></data>
   <data name="Tray_Exit" xml:space="preserve"><value>종료</value></data>
   <data name="Reminder_Fallback" xml:space="preserve"><value>메모 알림</value></data>
+  <data name="Tray_StartWithWindows" xml:space="preserve"><value>Windows 시작 시 실행</value></data>
+  <data name="Note_PinLabel" xml:space="preserve"><value>항상 위에 두기</value></data>
+  <data name="Note_ColorLabel" xml:space="preserve"><value>색상과 투명도</value></data>
+  <data name="Note_AiLabel" xml:space="preserve"><value>AI 동작 (로컬 모델 필요)</value></data>
+  <data name="Note_MoreLabel" xml:space="preserve"><value>추가 명령</value></data>
+  <data name="Note_DragLabel" xml:space="preserve"><value>메모 제목 및 이동 손잡이</value></data>
 </root>

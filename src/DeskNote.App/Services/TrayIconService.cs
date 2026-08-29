@@ -36,6 +36,7 @@ public sealed class TrayIconService : IDisposable
     private readonly Action _onNewNote;
     private readonly Action _onOpenLibrary;
     private readonly Action _onExit;
+    private readonly Action<bool> _onStartupChanged;
     private readonly ManualResetEventSlim _ready = new(false);
 
     private Thread? _thread;
@@ -44,11 +45,16 @@ public sealed class TrayIconService : IDisposable
     private WndProc? _wndProc;
     private bool _iconAdded;
 
-    public TrayIconService(Action onNewNote, Action onOpenLibrary, Action onExit)
+    public TrayIconService(
+        Action onNewNote,
+        Action onOpenLibrary,
+        Action onExit,
+        Action<bool> onStartupChanged)
     {
         _onNewNote = onNewNote;
         _onOpenLibrary = onOpenLibrary;
         _onExit = onExit;
+        _onStartupChanged = onStartupChanged;
     }
 
     public void Start()
@@ -164,7 +170,8 @@ public sealed class TrayIconService : IDisposable
                 {
                     case 1: _onNewNote(); return nint.Zero;
                     case 2: _onOpenLibrary(); return nint.Zero;
-                    case 3: _onExit(); return nint.Zero;
+                    case 3: _onStartupChanged(!StartupRegistration.IsEnabled()); return nint.Zero;
+                    case 4: _onExit(); return nint.Zero;
                 }
 
                 break;
@@ -183,7 +190,14 @@ public sealed class TrayIconService : IDisposable
         AppendMenu(menu, 0, 1, Strings.Get("Tray_NewNote"));
         AppendMenu(menu, 0, 2, Strings.Get("Tray_Library"));
         AppendMenu(menu, 0x800 /* MF_SEPARATOR */, 0, string.Empty);
-        AppendMenu(menu, 0, 3, Strings.Get("Tray_Exit"));
+
+        // MF_CHECKED reflects the live registry state rather than a cached flag, so the tick is
+        // right even if the entry was changed by another tool since the app started.
+        var startupFlags = StartupRegistration.IsEnabled() ? 0x8u /* MF_CHECKED */ : 0u;
+        AppendMenu(menu, startupFlags, 3, Strings.Get("Tray_StartWithWindows"));
+
+        AppendMenu(menu, 0x800 /* MF_SEPARATOR */, 0, string.Empty);
+        AppendMenu(menu, 0, 4, Strings.Get("Tray_Exit"));
 
         GetCursorPos(out var cursor);
 

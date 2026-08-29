@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!--
+      Release by default: measuring a Debug build would report numbers no user will ever see, and
+      the point of this harness is to decide whether the shipped app meets the report's SLOs.
+    -->
+    <Configuration Condition="'$(Configuration)' == ''">Release</Configuration>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DeskNote.Data\DeskNote.Data.csproj" />
+  </ItemGroup>
+
+</Project>

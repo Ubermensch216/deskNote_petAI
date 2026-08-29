@@ -119,10 +119,25 @@ public partial class App : Application
                     "another application already owns it.");
             }
 
+            // The stored preference is the source of truth; re-applying it repairs an entry another
+            // tool removed and refreshes the path if the app has moved.
+            var launchAtStartup =
+                await settings.GetAsync(SettingKeys.LaunchAtStartup).ConfigureAwait(true) == "true";
+            StartupRegistration.Apply(launchAtStartup);
+
             _tray = new TrayIconService(
                 onNewNote: () => RunHotkeyCommand(HotkeyCommands.NewNote),
                 onOpenLibrary: () => RunHotkeyCommand(HotkeyCommands.SearchNotes),
-                onExit: () => _dispatcher?.TryEnqueue(Exit));
+                onExit: () => _dispatcher?.TryEnqueue(Exit),
+                onStartupChanged: enabled => _dispatcher?.TryEnqueue(async () =>
+                {
+                    if (StartupRegistration.SetEnabled(enabled))
+                    {
+                        await settings.SetAsync(
+                            SettingKeys.LaunchAtStartup,
+                            enabled ? "true" : "false");
+                    }
+                }));
             _tray.Start();
 
 

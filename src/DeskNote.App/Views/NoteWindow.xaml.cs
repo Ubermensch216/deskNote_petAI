@@ -91,6 +91,15 @@ public sealed partial class NoteWindow : Window
         ContentBox.PlaceholderText = Strings.Get("Note_ContentPlaceholder");
         OpacitySlider.Header = Strings.Get("Note_Opacity");
 
+        // The command buttons show a single glyph, which is all a screen reader would otherwise
+        // have to announce — "pushpin", "circle with left half black". Naming them is what makes
+        // the note operable without sight, and it is a release gate in report p18.
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(PinButton, Strings.Get("Note_PinLabel"));
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(ColorButton, Strings.Get("Note_ColorLabel"));
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(AiButton, Strings.Get("Note_AiLabel"));
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(MoreButton, Strings.Get("Note_MoreLabel"));
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(DragStrip, Strings.Get("Note_DragLabel"));
+
         BuildColorChoices();
         BuildMoreMenu();
         ApplySurface();
