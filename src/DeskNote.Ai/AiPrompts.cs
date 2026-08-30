@@ -56,11 +56,15 @@ public static class AiPrompts
 
             AiAction.ExtractTasks =>
                 "작업: 주어진 텍스트에서 할 일을 뽑아 JSON으로만 답하십시오. 텍스트에 실제로 있는 " +
-                "할 일만 넣고, 마감이 적혀 있지 않으면 dueAt 을 null 로 두십시오. 날짜를 추측하지 마십시오.",
+                "할 일만 넣으십시오. dueAt 은 '오늘' 로 주어진 날짜를 기준으로 계산해 " +
+                "ISO 8601(예: 2026-09-01T09:00:00+09:00)로 쓰고, 마감이 적혀 있지 않으면 null 로 " +
+                "두십시오. 적혀 있지 않은 마감을 지어내지 마십시오. 담당자가 이름으로 적혀 있으면 " +
+                "assignee 에 그 이름을 그대로 넣으십시오.",
 
             AiAction.SuggestTags =>
                 "작업: 이 메모에 어울리는 태그를 JSON으로만 제안하십시오. 태그는 공백 없는 한 단어이고 " +
-                "'#' 을 붙이지 않습니다. 5개를 넘기지 말고, 확신이 없으면 적게 제안하십시오.",
+                "'#' 을 붙이지 않습니다. 메모의 주제를 나타내는 태그를 3~5개 제안하되, 메모에 없는 " +
+                "주제를 지어내지 마십시오.",
 
             AiAction.Answer =>
                 "작업: 사용자의 질문에 메모 내용만 근거로 답하십시오. 메모에서 답을 찾을 수 없으면 " +
@@ -70,12 +74,30 @@ public static class AiPrompts
         };
 
     /// <summary>User message for the note-scoped actions.</summary>
-    public static string UserFor(AiAction action, NoteContext context, RewriteStyle style = RewriteStyle.Concise)
+    /// <param name="now">
+    /// The user's current local time. A note says "내일까지"; without today's date the model can
+    /// only guess what that means, and a guessed reminder is worse than none (report p11).
+    /// </param>
+    public static string UserFor(
+        AiAction action,
+        NoteContext context,
+        RewriteStyle style = RewriteStyle.Concise,
+        DateTimeOffset? now = null)
     {
         ArgumentNullException.ThrowIfNull(context);
 
         var builder = new StringBuilder();
         builder.Append(LanguageLine(context.LanguageTag)).Append('\n');
+
+        if (action == AiAction.ExtractTasks && now is { } today)
+        {
+            builder
+                .Append("오늘: ")
+                .Append(today.ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.InvariantCulture))
+                .Append(" (")
+                .Append(DayName(today))
+                .Append(")\n");
+        }
 
         if (!string.IsNullOrWhiteSpace(context.Title))
         {
@@ -155,6 +177,10 @@ public static class AiPrompts
             .Replace(BlockClose, string.Empty, StringComparison.OrdinalIgnoreCase)
             .Replace(BlockOpen, string.Empty, StringComparison.OrdinalIgnoreCase);
     }
+
+    /// <summary>Korean weekday name, so "금요일 회의" can be resolved against today.</summary>
+    private static string DayName(DateTimeOffset moment) =>
+        CultureInfo.GetCultureInfo("ko-KR").DateTimeFormat.GetDayName(moment.DayOfWeek);
 
     private static string LanguageLine(string languageTag) =>
         $"답변 언어: {(string.IsNullOrWhiteSpace(languageTag) ? "ko-KR" : languageTag)}";

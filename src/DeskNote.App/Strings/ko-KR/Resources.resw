@@ -33,9 +33,9 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <data name="Note_TitlePlaceholder" xml:space="preserve"><value>제목</value></data>
   <data name="Note_ContentPlaceholder" xml:space="preserve"><value>메모를 입력하세요</value></data>
   <data name="Note_Opacity" xml:space="preserve"><value>투명도</value></data>
+  <data name="Note_Size" xml:space="preserve"><value>크기</value></data>
   <data name="Note_SizeFormat" xml:space="preserve"><value>{0} · {1}×{2}</value></data>
   <data name="Note_SizeSmall" xml:space="preserve"><value>작게</value></data>
   <data name="Note_SizeMedium" xml:space="preserve"><value>보통</value></data>
@@ -44,6 +44,9 @@
   <data name="Note_Remind10Minutes" xml:space="preserve"><value>10분 뒤</value></data>
   <data name="Note_Remind1Hour" xml:space="preserve"><value>1시간 뒤</value></data>
   <data name="Note_RemindTomorrow" xml:space="preserve"><value>내일 아침 9시</value></data>
+  <data name="Note_Remind10MinutesShort" xml:space="preserve"><value>10분</value></data>
+  <data name="Note_Remind1HourShort" xml:space="preserve"><value>1시간</value></data>
+  <data name="Note_RemindTomorrowShort" xml:space="preserve"><value>내일</value></data>
   <data name="Note_Library" xml:space="preserve"><value>메모 라이브러리</value></data>
   <data name="Note_Delete" xml:space="preserve"><value>삭제</value></data>
   <data name="Note_AttachDropCaption" xml:space="preserve"><value>메모에 첨부</value></data>
@@ -76,8 +79,69 @@
   <data name="Reminder_Fallback" xml:space="preserve"><value>메모 알림</value></data>
   <data name="Tray_StartWithWindows" xml:space="preserve"><value>Windows 시작 시 실행</value></data>
   <data name="Note_PinLabel" xml:space="preserve"><value>항상 위에 두기</value></data>
-  <data name="Note_ColorLabel" xml:space="preserve"><value>색상과 투명도</value></data>
-  <data name="Note_AiLabel" xml:space="preserve"><value>AI 동작 (로컬 모델 필요)</value></data>
+  <data name="Note_ColorLabel" xml:space="preserve"><value>색상</value></data>
   <data name="Note_MoreLabel" xml:space="preserve"><value>추가 명령</value></data>
-  <data name="Note_DragLabel" xml:space="preserve"><value>메모 제목 및 이동 손잡이</value></data>
+  <data name="Note_DragLabel" xml:space="preserve"><value>메모 이동 손잡이</value></data>
+  <data name="Note_NewNote" xml:space="preserve"><value>새 메모</value></data>
+  <data name="Note_Close" xml:space="preserve"><value>닫기</value></data>
+  <data name="Note_Bold" xml:space="preserve"><value>굵게</value></data>
+  <data name="Note_Italic" xml:space="preserve"><value>기울임</value></data>
+  <data name="Note_Underline" xml:space="preserve"><value>밑줄</value></data>
+  <data name="Note_Strikethrough" xml:space="preserve"><value>취소선</value></data>
+  <data name="Note_BulletList" xml:space="preserve"><value>글머리 목록</value></data>
+  <data name="Note_Checklist" xml:space="preserve"><value>체크리스트</value></data>
+  <data name="Note_InsertImage" xml:space="preserve"><value>이미지 넣기</value></data>
+  <data name="Note_ColorYellow" xml:space="preserve"><value>노랑</value></data>
+  <data name="Note_ColorAmber" xml:space="preserve"><value>호박</value></data>
+  <data name="Note_ColorGreen" xml:space="preserve"><value>초록</value></data>
+  <data name="Note_ColorTeal" xml:space="preserve"><value>청록</value></data>
+  <data name="Note_ColorBlue" xml:space="preserve"><value>파랑</value></data>
+  <data name="Note_ColorPurple" xml:space="preserve"><value>보라</value></data>
+  <data name="Note_ColorPink" xml:space="preserve"><value>분홍</value></data>
+  <data name="Note_ColorGray" xml:space="preserve"><value>회색</value></data>
+  <data name="Note_Ai" xml:space="preserve"><value>AI</value></data>
+  <data name="Note_AiSummarize" xml:space="preserve"><value>요약</value></data>
+  <data name="Note_AiOrganize" xml:space="preserve"><value>정리</value></data>
+  <data name="Note_AiRewrite" xml:space="preserve"><value>재작성</value></data>
+  <data name="Note_AiRewriteConcise" xml:space="preserve"><value>간결</value></data>
+  <data name="Note_AiRewriteFormal" xml:space="preserve"><value>격식</value></data>
+  <data name="Note_AiRewriteFriendly" xml:space="preserve"><value>친근</value></data>
+  <data name="Note_AiRewriteReport" xml:space="preserve"><value>보고서</value></data>
+  <data name="Note_AiReadyFormat" xml:space="preserve"><value>{0} · {1}</value></data>
+  <data name="Note_AiAcceleratorCpu" xml:space="preserve"><value>CPU</value></data>
+  <data name="Note_AiAcceleratorGpu" xml:space="preserve"><value>GPU</value></data>
+  <data name="Note_AiAcceleratorNpu" xml:space="preserve"><value>NPU</value></data>
+  <data name="Note_AiAcceleratorUnknown" xml:space="preserve"><value>로컬 실행</value></data>
+  <data name="Note_AiUnavailableModelNotInstalled" xml:space="preserve"><value>로컬 모델이 없습니다</value></data>
+  <data name="Note_AiUnavailableWorkerUnavailable" xml:space="preserve"><value>로컬 AI 서버가 실행 중이 아닙니다</value></data>
+  <data name="Note_AiUnavailableDisabled" xml:space="preserve"><value>AI를 꺼 두었습니다</value></data>
+  <data name="Note_AiUnavailableAvailable" xml:space="preserve"><value>AI 준비 중</value></data>
+  <data name="Ai_PreviewTitleFormat" xml:space="preserve"><value>DeskNote — {0}</value></data>
+  <data name="Ai_LocalOnly" xml:space="preserve"><value>이 메모는 이 PC 안에서만 처리됩니다</value></data>
+  <data name="Ai_Running" xml:space="preserve"><value>로컬 모델이 생각하는 중…</value></data>
+  <data name="Ai_Original" xml:space="preserve"><value>원본</value></data>
+  <data name="Ai_Proposed" xml:space="preserve"><value>제안</value></data>
+  <data name="Ai_Apply" xml:space="preserve"><value>적용</value></data>
+  <data name="Ai_Cancel" xml:space="preserve"><value>취소</value></data>
+  <data name="Ai_Discard" xml:space="preserve"><value>버리기</value></data>
+  <data name="Ai_Close" xml:space="preserve"><value>닫기</value></data>
+  <data name="Ai_ModelFormat" xml:space="preserve"><value>{0} 이(가) 만든 텍스트</value></data>
+  <data name="Ai_ElapsedFormat" xml:space="preserve"><value>{0}초</value></data>
+  <data name="Ai_FailedTitle" xml:space="preserve"><value>AI 동작 실패</value></data>
+  <data name="Ai_NoteChanged" xml:space="preserve"><value>메모가 그 사이 바뀌어서 적용하지 않았습니다</value></data>
+  <data name="Note_AiExtractTasks" xml:space="preserve"><value>할 일</value></data>
+  <data name="Note_AiSuggestTags" xml:space="preserve"><value>태그</value></data>
+  <data name="Ai_NothingFoundTitle" xml:space="preserve"><value>제안할 것이 없습니다</value></data>
+  <data name="Ai_NothingFound" xml:space="preserve"><value>이 메모에서 뽑아낼 항목을 찾지 못했습니다</value></data>
+  <data name="Ai_TaskDueFormat" xml:space="preserve"><value>마감 {0}</value></data>
+  <data name="Ai_TaskAssigneeFormat" xml:space="preserve"><value>담당 {0}</value></data>
+  <data name="Ai_PriorityHigh" xml:space="preserve"><value>중요</value></data>
+  <data name="Ai_PriorityLow" xml:space="preserve"><value>나중에</value></data>
+  <data name="Ai_ConfidenceFormat" xml:space="preserve"><value>확신 {0}%</value></data>
+  <data name="Note_AiAsk" xml:space="preserve"><value>질문</value></data>
+  <data name="Ai_AskTitle" xml:space="preserve"><value>메모에 질문</value></data>
+  <data name="Ai_Ask" xml:space="preserve"><value>묻기</value></data>
+  <data name="Ai_AskPlaceholder" xml:space="preserve"><value>이 메모에 대해 물어보세요</value></data>
+  <data name="Ai_ScopeLibrary" xml:space="preserve"><value>열려 있는 메모가 없어 전체 메모에서 찾습니다</value></data>
+  <data name="Ai_ScopeNoteFormat" xml:space="preserve"><value>“{0}” 메모만 근거로 답합니다</value></data>
 </root>

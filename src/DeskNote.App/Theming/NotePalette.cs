@@ -88,6 +88,17 @@ public static class NotePalette
     };
 
     /// <summary>
+    /// The color a destructive command is written in.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately not the system's error red: delete sits in a menu on coloured paper, and the
+    /// system red is tuned for a white dialog. These two are dimmed enough to stay readable on the
+    /// flyout in either theme while still reading as "this one is different from the others".
+    /// </remarks>
+    public static Color Danger(bool isDarkTheme) =>
+        isDarkTheme ? Rgb(0xF2, 0x8B, 0x82) : Rgb(0xC0, 0x39, 0x2B);
+
+    /// <summary>
     /// Applies the note's opacity to a surface color as alpha.
     /// </summary>
     /// <remarks>

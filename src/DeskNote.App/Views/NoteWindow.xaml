@@ -11,7 +11,7 @@
     -->
     <Border
         x:Name="Surface"
-        CornerRadius="8"
+        CornerRadius="10"
         BorderThickness="1"
         AllowDrop="True"
         DragOver="OnSurfaceDragOver"
@@ -19,127 +19,334 @@
         PointerEntered="OnPointerEntered"
         PointerExited="OnPointerExited">
 
-        <Grid Padding="10,6,10,10" RowSpacing="4">
+        <Border.Resources>
+            <!--
+                Chrome buttons sit on paper, not on a form: no fill, no border, and a hit area big
+                enough to click. Their brushes are overridden per note in ApplyPaperBrushes so the
+                hover tint is made from the note's own ink rather than the system accent grey.
+            -->
+            <Style x:Key="ChromeButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="MinHeight" Value="0" />
+                <Setter Property="Width" Value="28" />
+                <Setter Property="Height" Value="24" />
+                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="FontSize" Value="13" />
+            </Style>
+
+            <Style x:Key="FormatButtonStyle" TargetType="Button" BasedOn="{StaticResource ChromeButtonStyle}">
+                <Setter Property="Width" Value="30" />
+                <Setter Property="Height" Value="26" />
+                <Setter Property="FontSize" Value="14" />
+            </Style>
+        </Border.Resources>
+
+        <Grid Padding="12,3,10,4">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <!--
-                Drag handle, title and command bar in one strip (report p6 mock-up).
-                Pointer events are handled here rather than through Window.SetTitleBar: with the
-                caption removed by the presenter there is no title bar for a XAML drag region to
-                attach to, and the note could not be moved at all.
+                Drag handle and window commands in one strip. Pointer events are handled here rather
+                than through Window.SetTitleBar: with the caption removed by the presenter there is
+                no title bar for a XAML drag region to attach to, and the note could not be moved.
             -->
             <Grid
                 x:Name="DragStrip"
                 Grid.Row="0"
-                Height="28"
+                Height="26"
                 Background="Transparent"
-                ColumnSpacing="4"
-                DoubleTapped="OnDragStripDoubleTapped"
                 PointerPressed="OnDragStripPointerPressed"
                 PointerMoved="OnDragStripPointerMoved"
                 PointerReleased="OnDragStripPointerReleased"
                 PointerCaptureLost="OnDragStripPointerReleased">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <TextBox
-                    x:Name="TitleBox"
-                    Grid.Column="0"
-                    VerticalAlignment="Center"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    Padding="2,0"
-                    FontWeight="SemiBold"
-                    TextWrapping="NoWrap"
-                    IsHitTestVisible="False"
-                    GotFocus="OnEditorFocusChanged"
-                    LostFocus="OnEditorFocusChanged"
-                    TextChanged="OnTextChanged" />
-
                 <!--
-                    Hidden at rest so the note's content is the visual centre, revealed on hover or
+                    Hidden at rest so the note's content is the whole note, revealed on hover or
                     keyboard focus (report p4). Opacity rather than Visibility keeps the layout from
-                    shifting as the buttons appear.
+                    shifting as the buttons appear; IsHitTestVisible follows it so an invisible
+                    button can never be clicked by accident.
                 -->
-                <StackPanel
-                    x:Name="CommandBar"
-                    Grid.Column="1"
-                    Orientation="Horizontal"
-                    Spacing="2"
-                    Opacity="0">
+                <StackPanel x:Name="LeadingChrome" Grid.Column="0" Orientation="Horizontal" Opacity="0">
+                    <StackPanel.OpacityTransition>
+                        <ScalarTransition Duration="0:0:0.12" />
+                    </StackPanel.OpacityTransition>
 
-                    <ToggleButton
-                        x:Name="PinButton"
-                        Padding="6,2"
-                        FontSize="12"
-                        Content="&#x1F4CC;"
-                        Click="OnPinClicked" />
+                    <Button x:Name="NewNoteButton" Style="{StaticResource ChromeButtonStyle}" Click="OnNewNoteClicked">
+                        <FontIcon Glyph="&#xE710;" FontSize="12" />
+                    </Button>
+                </StackPanel>
 
-                    <Button x:Name="ColorButton" Padding="6,2" FontSize="12" Content="&#x25D0;">
+                <StackPanel x:Name="TrailingChrome" Grid.Column="2" Orientation="Horizontal" Opacity="0">
+                    <StackPanel.OpacityTransition>
+                        <ScalarTransition Duration="0:0:0.12" />
+                    </StackPanel.OpacityTransition>
+
+                    <Button x:Name="MoreButton" Style="{StaticResource ChromeButtonStyle}">
+                        <FontIcon Glyph="&#xE712;" FontSize="12" />
+
                         <Button.Flyout>
-                            <Flyout x:Name="ColorFlyout" Placement="Bottom">
-                              <StackPanel Spacing="10" Width="168">
-                                <!--
-                                    Plain buttons rather than a GridView: the list is eight fixed
-                                    swatches with no selection state worth keeping, and GridViewItem
-                                    chrome padded them wide enough to reflow into three columns and
-                                    push the last colours behind a scrollbar.
-                                -->
-                                <ItemsControl x:Name="ColorChoices">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <VariableSizedWrapGrid
-                                                Orientation="Horizontal"
-                                                MaximumRowsOrColumns="4" />
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="views:NoteColorChoice">
-                                            <Button
-                                                Width="32"
-                                                Height="32"
-                                                Margin="3"
-                                                Padding="0"
-                                                CornerRadius="16"
-                                                BorderThickness="1"
-                                                Background="{x:Bind Brush}"
-                                                Tag="{x:Bind Key}"
-                                                Click="OnColorChosen" />
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                            <!--
+                                A custom Flyout rather than a MenuFlyout: the colours are the first
+                                thing this menu is for, and a MenuFlyout cannot hold a swatch row.
+                            -->
+                            <Flyout x:Name="MoreFlyout" Placement="Bottom" Opened="OnMoreFlyoutOpened" Closed="OnMoreFlyoutClosed">
+                                <Flyout.FlyoutPresenterStyle>
+                                    <Style TargetType="FlyoutPresenter">
+                                        <Setter Property="Padding" Value="6" />
+                                        <Setter Property="CornerRadius" Value="10" />
+                                        <Setter Property="MinWidth" Value="0" />
+                                        <Setter Property="MaxWidth" Value="320" />
+                                        <Setter Property="ScrollViewer.HorizontalScrollMode" Value="Disabled" />
 
-                                <!--
-                                    Opacity floors at Note.MinOpacity rather than 0: report p4
-                                    allows the surface to be translucent but never at the cost of
-                                    text contrast, and a fully transparent note is unreadable.
-                                -->
-                                <Slider
-                                    x:Name="OpacitySlider"
-                                    StepFrequency="5"
-                                    ValueChanged="OnOpacityChanged" />
-                              </StackPanel>
+                                        <!--
+                                            An unpackaged WinUI popup cannot leave its window, so a
+                                            menu taller than the note is clipped rather than shown.
+                                            Scrolling is what keeps every row reachable on a 240×180
+                                            note; without it the sections at the bottom exist but
+                                            cannot be clicked.
+                                        -->
+                                        <Setter Property="ScrollViewer.VerticalScrollMode" Value="Enabled" />
+                                        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+                                    </Style>
+                                </Flyout.FlyoutPresenterStyle>
+
+                                <ScrollViewer
+                                    x:Name="MenuScroll"
+                                    VerticalScrollMode="Enabled"
+                                    VerticalScrollBarVisibility="Auto"
+                                    HorizontalScrollMode="Disabled"
+                                    HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Width="262" Spacing="2">
+                                    <StackPanel.Resources>
+                                        <!--
+                                            The flyout lives in the popup root, outside the note's
+                                            visual tree, so the paper brushes applied to Surface do
+                                            not reach it. These keys make the rows flat here, and
+                                            the system supplies the hover fill.
+                                        -->
+                                        <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
+                                        <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="Transparent" />
+                                        <SolidColorBrush x:Key="ButtonBorderBrush" Color="Transparent" />
+                                        <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent" />
+                                        <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
+                                        <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="Transparent" />
+
+                                        <Style x:Key="MenuRowStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+                                            <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                            <Setter Property="Padding" Value="8,7" />
+                                            <Setter Property="CornerRadius" Value="6" />
+                                            <Setter Property="BorderThickness" Value="0" />
+                                        </Style>
+
+                                        <Style x:Key="ChipStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+                                            <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                            <Setter Property="Padding" Value="4,5" />
+                                            <Setter Property="CornerRadius" Value="6" />
+                                            <Setter Property="FontSize" Value="12" />
+                                            <Setter Property="BorderThickness" Value="0" />
+                                        </Style>
+
+                                        <Style x:Key="SectionCaptionStyle" TargetType="TextBlock">
+                                            <Setter Property="FontSize" Value="11" />
+                                            <Setter Property="Opacity" Value="0.6" />
+                                            <Setter Property="Margin" Value="8,6,0,2" />
+                                        </Style>
+                                    </StackPanel.Resources>
+
+                                    <!--
+                                        Plain buttons rather than a GridView: the list is eight fixed
+                                        swatches with no selection state worth keeping, and GridViewItem
+                                        chrome padded them wide enough to reflow into three columns.
+                                        The colour lives on an inner Border because the Button template
+                                        repaints its own background on hover, which would wash the
+                                        swatch out exactly when the pointer is on it.
+                                    -->
+                                    <ItemsControl x:Name="ColorChoices">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <VariableSizedWrapGrid Orientation="Horizontal" MaximumRowsOrColumns="8" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="views:NoteColorChoice">
+                                                <Button
+                                                    Width="32"
+                                                    Height="34"
+                                                    Padding="0"
+                                                    MinWidth="0"
+                                                    Background="Transparent"
+                                                    CornerRadius="8"
+                                                    Tag="{x:Bind Key}"
+                                                    AutomationProperties.Name="{x:Bind Label}"
+                                                    ToolTipService.ToolTip="{x:Bind Label}"
+                                                    Click="OnColorChosen">
+                                                    <Grid>
+                                                        <Border
+                                                            Width="26"
+                                                            Height="26"
+                                                            CornerRadius="7"
+                                                            BorderThickness="1"
+                                                            Background="{x:Bind Brush}"
+                                                            BorderBrush="{x:Bind Outline}" />
+                                                        <TextBlock
+                                                            Text="&#x2713;"
+                                                            FontSize="14"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"
+                                                            Foreground="{x:Bind CheckBrush}"
+                                                            Visibility="{x:Bind CheckVisibility}" />
+                                                    </Grid>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <!--
+                                        Opacity floors at Note.MinOpacity rather than 0: report p4
+                                        allows the surface to be translucent but never at the cost of
+                                        text contrast, and a fully transparent note is unreadable.
+                                    -->
+                                    <Slider
+                                        x:Name="OpacitySlider"
+                                        Margin="8,2,8,0"
+                                        StepFrequency="5"
+                                        ValueChanged="OnOpacityChanged" />
+
+                                    <Border x:Name="MenuSeparator1" Height="1" Margin="4,4" />
+
+                                    <Button x:Name="PinRow" Style="{StaticResource MenuRowStyle}" Click="OnPinRowClicked">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="&#x1F4CC;" FontSize="13" />
+                                            <TextBlock x:Name="PinRowLabel" Grid.Column="1" VerticalAlignment="Center" />
+                                            <TextBlock x:Name="PinRowCheck" Grid.Column="2" Text="&#x2713;" FontSize="13" Visibility="Collapsed" />
+                                        </Grid>
+                                    </Button>
+
+                                    <TextBlock x:Name="SizeCaption" Style="{StaticResource SectionCaptionStyle}" />
+                                    <Grid ColumnSpacing="4" Margin="4,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button x:Name="SizeSmall" Grid.Column="0" Style="{StaticResource ChipStyle}" Click="OnSizeChipClicked" />
+                                        <Button x:Name="SizeMedium" Grid.Column="1" Style="{StaticResource ChipStyle}" Click="OnSizeChipClicked" />
+                                        <Button x:Name="SizeLarge" Grid.Column="2" Style="{StaticResource ChipStyle}" Click="OnSizeChipClicked" />
+                                    </Grid>
+
+                                    <TextBlock x:Name="RemindCaption" Style="{StaticResource SectionCaptionStyle}" />
+                                    <Grid ColumnSpacing="4" Margin="4,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button x:Name="Remind10Minutes" Grid.Column="0" Style="{StaticResource ChipStyle}" Click="OnReminderChipClicked" />
+                                        <Button x:Name="Remind1Hour" Grid.Column="1" Style="{StaticResource ChipStyle}" Click="OnReminderChipClicked" />
+                                        <Button x:Name="RemindTomorrow" Grid.Column="2" Style="{StaticResource ChipStyle}" Click="OnReminderChipClicked" />
+                                    </Grid>
+
+                                    <Border x:Name="MenuSeparator2" Height="1" Margin="4,6,4,4" />
+
+                                    <!--
+                                        Every AI chip is disabled unless a local model answered a
+                                        probe. The note app never depends on AI, so the section is
+                                        present but inert rather than hidden: a user who installed
+                                        a model should find where it went, and one who did not
+                                        should be told why the buttons do nothing.
+                                    -->
+                                    <TextBlock x:Name="AiCaption" Style="{StaticResource SectionCaptionStyle}" />
+                                    <Grid ColumnSpacing="4" Margin="4,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button x:Name="AiSummarize" Grid.Column="0" Style="{StaticResource ChipStyle}" IsEnabled="False" Click="OnAiActionChipClicked" />
+                                        <Button x:Name="AiOrganize" Grid.Column="1" Style="{StaticResource ChipStyle}" IsEnabled="False" Click="OnAiActionChipClicked" />
+                                    </Grid>
+
+                                    <!--
+                                        These two do not rewrite the note: they propose a list the
+                                        user ticks through, so they get their own row rather than
+                                        sitting beside the rewrite actions.
+                                    -->
+                                    <Grid ColumnSpacing="4" Margin="4,2,4,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button x:Name="AiExtractTasks" Grid.Column="0" Style="{StaticResource ChipStyle}" IsEnabled="False" Click="OnAiListChipClicked" />
+                                        <Button x:Name="AiSuggestTags" Grid.Column="1" Style="{StaticResource ChipStyle}" IsEnabled="False" Click="OnAiListChipClicked" />
+                                        <Button x:Name="AiAsk" Grid.Column="2" Style="{StaticResource ChipStyle}" IsEnabled="False" Click="OnAiAskChipClicked" />
+                                    </Grid>
+
+                                    <TextBlock x:Name="AiRewriteCaption" Style="{StaticResource SectionCaptionStyle}" />
+                                    <Grid ColumnSpacing="4" Margin="4,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button x:Name="AiRewriteConcise" Grid.Column="0" Style="{StaticResource ChipStyle}" IsEnabled="False" Click="OnAiRewriteChipClicked" />
+                                        <Button x:Name="AiRewriteFormal" Grid.Column="1" Style="{StaticResource ChipStyle}" IsEnabled="False" Click="OnAiRewriteChipClicked" />
+                                        <Button x:Name="AiRewriteFriendly" Grid.Column="2" Style="{StaticResource ChipStyle}" IsEnabled="False" Click="OnAiRewriteChipClicked" />
+                                        <Button x:Name="AiRewriteReport" Grid.Column="3" Style="{StaticResource ChipStyle}" IsEnabled="False" Click="OnAiRewriteChipClicked" />
+                                    </Grid>
+
+                                    <TextBlock
+                                        x:Name="AiStatus"
+                                        Style="{StaticResource SectionCaptionStyle}"
+                                        Margin="8,4,8,0"
+                                        TextWrapping="Wrap" />
+
+                                    <Button x:Name="LibraryRow" Style="{StaticResource MenuRowStyle}" Click="OnLibraryRowClicked">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="&#x2630;" FontSize="13" />
+                                            <TextBlock x:Name="LibraryRowLabel" Grid.Column="1" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Button>
+
+                                    <Button x:Name="DeleteRow" Style="{StaticResource MenuRowStyle}" Click="OnDeleteRowClicked">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock x:Name="DeleteRowIcon" Grid.Column="0" Text="&#x1F5D1;" FontSize="13" />
+                                            <TextBlock x:Name="DeleteRowLabel" Grid.Column="1" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Button>
+                                </StackPanel>
+                                </ScrollViewer>
                             </Flyout>
                         </Button.Flyout>
                     </Button>
 
-                    <!-- Disabled until a local model is present; the note app never depends on AI. -->
-                    <Button
-                        x:Name="AiButton"
-                        Padding="6,2"
-                        FontSize="12"
-                        Content="&#x2726;"
-                        IsEnabled="False" />
-
-                    <Button x:Name="MoreButton" Padding="6,2" FontSize="12" Content="&#x22EF;">
-                        <Button.Flyout>
-                            <MenuFlyout x:Name="MoreMenu" Placement="BottomEdgeAlignedRight" />
-                        </Button.Flyout>
+                    <Button x:Name="CloseButton" Style="{StaticResource ChromeButtonStyle}" Click="OnCloseClicked">
+                        <FontIcon Glyph="&#xE711;" FontSize="12" />
                     </Button>
                 </StackPanel>
             </Grid>
@@ -151,7 +358,7 @@
                 TextWrapping="Wrap"
                 Background="Transparent"
                 BorderThickness="0"
-                Padding="2,0"
+                Padding="0"
                 ScrollViewer.VerticalScrollBarVisibility="Auto"
                 PreviewKeyDown="OnContentPreviewKeyDown"
                 Paste="OnPasteRequested"
@@ -160,13 +367,15 @@
                 TextChanged="OnTextChanged">
 
                 <!--
-                    Formatting is bound as accelerators on the editor rather than as toolbar
-                    buttons: a note that has to be usable within a second of appearing should not
-                    grow a ribbon (report p4 keeps the chrome hidden until hover).
+                    Every command on the format bar is also an accelerator here. The bar is what
+                    makes the commands discoverable; the accelerators are what make them fast, and
+                    neither is the only way in.
                 -->
                 <TextBox.KeyboardAccelerators>
                     <KeyboardAccelerator Modifiers="Control" Key="B" Invoked="OnBoldInvoked" />
                     <KeyboardAccelerator Modifiers="Control" Key="I" Invoked="OnItalicInvoked" />
+                    <KeyboardAccelerator Modifiers="Control" Key="U" Invoked="OnUnderlineInvoked" />
+                    <KeyboardAccelerator Modifiers="Control,Shift" Key="X" Invoked="OnStrikethroughInvoked" />
                     <KeyboardAccelerator Modifiers="Control" Key="K" Invoked="OnLinkInvoked" />
                     <KeyboardAccelerator Modifiers="Control,Shift" Key="K" Invoked="OnCodeInvoked" />
                     <KeyboardAccelerator Modifiers="Control" Key="Number1" Invoked="OnHeading1Invoked" />
@@ -177,6 +386,49 @@
                     <KeyboardAccelerator Modifiers="Control" Key="Enter" Invoked="OnToggleCheckInvoked" />
                 </TextBox.KeyboardAccelerators>
             </TextBox>
+
+            <!--
+                The format bar keeps its row even while invisible. Letting it collapse would reflow
+                the note's text every time the pointer crosses the surface, which is a worse cost
+                than a strip of empty paper at the bottom of a resting note.
+            -->
+            <StackPanel
+                x:Name="FormatBar"
+                Grid.Row="2"
+                Orientation="Horizontal"
+                HorizontalAlignment="Center"
+                Height="28"
+                Spacing="2"
+                Opacity="0">
+                <StackPanel.OpacityTransition>
+                    <ScalarTransition Duration="0:0:0.12" />
+                </StackPanel.OpacityTransition>
+
+                <Button x:Name="BoldButton" Style="{StaticResource FormatButtonStyle}" Click="OnBoldClicked">
+                    <TextBlock Text="B" FontWeight="Bold" FontSize="14" />
+                </Button>
+                <Button x:Name="ItalicButton" Style="{StaticResource FormatButtonStyle}" Click="OnItalicClicked">
+                    <TextBlock Text="I" FontStyle="Italic" FontSize="14" />
+                </Button>
+                <Button x:Name="UnderlineButton" Style="{StaticResource FormatButtonStyle}" Click="OnUnderlineClicked">
+                    <TextBlock Text="U" TextDecorations="Underline" FontSize="14" />
+                </Button>
+                <Button x:Name="StrikethroughButton" Style="{StaticResource FormatButtonStyle}" Click="OnStrikethroughClicked">
+                    <TextBlock Text="ab" TextDecorations="Strikethrough" FontSize="14" />
+                </Button>
+
+                <Border x:Name="FormatSeparator" Width="1" Height="14" Margin="4,0" />
+
+                <Button x:Name="BulletButton" Style="{StaticResource FormatButtonStyle}" Click="OnBulletClicked">
+                    <FontIcon Glyph="&#xE8FD;" FontSize="14" />
+                </Button>
+                <Button x:Name="ChecklistButton" Style="{StaticResource FormatButtonStyle}" Click="OnChecklistClicked">
+                    <FontIcon Glyph="&#xE73A;" FontSize="14" />
+                </Button>
+                <Button x:Name="ImageButton" Style="{StaticResource FormatButtonStyle}" Click="OnInsertImageClicked">
+                    <FontIcon Glyph="&#xE91B;" FontSize="14" />
+                </Button>
+            </StackPanel>
         </Grid>
     </Border>
 </Window>

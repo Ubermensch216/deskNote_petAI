@@ -117,18 +117,18 @@ public static class HotkeyCommands
     public const string AddReminder = "note.reminder";
 
     /// <summary>
-    /// Reserved for the AI command palette (report p5).
+    /// The AI command palette (report p5).
     /// </summary>
     /// <remarks>
-    /// Deliberately absent from the defaults. There is no AI layer to invoke yet, and claiming a
-    /// global combination for a feature that does nothing would take it away from every other app
-    /// for no benefit.
+    /// Bound only when local AI is switched on. Ctrl+Space is a combination other applications —
+    /// IMEs above all — want too, so taking it away system-wide has to be paid for by the feature
+    /// actually working; with AI off the command exists but stays unbound.
     /// </remarks>
     public const string AiPalette = "ai.palette";
 
     public static IReadOnlyList<string> All { get; } =
     [
-        NewNote, SearchNotes, ToggleAlwaysOnTop, AddReminder,
+        NewNote, SearchNotes, ToggleAlwaysOnTop, AddReminder, AiPalette,
     ];
 }
 
@@ -146,13 +146,27 @@ public sealed class HotkeyBindings
 
     private HotkeyBindings(Dictionary<string, HotkeyGesture> bindings) => _bindings = bindings;
 
-    public static HotkeyBindings Defaults() => new(new Dictionary<string, HotkeyGesture>(StringComparer.Ordinal)
+    /// <param name="includeAiPalette">
+    /// True once local AI is switched on. The palette's Ctrl+Space is left unbound otherwise, so an
+    /// app with no model never takes that combination away from the IME.
+    /// </param>
+    public static HotkeyBindings Defaults(bool includeAiPalette = false)
     {
-        [HotkeyCommands.NewNote] = new(HotkeyModifiers.Control | HotkeyModifiers.Alt, "N"),
-        [HotkeyCommands.SearchNotes] = new(HotkeyModifiers.Control | HotkeyModifiers.Shift, "F"),
-        [HotkeyCommands.ToggleAlwaysOnTop] = new(HotkeyModifiers.Control | HotkeyModifiers.Shift, "P"),
-        [HotkeyCommands.AddReminder] = new(HotkeyModifiers.Control | HotkeyModifiers.Shift, "R"),
-    });
+        var bindings = new Dictionary<string, HotkeyGesture>(StringComparer.Ordinal)
+        {
+            [HotkeyCommands.NewNote] = new(HotkeyModifiers.Control | HotkeyModifiers.Alt, "N"),
+            [HotkeyCommands.SearchNotes] = new(HotkeyModifiers.Control | HotkeyModifiers.Shift, "F"),
+            [HotkeyCommands.ToggleAlwaysOnTop] = new(HotkeyModifiers.Control | HotkeyModifiers.Shift, "P"),
+            [HotkeyCommands.AddReminder] = new(HotkeyModifiers.Control | HotkeyModifiers.Shift, "R"),
+        };
+
+        if (includeAiPalette)
+        {
+            bindings[HotkeyCommands.AiPalette] = new(HotkeyModifiers.Control, "Space");
+        }
+
+        return new HotkeyBindings(bindings);
+    }
 
     public IReadOnlyDictionary<string, HotkeyGesture> All => _bindings;
 
@@ -201,9 +215,9 @@ public sealed class HotkeyBindings
     /// A settings file written by a newer version, or corrupted, must not leave the app with no
     /// way to create a note. Every command always ends up bound to something.
     /// </remarks>
-    public static HotkeyBindings FromJson(string? json)
+    public static HotkeyBindings FromJson(string? json, bool includeAiPalette = false)
     {
-        var result = Defaults();
+        var result = Defaults(includeAiPalette);
 
         if (string.IsNullOrWhiteSpace(json))
         {
@@ -228,7 +242,7 @@ public sealed class HotkeyBindings
         }
         catch (JsonException)
         {
-            return Defaults();
+            return Defaults(includeAiPalette);
         }
 
         return result;

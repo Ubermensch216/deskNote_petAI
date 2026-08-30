@@ -357,4 +357,55 @@ public class MarkdownEditingTests
 
         Assert.Equal("- 첫째\n\n- 둘째", result.Text);
     }
+
+    [Fact]
+    public void Strikethrough_wraps_the_selection_in_tildes()
+    {
+        var state = new NoteTextState("배포 취소", 0, 2);
+
+        var result = MarkdownEditing.ToggleStrikethrough(state);
+
+        Assert.Equal("~~배포~~ 취소", result.Text);
+        Assert.Equal("배포", result.SelectedText);
+    }
+
+    [Fact]
+    public void Strikethrough_on_struck_text_removes_the_markers()
+    {
+        var state = new NoteTextState("~~배포~~", 0, 6);
+
+        Assert.Equal("배포", MarkdownEditing.ToggleStrikethrough(state).Text);
+    }
+
+    /// <summary>Underline has no Markdown of its own, so it is written as the HTML tag.</summary>
+    [Fact]
+    public void Underline_wraps_the_selection_in_a_u_tag()
+    {
+        var state = new NoteTextState("마감 금요일", 0, 2);
+
+        var result = MarkdownEditing.ToggleUnderline(state);
+
+        Assert.Equal("<u>마감</u> 금요일", result.Text);
+        Assert.Equal("마감", result.SelectedText);
+    }
+
+    [Fact]
+    public void Underline_on_underlined_text_removes_the_tag()
+    {
+        var whole = new NoteTextState("<u>마감</u>", 0, 9);
+        Assert.Equal("마감", MarkdownEditing.ToggleUnderline(whole).Text);
+
+        // The same command, with only the word between the tags selected.
+        var inner = new NoteTextState("<u>마감</u>", 3, 2);
+        Assert.Equal("마감", MarkdownEditing.ToggleUnderline(inner).Text);
+    }
+
+    [Fact]
+    public void Underline_with_no_selection_leaves_the_caret_between_the_tags()
+    {
+        var result = MarkdownEditing.ToggleUnderline(NoteTextState.Empty);
+
+        Assert.Equal("<u></u>", result.Text);
+        Assert.Equal(3, result.SelectionStart);
+    }
 }

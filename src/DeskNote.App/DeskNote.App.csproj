@@ -30,6 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\DeskNote.Ai\DeskNote.Ai.csproj" />
     <ProjectReference Include="..\DeskNote.Core\DeskNote.Core.csproj" />
     <ProjectReference Include="..\DeskNote.Data\DeskNote.Data.csproj" />
   </ItemGroup>

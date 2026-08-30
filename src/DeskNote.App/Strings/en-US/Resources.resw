@@ -33,9 +33,9 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <data name="Note_TitlePlaceholder" xml:space="preserve"><value>Title</value></data>
   <data name="Note_ContentPlaceholder" xml:space="preserve"><value>Write a note</value></data>
   <data name="Note_Opacity" xml:space="preserve"><value>Opacity</value></data>
+  <data name="Note_Size" xml:space="preserve"><value>Size</value></data>
   <data name="Note_SizeFormat" xml:space="preserve"><value>{0} · {1}×{2}</value></data>
   <data name="Note_SizeSmall" xml:space="preserve"><value>Small</value></data>
   <data name="Note_SizeMedium" xml:space="preserve"><value>Medium</value></data>
@@ -44,6 +44,9 @@
   <data name="Note_Remind10Minutes" xml:space="preserve"><value>In 10 minutes</value></data>
   <data name="Note_Remind1Hour" xml:space="preserve"><value>In 1 hour</value></data>
   <data name="Note_RemindTomorrow" xml:space="preserve"><value>Tomorrow at 9 AM</value></data>
+  <data name="Note_Remind10MinutesShort" xml:space="preserve"><value>10 min</value></data>
+  <data name="Note_Remind1HourShort" xml:space="preserve"><value>1 hour</value></data>
+  <data name="Note_RemindTomorrowShort" xml:space="preserve"><value>Tomorrow</value></data>
   <data name="Note_Library" xml:space="preserve"><value>Notes Explorer</value></data>
   <data name="Note_Delete" xml:space="preserve"><value>Delete</value></data>
   <data name="Note_AttachDropCaption" xml:space="preserve"><value>Attach to note</value></data>
@@ -76,8 +79,69 @@
   <data name="Reminder_Fallback" xml:space="preserve"><value>Note reminder</value></data>
   <data name="Tray_StartWithWindows" xml:space="preserve"><value>Start with Windows</value></data>
   <data name="Note_PinLabel" xml:space="preserve"><value>Keep on top</value></data>
-  <data name="Note_ColorLabel" xml:space="preserve"><value>Colour and opacity</value></data>
-  <data name="Note_AiLabel" xml:space="preserve"><value>AI actions (needs a local model)</value></data>
+  <data name="Note_ColorLabel" xml:space="preserve"><value>Colour</value></data>
   <data name="Note_MoreLabel" xml:space="preserve"><value>More commands</value></data>
-  <data name="Note_DragLabel" xml:space="preserve"><value>Note title and drag handle</value></data>
+  <data name="Note_DragLabel" xml:space="preserve"><value>Note drag handle</value></data>
+  <data name="Note_NewNote" xml:space="preserve"><value>New note</value></data>
+  <data name="Note_Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Note_Bold" xml:space="preserve"><value>Bold</value></data>
+  <data name="Note_Italic" xml:space="preserve"><value>Italic</value></data>
+  <data name="Note_Underline" xml:space="preserve"><value>Underline</value></data>
+  <data name="Note_Strikethrough" xml:space="preserve"><value>Strikethrough</value></data>
+  <data name="Note_BulletList" xml:space="preserve"><value>Bulleted list</value></data>
+  <data name="Note_Checklist" xml:space="preserve"><value>Checklist</value></data>
+  <data name="Note_InsertImage" xml:space="preserve"><value>Insert image</value></data>
+  <data name="Note_ColorYellow" xml:space="preserve"><value>Yellow</value></data>
+  <data name="Note_ColorAmber" xml:space="preserve"><value>Amber</value></data>
+  <data name="Note_ColorGreen" xml:space="preserve"><value>Green</value></data>
+  <data name="Note_ColorTeal" xml:space="preserve"><value>Teal</value></data>
+  <data name="Note_ColorBlue" xml:space="preserve"><value>Blue</value></data>
+  <data name="Note_ColorPurple" xml:space="preserve"><value>Purple</value></data>
+  <data name="Note_ColorPink" xml:space="preserve"><value>Pink</value></data>
+  <data name="Note_ColorGray" xml:space="preserve"><value>Grey</value></data>
+  <data name="Note_Ai" xml:space="preserve"><value>AI</value></data>
+  <data name="Note_AiSummarize" xml:space="preserve"><value>Summarize</value></data>
+  <data name="Note_AiOrganize" xml:space="preserve"><value>Organize</value></data>
+  <data name="Note_AiRewrite" xml:space="preserve"><value>Rewrite</value></data>
+  <data name="Note_AiRewriteConcise" xml:space="preserve"><value>Concise</value></data>
+  <data name="Note_AiRewriteFormal" xml:space="preserve"><value>Formal</value></data>
+  <data name="Note_AiRewriteFriendly" xml:space="preserve"><value>Friendly</value></data>
+  <data name="Note_AiRewriteReport" xml:space="preserve"><value>Report</value></data>
+  <data name="Note_AiReadyFormat" xml:space="preserve"><value>{0} · {1}</value></data>
+  <data name="Note_AiAcceleratorCpu" xml:space="preserve"><value>CPU</value></data>
+  <data name="Note_AiAcceleratorGpu" xml:space="preserve"><value>GPU</value></data>
+  <data name="Note_AiAcceleratorNpu" xml:space="preserve"><value>NPU</value></data>
+  <data name="Note_AiAcceleratorUnknown" xml:space="preserve"><value>on this PC</value></data>
+  <data name="Note_AiUnavailableModelNotInstalled" xml:space="preserve"><value>No local model installed</value></data>
+  <data name="Note_AiUnavailableWorkerUnavailable" xml:space="preserve"><value>The local AI server is not running</value></data>
+  <data name="Note_AiUnavailableDisabled" xml:space="preserve"><value>AI is turned off</value></data>
+  <data name="Note_AiUnavailableAvailable" xml:space="preserve"><value>Getting ready</value></data>
+  <data name="Ai_PreviewTitleFormat" xml:space="preserve"><value>DeskNote — {0}</value></data>
+  <data name="Ai_LocalOnly" xml:space="preserve"><value>This note is processed on this PC only</value></data>
+  <data name="Ai_Running" xml:space="preserve"><value>The local model is thinking…</value></data>
+  <data name="Ai_Original" xml:space="preserve"><value>Before</value></data>
+  <data name="Ai_Proposed" xml:space="preserve"><value>Proposal</value></data>
+  <data name="Ai_Apply" xml:space="preserve"><value>Apply</value></data>
+  <data name="Ai_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Ai_Discard" xml:space="preserve"><value>Discard</value></data>
+  <data name="Ai_Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Ai_ModelFormat" xml:space="preserve"><value>Written by {0}</value></data>
+  <data name="Ai_ElapsedFormat" xml:space="preserve"><value>{0} s</value></data>
+  <data name="Ai_FailedTitle" xml:space="preserve"><value>The AI action failed</value></data>
+  <data name="Ai_NoteChanged" xml:space="preserve"><value>The note changed while the model was working, so nothing was applied</value></data>
+  <data name="Note_AiExtractTasks" xml:space="preserve"><value>Tasks</value></data>
+  <data name="Note_AiSuggestTags" xml:space="preserve"><value>Tags</value></data>
+  <data name="Ai_NothingFoundTitle" xml:space="preserve"><value>Nothing to propose</value></data>
+  <data name="Ai_NothingFound" xml:space="preserve"><value>The model found nothing to extract from this note</value></data>
+  <data name="Ai_TaskDueFormat" xml:space="preserve"><value>due {0}</value></data>
+  <data name="Ai_TaskAssigneeFormat" xml:space="preserve"><value>for {0}</value></data>
+  <data name="Ai_PriorityHigh" xml:space="preserve"><value>high priority</value></data>
+  <data name="Ai_PriorityLow" xml:space="preserve"><value>low priority</value></data>
+  <data name="Ai_ConfidenceFormat" xml:space="preserve"><value>{0}% confident</value></data>
+  <data name="Note_AiAsk" xml:space="preserve"><value>Ask</value></data>
+  <data name="Ai_AskTitle" xml:space="preserve"><value>Ask your notes</value></data>
+  <data name="Ai_Ask" xml:space="preserve"><value>Ask</value></data>
+  <data name="Ai_AskPlaceholder" xml:space="preserve"><value>Ask about this note</value></data>
+  <data name="Ai_ScopeLibrary" xml:space="preserve"><value>No note is open, so the whole library is searched</value></data>
+  <data name="Ai_ScopeNoteFormat" xml:space="preserve"><value>Answered from the note “{0}” only</value></data>
 </root>

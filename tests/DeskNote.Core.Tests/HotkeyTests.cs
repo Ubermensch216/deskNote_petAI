@@ -91,20 +91,24 @@ public class HotkeyTests
     }
 
     /// <summary>
-    /// The AI palette is specified but has nothing to invoke yet, so it must not claim a global
-    /// combination from other applications.
+    /// Ctrl+Space belongs to the IME on a Korean desktop. An app with no model has no business
+    /// taking it, so the palette stays unbound until local AI is switched on.
     /// </summary>
     [Fact]
-    public void The_ai_palette_is_not_bound_by_default()
-    {
+    public void The_ai_palette_is_unbound_while_ai_is_off() =>
         Assert.False(HotkeyBindings.Defaults().TryGet(HotkeyCommands.AiPalette, out _));
-        Assert.DoesNotContain(HotkeyCommands.AiPalette, HotkeyCommands.All);
+
+    [Fact]
+    public void The_ai_palette_takes_control_space_once_ai_is_on()
+    {
+        Assert.True(HotkeyBindings.Defaults(includeAiPalette: true).TryGet(HotkeyCommands.AiPalette, out var gesture));
+        Assert.Equal("Ctrl+Space", gesture.ToString());
     }
 
     [Fact]
     public void Every_known_command_has_a_default()
     {
-        var defaults = HotkeyBindings.Defaults();
+        var defaults = HotkeyBindings.Defaults(includeAiPalette: true);
 
         Assert.All(HotkeyCommands.All, command => Assert.True(defaults.TryGet(command, out _)));
     }

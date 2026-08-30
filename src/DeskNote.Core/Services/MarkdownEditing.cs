@@ -28,6 +28,15 @@ public static partial class MarkdownEditing
     private const string BoldMarker = "**";
     private const string ItalicMarker = "*";
     private const string CodeMarker = "`";
+    private const string StrikethroughMarker = "~~";
+
+    /// <summary>
+    /// Underline has no Markdown syntax, so it is written as the HTML tag every Markdown renderer
+    /// passes through. The alternative — inventing a marker — would store text that stops meaning
+    /// underline the moment it leaves this app.
+    /// </summary>
+    private const string UnderlineOpen = "<u>";
+    private const string UnderlineClose = "</u>";
 
     /// <summary>Matches the indent and any existing list, checklist or heading marker on a line.</summary>
     [GeneratedRegex(
@@ -44,6 +53,11 @@ public static partial class MarkdownEditing
     public static NoteTextState ToggleBold(NoteTextState state) => ToggleWrap(state, BoldMarker);
 
     public static NoteTextState ToggleInlineCode(NoteTextState state) => ToggleWrap(state, CodeMarker);
+
+    public static NoteTextState ToggleStrikethrough(NoteTextState state) => ToggleWrap(state, StrikethroughMarker);
+
+    public static NoteTextState ToggleUnderline(NoteTextState state) =>
+        ToggleWrap(state, UnderlineOpen, UnderlineClose);
 
     /// <remarks>
     /// Bold is checked first so that italic applied to <c>**text**</c> nests as <c>***text***</c>
@@ -310,44 +324,52 @@ public static partial class MarkdownEditing
             && text.AsSpan(start + length, m).SequenceEqual(marker);
     }
 
-    private static NoteTextState ToggleWrap(NoteTextState state, string marker)
+    private static NoteTextState ToggleWrap(NoteTextState state, string marker) =>
+        ToggleWrap(state, marker, marker);
+
+    /// <remarks>
+    /// Open and close are separate strings so the same toggle serves the symmetric Markdown
+    /// markers and the HTML tag pair underline needs.
+    /// </remarks>
+    private static NoteTextState ToggleWrap(NoteTextState state, string open, string close)
     {
         var clamped = state.Clamped();
         var text = clamped.Text;
         var start = clamped.SelectionStart;
         var length = clamped.SelectionLength;
-        var m = marker.Length;
 
         // Markers inside the selection: "**bold**" selected whole.
-        if (length >= 2 * m
-            && text.AsSpan(start, length).StartsWith(marker)
-            && text.AsSpan(start, length).EndsWith(marker))
+        if (length >= open.Length + close.Length
+            && text.AsSpan(start, length).StartsWith(open)
+            && text.AsSpan(start, length).EndsWith(close))
         {
-            var inner = text.Substring(start + m, length - 2 * m);
+            var inner = text.Substring(start + open.Length, length - open.Length - close.Length);
             return new NoteTextState(text.Remove(start, length).Insert(start, inner), start, inner.Length);
         }
 
         // Markers just outside the selection: "bold" selected within "**bold**".
-        if (start >= m
-            && start + length + m <= text.Length
-            && text.AsSpan(start - m, m).SequenceEqual(marker)
-            && text.AsSpan(start + length, m).SequenceEqual(marker))
+        if (start >= open.Length
+            && start + length + close.Length <= text.Length
+            && text.AsSpan(start - open.Length, open.Length).SequenceEqual(open)
+            && text.AsSpan(start + length, close.Length).SequenceEqual(close))
         {
-            var stripped = text.Remove(start + length, m).Remove(start - m, m);
-            return new NoteTextState(stripped, start - m, length);
+            var stripped = text.Remove(start + length, close.Length).Remove(start - open.Length, open.Length);
+            return new NoteTextState(stripped, start - open.Length, length);
         }
 
-        return Wrap(clamped, marker);
+        return Wrap(clamped, open, close);
     }
 
-    private static NoteTextState Wrap(NoteTextState state, string marker)
+    private static NoteTextState Wrap(NoteTextState state, string marker) => Wrap(state, marker, marker);
+
+    private static NoteTextState Wrap(NoteTextState state, string open, string close)
     {
         var text = state.Text
-            .Insert(state.SelectionEnd, marker)
-            .Insert(state.SelectionStart, marker);
+            .Insert(state.SelectionEnd, close)
+            .Insert(state.SelectionStart, open);
 
         // With nothing selected the caret lands between the markers, ready to type.
-        return new NoteTextState(text, state.SelectionStart + marker.Length, state.SelectionLength);
+        return new NoteTextState(text, state.SelectionStart + open.Length, state.SelectionLength);
     }
 
     private static (int Start, int End) LineBlock(string text, int selectionStart, int selectionEnd) =>

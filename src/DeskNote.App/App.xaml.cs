@@ -1,5 +1,6 @@
 using DeskNote.App.Services;
 using DeskNote.Core.Abstractions;
+using DeskNote.Core.Ai;
 using DeskNote.Core.Services;
 using DeskNote.Data;
 using Microsoft.UI.Xaml;
@@ -13,6 +14,8 @@ public partial class App : Application
     private ReminderService? _reminders;
     private GlobalHotkeyService? _hotkeys;
     private TrayIconService? _tray;
+    private LocalAiHost? _ai;
+    private EmbeddingIndexer? _indexer;
     private Microsoft.UI.Dispatching.DispatcherQueue? _dispatcher;
 
     public App()
@@ -27,6 +30,15 @@ public partial class App : Application
             e.SetObserved();
         };
     }
+
+    /// <summary>
+    /// How often availability is re-checked. Ollama can be started or stopped at any time, and a
+    /// minute is short enough that the user does not wonder why the AI menu is still greyed out.
+    /// </summary>
+    private static readonly TimeSpan AiProbeInterval = TimeSpan.FromMinutes(1);
+
+    /// <summary>Local AI, once startup has built it. Always present, often unavailable.</summary>
+    public LocalAiHost? Ai => _ai;
 
     /// <summary>The note window manager, once startup has built it.</summary>
     public NoteWindowManager Windows =>
@@ -70,17 +82,39 @@ public partial class App : Application
             IReminderRepository reminders = new SqliteReminderRepository(connections);
             var attachmentStore = new AttachmentStore(new SqliteAttachmentRepository(connections), clock);
 
+            // Built before the windows so a note can hold a reference to it, but not probed until
+            // everything else is running: creating the host only reads settings (report p14).
+            var aiOptions = await DeskNote.Ai.OllamaOptions.LoadAsync(settings).ConfigureAwait(true);
+            var embedder = new DeskNote.Ai.OllamaEmbeddingService(aiOptions);
+            var vectors = new SqliteVectorIndex(connections, aiOptions.EmbeddingModel);
+
+            _indexer = new EmbeddingIndexer(notes, vectors, embedder);
+            _indexer.Failed += (_, ex) => CrashLog.Write("Embedding index update failed", ex);
+
+            _ai = await LocalAiHost.CreateAsync(
+                settings,
+                new HybridRetriever(new Fts5SearchIndex(connections), vectors, embedder, notes),
+                Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread()).ConfigureAwait(true);
+
             var journal = new CrashJournal(AppPaths.JournalDirectory);
             var pipeline = new NoteSavePipeline(notes, revisions, new RevisionPolicy(), clock);
 
+            // Embedding rides along behind the save rather than inside it: the note is stored on
+            // the same schedule as before, and its vectors catch up a moment later.
             _autosave = new AutosaveScheduler(
-                (id, title, content, token) => pipeline.SaveAsync(id, title, content, cancellationToken: token),
+                async (id, title, content, token) =>
+                {
+                    await pipeline.SaveAsync(id, title, content, cancellationToken: token)
+                        .ConfigureAwait(false);
+
+                    _indexer?.Enqueue(id);
+                },
                 debounce: null,
                 journal: journal);
             _autosave.SaveFailed += (_, ex) => CrashLog.Write("Autosave failed", ex);
 
             _windows = new NoteWindowManager(
-                notes, clock, _autosave, pipeline, library, reminders, attachmentStore);
+                notes, clock, _autosave, pipeline, library, reminders, attachmentStore, _ai);
 
             // Recovery runs before the notes are shown, so a restored window opens already holding
             // the text that was rescued rather than flashing the stale version first.
@@ -106,8 +140,11 @@ public partial class App : Application
 
             _dispatcher = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
 
+            // Ctrl+Space is only claimed when there is an AI layer to invoke with it; with AI off
+            // the palette stays unbound and the IME keeps the combination (report p5).
             var bindings = HotkeyBindings.FromJson(
-                await settings.GetAsync(SettingKeys.Hotkeys).ConfigureAwait(true));
+                await settings.GetAsync(SettingKeys.Hotkeys).ConfigureAwait(true),
+                includeAiPalette: _ai.Capability.Availability != AiAvailability.Disabled);
 
             _hotkeys = new GlobalHotkeyService(RunHotkeyCommand);
             _hotkeys.Start(bindings);
@@ -140,7 +177,14 @@ public partial class App : Application
                 }));
             _tray.Start();
 
+            // Last of all, and on its own schedule: local AI is the only part of the app allowed
+            // to be missing. Nothing above this line waits for it (report p14).
+            _windows.TrackAiCapability();
+            _ai.StartProbing(AiProbeInterval);
 
+            // Catches up notes written before semantic search existed, a bounded batch at a time.
+            _indexer.Start();
+            await _indexer.BackfillAsync().ConfigureAwait(true);
         }
         catch (Exception ex)
         {
@@ -178,6 +222,10 @@ public partial class App : Application
 
                     case HotkeyCommands.AddReminder:
                         await Windows.RemindActiveNoteAsync(TimeSpan.FromHours(1));
+                        break;
+
+                    case HotkeyCommands.AiPalette:
+                        Windows.ShowChatForActiveNote();
                         break;
                 }
             }

@@ -20,13 +20,39 @@ public sealed class NoteWindowManager(
     NoteSavePipeline savePipeline,
     INoteLibrary library,
     IReminderRepository reminders,
-    AttachmentStore attachmentStore)
+    AttachmentStore attachmentStore,
+    LocalAiHost? ai = null)
 {
     private readonly Dictionary<Guid, NoteWindow> _windows = [];
     private int _cascadeIndex;
     private NotesExplorerWindow? _explorer;
+    private AiChatWindow? _chat;
 
     public int OpenWindowCount => _windows.Count;
+
+    /// <summary>
+    /// Keeps every open note's AI section in step with what the local model can currently do.
+    /// </summary>
+    /// <remarks>
+    /// The host probes on its own schedule, so availability changes while notes are on screen.
+    /// Pushing it from here means a window never has to poll, and a note opened later picks up the
+    /// current answer from the host directly.
+    /// </remarks>
+    public void TrackAiCapability()
+    {
+        if (ai is null)
+        {
+            return;
+        }
+
+        ai.CapabilityChanged += (_, capability) =>
+        {
+            foreach (var window in _windows.Values)
+            {
+                window.SetAiCapability(capability);
+            }
+        };
+    }
 
     /// <summary>
     /// Opens the note library, or brings it forward if it is already open.
@@ -70,6 +96,56 @@ public sealed class NoteWindowManager(
             },
             cancellationToken).ConfigureAwait(true);
     }
+
+    /// <summary>
+    /// Opens 메모 Q&amp;A, scoped to one note or to the whole library.
+    /// </summary>
+    /// <remarks>
+    /// One sidecar at a time, re-scoped rather than duplicated: two chat windows answering about
+    /// different notes would leave the user guessing which one their next question went to.
+    /// </remarks>
+    public void ShowChat(Guid? noteId)
+    {
+        if (ai is null)
+        {
+            return;
+        }
+
+        var source = noteId is { } id && _windows.TryGetValue(id, out var window) ? window : null;
+
+        _chat?.Close();
+        _chat = new AiChatWindow(ai, noteId, source?.CurrentTitle);
+        _chat.Closed += (_, _) => _chat = null;
+        _chat.Activate();
+
+        if (source is not null)
+        {
+            _chat.PlaceNear(source.AppWindow);
+        }
+    }
+
+    /// <summary>Opens 메모 Q&amp;A for the note the user was last in, for the global palette hotkey.</summary>
+    public void ShowChatForActiveNote() => ShowChat(ActiveNote?.NoteId);
+
+    /// <summary>
+    /// Adds a reminder for an absolute moment, as an extracted task's deadline gives it.
+    /// </summary>
+    /// <remarks>
+    /// A deadline already in the past is still stored rather than dropped or shifted: the note
+    /// said so, and silently moving someone's date is worse than a reminder that fires at once.
+    /// </remarks>
+    public async Task AddReminderAtAsync(
+        Guid noteId,
+        DateTimeOffset dueAt,
+        CancellationToken cancellationToken = default) =>
+        await reminders.AddAsync(
+            new Reminder
+            {
+                Id = Guid.CreateVersion7(),
+                NoteId = noteId,
+                DueAt = dueAt.ToUniversalTime(),
+            },
+            cancellationToken).ConfigureAwait(true);
 
     /// <summary>
     /// The note the user is working in, for hotkeys that act on "this note".
@@ -171,7 +247,7 @@ public sealed class NoteWindowManager(
             return existing;
         }
 
-        var window = new NoteWindow(note);
+        var window = new NoteWindow(note, ai);
         _windows[note.Id] = window;
 
         window.TextChanged += (_, text) => autosave.Schedule(note.Id, text.Title, text.Content);
@@ -180,7 +256,10 @@ public sealed class NoteWindowManager(
         window.CloseRequested += async (_, _) => await OnCloseRequestedAsync(note.Id);
         window.DeleteRequested += async (_, _) => await OnDeleteRequestedAsync(note.Id);
         window.LibraryRequested += (_, _) => ShowLibrary();
+        window.NewNoteRequested += async (_, seed) => await CreateAsync(seed.Preset, seed.ColorKey);
         window.ReminderRequested += async (_, offset) => await AddReminderAsync(note.Id, offset);
+        window.ReminderAtRequested += async (_, dueAt) => await AddReminderAtAsync(note.Id, dueAt);
+        window.AskRequested += (w, _) => ShowChat(((NoteWindow)w!).NoteId);
         window.AttachmentRequested += async (w, request) => await OnAttachmentRequestedAsync(w, request);
         window.Activated += (w, args) =>
         {

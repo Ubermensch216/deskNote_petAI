@@ -10,4 +10,9 @@
     <ProjectReference Include="..\DeskNote.Core\DeskNote.Core.csproj" />
   </ItemGroup>
 
+  <!-- Model-tag comparison and the wire DTOs are internal detail worth testing directly. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="DeskNote.Ai.Tests" />
+  </ItemGroup>
+
 </Project>

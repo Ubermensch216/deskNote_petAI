@@ -35,12 +35,13 @@ public sealed class OllamaAiService : ILocalAiService, IDisposable
     private readonly bool _ownsHttp;
     private readonly OllamaOptions _options;
     private readonly IAiRetriever _retriever;
+    private readonly IClock _clock;
 
     private AiCapability _capability = AiCapability.Unavailable(AiAvailability.WorkerUnavailable);
     private long _capabilityStamp = -1;
 
-    public OllamaAiService(OllamaOptions options, IAiRetriever? retriever = null)
-        : this(CreateClient(options), options, retriever, ownsHttp: true)
+    public OllamaAiService(OllamaOptions options, IAiRetriever? retriever = null, IClock? clock = null)
+        : this(CreateClient(options), options, retriever, clock, ownsHttp: true)
     {
     }
 
@@ -48,6 +49,7 @@ public sealed class OllamaAiService : ILocalAiService, IDisposable
         HttpClient http,
         OllamaOptions options,
         IAiRetriever? retriever = null,
+        IClock? clock = null,
         bool ownsHttp = false)
     {
         ArgumentNullException.ThrowIfNull(http);
@@ -56,6 +58,7 @@ public sealed class OllamaAiService : ILocalAiService, IDisposable
         _http = http;
         _options = options;
         _retriever = retriever ?? NoRetrieval.Instance;
+        _clock = clock ?? SystemClock.Instance;
         _ownsHttp = ownsHttp;
     }
 
@@ -126,7 +129,7 @@ public sealed class OllamaAiService : ILocalAiService, IDisposable
 
         var json = await ChatAsync(
             AiPrompts.SystemFor(AiAction.ExtractTasks),
-            AiPrompts.UserFor(AiAction.ExtractTasks, context),
+            AiPrompts.UserFor(AiAction.ExtractTasks, context, now: _clock.Now),
             AiSchemas.ExtractedTasks,
             cancellationToken).ConfigureAwait(false);
 

@@ -1,0 +1,113 @@
+<Window
+    x:Class="DeskNote.App.Views.AiPreviewWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Nothing here writes to the note. The proposal sits beside the original until the user
+        presses Apply, which is the whole point of the window (report p7: Diff Preview first).
+    -->
+    <Grid Padding="20,16,20,16" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Spacing="2">
+            <TextBlock x:Name="ActionTitle" Style="{ThemeResource SubtitleTextBlockStyle}" />
+            <TextBlock
+                x:Name="Attribution"
+                Style="{ThemeResource CaptionTextBlockStyle}"
+                Opacity="0.7"
+                TextWrapping="Wrap" />
+        </StackPanel>
+
+        <!-- Running: the model can take half a minute on CPU, so the wait is shown, not hidden. -->
+        <StackPanel
+            x:Name="RunningPanel"
+            Grid.Row="1"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Spacing="12">
+            <ProgressRing x:Name="Progress" IsActive="True" Width="36" Height="36" />
+            <TextBlock x:Name="RunningLabel" HorizontalAlignment="Center" Opacity="0.8" />
+        </StackPanel>
+
+        <Grid x:Name="ComparePanel" Grid.Row="1" ColumnSpacing="12" Visibility="Collapsed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border
+                Grid.Column="0"
+                CornerRadius="8"
+                Padding="12"
+                BorderThickness="1"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
+                <Grid RowSpacing="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock x:Name="OriginalCaption" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" />
+                    <ScrollViewer Grid.Row="1">
+                        <TextBlock x:Name="OriginalText" IsTextSelectionEnabled="True" TextWrapping="Wrap" />
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <Border
+                Grid.Column="1"
+                CornerRadius="8"
+                Padding="12"
+                BorderThickness="1"
+                BorderBrush="{ThemeResource AccentControlElevationBorderBrush}"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                <Grid RowSpacing="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock x:Name="ProposedCaption" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" />
+                    <ScrollViewer Grid.Row="1">
+                        <TextBlock x:Name="ProposedText" IsTextSelectionEnabled="True" TextWrapping="Wrap" />
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <InfoBar
+            x:Name="Failure"
+            Grid.Row="1"
+            VerticalAlignment="Center"
+            IsOpen="False"
+            IsClosable="False"
+            Severity="Warning" />
+
+        <Grid Grid.Row="2" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock
+                x:Name="Elapsed"
+                Grid.Column="0"
+                VerticalAlignment="Center"
+                Style="{ThemeResource CaptionTextBlockStyle}"
+                Opacity="0.6" />
+
+            <Button x:Name="CancelButton" Grid.Column="1" Click="OnCancelClicked" />
+            <Button
+                x:Name="ApplyButton"
+                Grid.Column="2"
+                Style="{ThemeResource AccentButtonStyle}"
+                IsEnabled="False"
+                Click="OnApplyClicked" />
+        </Grid>
+    </Grid>
+</Window>

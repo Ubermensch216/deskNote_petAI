@@ -4,6 +4,9 @@ namespace DeskNote.Data.Tests;
 
 public class MigrationTests
 {
+    /// <summary>Highest migration in <c>Migrations/</c>; bump when one is added.</summary>
+    private const int LatestVersion = 2;
+
     private static string NewDirectory()
     {
         var directory = Path.Combine(Path.GetTempPath(), "desknote-tests", Guid.NewGuid().ToString("N"));
@@ -19,7 +22,7 @@ public class MigrationTests
         var result = await new MigrationRunner(factory).MigrateAsync();
 
         Assert.Equal(0, result.FromVersion);
-        Assert.Equal(1, result.ToVersion);
+        Assert.Equal(LatestVersion, result.ToVersion);
         Assert.True(result.AppliedAnything);
         Assert.Null(result.BackupPath); // Nothing existed yet, so there was nothing to back up.
 
@@ -32,6 +35,7 @@ public class MigrationTests
         Assert.Contains("tags", tables);
         Assert.Contains("reminders", tables);
         Assert.Contains("note_revisions", tables);
+        Assert.Contains("note_embeddings", tables);
         Assert.Contains("schema_version", tables);
     }
 
@@ -45,8 +49,8 @@ public class MigrationTests
         var second = await runner.MigrateAsync();
 
         Assert.False(second.AppliedAnything);
-        Assert.Equal(1, second.FromVersion);
-        Assert.Equal(1, second.ToVersion);
+        Assert.Equal(LatestVersion, second.FromVersion);
+        Assert.Equal(LatestVersion, second.ToVersion);
     }
 
     [Fact]
