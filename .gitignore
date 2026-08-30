@@ -21,7 +21,8 @@ packages/
 local/
 
 # Local AI models — never bundled in the repo (report p12: LLM을 앱 본체에 번들링하지 않는다)
-models/
+# Anchored to the repo root: an unanchored `models/` also swallows src/DeskNote.Core/Models/.
+/models/
 *.gguf
 *.onnx
 

@@ -35,4 +35,16 @@ public static class SettingKeys
 
     /// <summary>Whether DeskNote registers itself to start with Windows.</summary>
     public const string LaunchAtStartup = "app.launchAtStartup";
+
+    /// <summary>"false" turns local AI off entirely; absent means enabled-if-available.</summary>
+    public const string AiEnabled = "ai.enabled";
+
+    /// <summary>Base address of the local inference server, e.g. "http://localhost:11434".</summary>
+    public const string AiEndpoint = "ai.endpoint";
+
+    /// <summary>Model tag used for the text actions, e.g. "gemma4:e2b".</summary>
+    public const string AiModel = "ai.model";
+
+    /// <summary>Model tag used for retrieval embeddings, e.g. "bge-m3:latest".</summary>
+    public const string AiEmbeddingModel = "ai.embeddingModel";
 }

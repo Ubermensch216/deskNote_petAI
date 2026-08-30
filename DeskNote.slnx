@@ -1,10 +1,12 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/DeskNote.App/DeskNote.App.csproj" />
+    <Project Path="src/DeskNote.Ai/DeskNote.Ai.csproj" />
     <Project Path="src/DeskNote.Core/DeskNote.Core.csproj" />
     <Project Path="src/DeskNote.Data/DeskNote.Data.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/DeskNote.Ai.Tests/DeskNote.Ai.Tests.csproj" />
     <Project Path="tests/DeskNote.Benchmarks/DeskNote.Benchmarks.csproj" />
     <Project Path="tests/DeskNote.Core.Tests/DeskNote.Core.Tests.csproj" />
     <Project Path="tests/DeskNote.Data.Tests/DeskNote.Data.Tests.csproj" />

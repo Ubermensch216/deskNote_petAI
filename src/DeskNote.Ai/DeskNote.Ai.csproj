@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The Ollama-backed implementation of Core's ILocalAiService. Nothing but Core is referenced:
+    no UI, no database. The note application depends on the interface, never on this assembly's
+    types, so the whole provider can be swapped without touching a note window.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\DeskNote.Core\DeskNote.Core.csproj" />
+  </ItemGroup>
+
+</Project>
