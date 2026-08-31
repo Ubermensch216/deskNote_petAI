@@ -40,6 +40,11 @@ jobs:
       - name: Test
         run: dotnet test DeskNote.slnx --configuration Release --no-restore
 
+      - name: Verify 10,000-note performance targets
+        run: >-
+          dotnet run --project tests/DeskNote.Benchmarks/DeskNote.Benchmarks.csproj
+          --configuration Release --no-build -- 10000
+
       - name: Publish win-x64 single-file app
         run: >-
           dotnet publish src/DeskNote.App/DeskNote.App.csproj

@@ -21,6 +21,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
     private readonly ReminderService _reminders;
     private readonly EmbeddingIndexer _indexer;
     private readonly CompanionActivityQueue _companionQueue;
+    private readonly ICompanionSuggestionService _companionSuggestions;
     private readonly DispatcherQueue _dispatcher;
     private readonly Action _exitApplication;
     private readonly CancellationTokenSource _activityLifetime = new();
@@ -30,6 +31,9 @@ public sealed class ApplicationRuntime : IAsyncDisposable
     private SettingsWindow? _settingsWindow;
     private CompanionWindow? _companionWindow;
     private CompanionSnapshot? _companionSnapshot;
+    private CompanionSettings _companionSettings = new();
+    private DispatcherQueueTimer? _suggestionTimer;
+    private DateTimeOffset? _lastUserInteractionAt;
     private bool _started;
     private int _stopping;
 
@@ -44,6 +48,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
         LocalAiHost ai,
         EmbeddingIndexer indexer,
         CompanionActivityQueue companionQueue,
+        ICompanionSuggestionService companionSuggestions,
         DispatcherQueue dispatcher,
         Action exitApplication)
     {
@@ -57,6 +62,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
         Ai = ai;
         _indexer = indexer;
         _companionQueue = companionQueue;
+        _companionSuggestions = companionSuggestions;
         _dispatcher = dispatcher;
         _exitApplication = exitApplication;
     }
@@ -79,6 +85,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
 
         var companionSettings = await CompanionSettings.LoadAsync(_settings, cancellationToken)
             .ConfigureAwait(true);
+        _companionSettings = companionSettings;
         _companionQueue.SnapshotChanged += OnCompanionSnapshotChanged;
         await _companionQueue.StartAsync(companionSettings.Enabled, cancellationToken).ConfigureAwait(true);
         _pipeline.Saved += OnNoteSaved;
@@ -97,6 +104,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
         {
             ShowCompanion(snapshot, companionSettings);
         }
+        ConfigureSuggestionTimer(companionSettings);
 
         // Background integrations begin only after a note is visible.
         _reminders.NoteRequested += OnReminderNoteRequested;
@@ -152,6 +160,8 @@ public sealed class ApplicationRuntime : IAsyncDisposable
         }
 
         _tray?.Dispose();
+        _suggestionTimer?.Stop();
+        _suggestionTimer = null;
         _hotkeys?.Dispose();
         _reminders.NoteRequested -= OnReminderNoteRequested;
         _reminders.Dispose();
@@ -192,6 +202,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
     {
         try
         {
+            _companionSettings = settings;
             if (settings.Enabled && !_companionQueue.IsStarted)
             {
                 await _companionQueue.StartAsync(enabled: true).ConfigureAwait(true);
@@ -210,6 +221,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
             {
                 ShowCompanion(snapshot, settings);
             }
+            ConfigureSuggestionTimer(settings);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -239,14 +251,83 @@ public sealed class ApplicationRuntime : IAsyncDisposable
             ShowSettings,
             ritual => _companionQueue.ChooseRitualAsync(
                 ritual,
-                DateOnly.FromDateTime(DateTime.Now)));
+                DateOnly.FromDateTime(DateTime.Now)),
+            ActOnSuggestionAsync,
+            DismissSuggestionAsync);
         _companionWindow = window;
         window.Closed += (_, _) => _companionWindow = null;
         window.Activate();
     }
 
+    private void ConfigureSuggestionTimer(CompanionSettings settings)
+    {
+        if (!settings.Enabled || !settings.ProactiveEnabled)
+        {
+            _suggestionTimer?.Stop();
+            _suggestionTimer = null;
+            return;
+        }
+
+        if (_suggestionTimer is null)
+        {
+            _suggestionTimer = _dispatcher.CreateTimer();
+            _suggestionTimer.Interval = TimeSpan.FromMinutes(5);
+            _suggestionTimer.Tick += async (_, _) => await CheckForSuggestionAsync().ConfigureAwait(true);
+            _suggestionTimer.Start();
+        }
+
+        _ = CheckForSuggestionAsync();
+    }
+
+    private async Task CheckForSuggestionAsync()
+    {
+        var now = DateTimeOffset.Now;
+        if (_companionWindow is null
+            || !_companionSettings.AllowsProactiveAt(now)
+            || !PresentationModeDetector.AllowsUserNotification()
+            || (_lastUserInteractionAt is { } interaction
+                && now - interaction < TimeSpan.FromMinutes(10)))
+        {
+            return;
+        }
+
+        try
+        {
+            if (await _companionSuggestions.TryOfferAsync(now).ConfigureAwait(true) is { } suggestion)
+            {
+                _companionWindow?.ShowSuggestion(suggestion);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            CrashLog.Write("Finding a companion suggestion failed", ex);
+        }
+    }
+
+    private async Task ActOnSuggestionAsync(CompanionSuggestion suggestion)
+    {
+        await _companionSuggestions.SetStatusAsync(
+            suggestion.Id,
+            CompanionSuggestionStatus.Acted,
+            DateTimeOffset.UtcNow).ConfigureAwait(true);
+        await Windows.FocusAsync(
+            suggestion.NoteId,
+            new NoteOpenContext
+            {
+                Origin = NoteOpenOrigin.Companion,
+                SuggestionId = suggestion.Id,
+            }).ConfigureAwait(true);
+    }
+
+    private async Task DismissSuggestionAsync(CompanionSuggestion suggestion) =>
+        await _companionSuggestions.SetStatusAsync(
+            suggestion.Id,
+            CompanionSuggestionStatus.Dismissed,
+            DateTimeOffset.UtcNow).ConfigureAwait(true);
+
     private void OnNoteSaved(NoteSaveResult result)
     {
+        _lastUserInteractionAt = DateTimeOffset.Now;
         if (!result.ContentChanged)
         {
             return;
@@ -292,6 +373,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
 
     private async void OnNoteOpened(object? sender, NoteOpened opened)
     {
+        _lastUserInteractionAt = DateTimeOffset.Now;
         if (opened.Context.Origin is not (
             NoteOpenOrigin.Search or
             NoteOpenOrigin.Related or

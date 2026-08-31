@@ -59,9 +59,7 @@ public sealed class CompanionActivityQueue(
 
     public async ValueTask DisposeAsync()
     {
-        _enabled = false;
         _channel.Writer.TryComplete();
-        _lifetime?.Cancel();
 
         if (_worker is not null)
         {
@@ -75,6 +73,7 @@ public sealed class CompanionActivityQueue(
             }
         }
 
+        _enabled = false;
         _lifetime?.Dispose();
     }
 

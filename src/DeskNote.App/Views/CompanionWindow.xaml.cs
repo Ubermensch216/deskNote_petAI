@@ -11,31 +11,41 @@ public sealed partial class CompanionWindow : Window
 {
     private readonly Action _showSettings;
     private readonly Func<DailyRitualKind, Task> _chooseRitual;
+    private readonly Func<CompanionSuggestion, Task> _actOnSuggestion;
+    private readonly Func<CompanionSuggestion, Task> _dismissSuggestion;
     private CompanionSettings _settings;
+    private CompanionSuggestion? _suggestion;
 
     public CompanionWindow(
         CompanionSnapshot snapshot,
         CompanionSettings settings,
         Action showSettings,
-        Func<DailyRitualKind, Task> chooseRitual)
+        Func<DailyRitualKind, Task> chooseRitual,
+        Func<CompanionSuggestion, Task> actOnSuggestion,
+        Func<CompanionSuggestion, Task> dismissSuggestion)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(showSettings);
         ArgumentNullException.ThrowIfNull(chooseRitual);
+        ArgumentNullException.ThrowIfNull(actOnSuggestion);
+        ArgumentNullException.ThrowIfNull(dismissSuggestion);
 
         InitializeComponent();
         _settings = settings;
         _showSettings = showSettings;
         _chooseRitual = chooseRitual;
+        _actOnSuggestion = actOnSuggestion;
+        _dismissSuggestion = dismissSuggestion;
 
         AppWindow.Title = Strings.Get("Companion_Title");
         AppIcon.Apply(this);
-        AppWindow.Resize(new SizeInt32(350, 440));
+        AppWindow.Resize(new SizeInt32(380, 520));
         if (AppWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsAlwaysOnTop = settings.AlwaysVisible;
-            presenter.IsResizable = false;
+            presenter.PreferredMinimumWidth = 320;
+            presenter.PreferredMinimumHeight = 420;
             presenter.IsMaximizable = false;
         }
 
@@ -47,6 +57,11 @@ public sealed partial class CompanionWindow : Window
         CaptureRitual.Content = Strings.Get("Companion_RitualCapture");
         RecallRitual.Content = Strings.Get("Companion_RitualRecall");
         ResolveRitual.Content = Strings.Get("Companion_RitualResolve");
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+            Face,
+            Strings.Get("Companion_AccessibleName"));
+        SuggestionOpen.Content = Strings.Get("Companion_SuggestionOpen");
+        SuggestionDismiss.Content = Strings.Get("Companion_SuggestionDismiss");
         UpdateSnapshot(snapshot);
         Activated += OnFirstActivated;
     }
@@ -93,6 +108,15 @@ public sealed partial class CompanionWindow : Window
         {
             Face.Opacity = 1;
         }
+    }
+
+    public void ShowSuggestion(CompanionSuggestion suggestion)
+    {
+        _suggestion = suggestion;
+        SuggestionText.Text = Strings.Get($"Companion_Suggestion{suggestion.Type}");
+        SuggestionCard.Visibility = Visibility.Visible;
+        SuggestionOpen.IsEnabled = true;
+        SuggestionDismiss.IsEnabled = true;
     }
 
     private void OnFirstActivated(object sender, WindowActivatedEventArgs args)
@@ -149,5 +173,34 @@ public sealed partial class CompanionWindow : Window
         CaptureRitual.IsEnabled = enabled;
         RecallRitual.IsEnabled = enabled;
         ResolveRitual.IsEnabled = enabled;
+    }
+
+    private async void OnSuggestionOpened(object sender, RoutedEventArgs e) =>
+        await FinishSuggestionAsync(_actOnSuggestion).ConfigureAwait(true);
+
+    private async void OnSuggestionDismissed(object sender, RoutedEventArgs e) =>
+        await FinishSuggestionAsync(_dismissSuggestion).ConfigureAwait(true);
+
+    private async Task FinishSuggestionAsync(Func<CompanionSuggestion, Task> action)
+    {
+        if (_suggestion is not { } suggestion)
+        {
+            return;
+        }
+
+        SuggestionOpen.IsEnabled = false;
+        SuggestionDismiss.IsEnabled = false;
+        try
+        {
+            await action(suggestion).ConfigureAwait(true);
+            _suggestion = null;
+            SuggestionCard.Visibility = Visibility.Collapsed;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            CrashLog.Write("Handling a companion suggestion failed", ex);
+            SuggestionOpen.IsEnabled = true;
+            SuggestionDismiss.IsEnabled = true;
+        }
     }
 }

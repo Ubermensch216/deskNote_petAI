@@ -72,6 +72,7 @@ public static class CompositionRoot
         var pipeline = new NoteSavePipeline(notes, revisions, new RevisionPolicy(), clock);
         var companionRepository = new SqliteCompanionRepository(connections, new RewardPolicy());
         var companionQueue = new CompanionActivityQueue(companionRepository, new ActivityClassifier());
+        ICompanionSuggestionService companionSuggestions = new SqliteCompanionSuggestionService(connections);
         companionQueue.Failed += ex => CrashLog.Write("Companion activity persistence failed", ex);
 
         // Embedding follows a successful save and never extends the note transaction.
@@ -114,6 +115,7 @@ public static class CompositionRoot
             ai,
             indexer,
             companionQueue,
+            companionSuggestions,
             dispatcher,
             exitApplication);
     }

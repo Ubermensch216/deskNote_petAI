@@ -101,18 +101,18 @@ public class CompanionDomainTests
         CompanionActivityType type,
         int before = 0,
         int after = 20) => new()
-    {
-        SourceEventId = Guid.NewGuid().ToString("N"),
-        Type = type,
-        OccurredAt = Morning,
-        NoteId = Guid.NewGuid(),
-        SourceEntityId = type is CompanionActivityType.ChecklistCompleted
+        {
+            SourceEventId = Guid.NewGuid().ToString("N"),
+            Type = type,
+            OccurredAt = Morning,
+            NoteId = Guid.NewGuid(),
+            SourceEntityId = type is CompanionActivityType.ChecklistCompleted
             or CompanionActivityType.ReminderHandled
             or CompanionActivityType.AiSuggestionAccepted
             ? Guid.NewGuid().ToString("N")
             : null,
-        PreviousContentLength = before,
-        CurrentContentLength = after,
-        DwellTime = type == CompanionActivityType.UsefulRecall ? TimeSpan.FromSeconds(8) : TimeSpan.Zero,
-    };
+            PreviousContentLength = before,
+            CurrentContentLength = after,
+            DwellTime = type == CompanionActivityType.UsefulRecall ? TimeSpan.FromSeconds(8) : TimeSpan.Zero,
+        };
 }

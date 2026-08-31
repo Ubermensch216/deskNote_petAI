@@ -226,4 +226,9 @@ Try adding a date or a weekday.</value></data>
   <data name="Companion_RitualResolve" xml:space="preserve"><value>Resolve</value></data>
   <data name="Companion_RitualPendingFormat" xml:space="preserve"><value>Try a little “{0}” today. It is fine if you don't.</value></data>
   <data name="Companion_RitualDoneFormat" xml:space="preserve"><value>You did “{0}”. That is enough for today.</value></data>
+  <data name="Companion_SuggestionUpcomingReminder" xml:space="preserve"><value>A reminder is due within 30 minutes. Review its note?</value></data>
+  <data name="Companion_SuggestionStaleChecklist" xml:space="preserve"><value>An unfinished item has been sitting for a while. Tidy it now?</value></data>
+  <data name="Companion_SuggestionOpen" xml:space="preserve"><value>Open</value></data>
+  <data name="Companion_SuggestionDismiss" xml:space="preserve"><value>Not now</value></data>
+  <data name="Companion_AccessibleName" xml:space="preserve"><value>Mori desktop companion</value></data>
 </root>
