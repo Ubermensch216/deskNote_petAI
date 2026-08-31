@@ -220,4 +220,10 @@ Try adding a date or a weekday.</value></data>
   <data name="Companion_ReasonReminderHandled" xml:space="preserve"><value>Handling a reminder grew reliability.</value></data>
   <data name="Companion_ReasonAiSuggestionAccepted" xml:space="preserve"><value>Choosing a suggestion grew insight and reliability.</value></data>
   <data name="Companion_ReasonBriefingEvidenceOpened" xml:space="preserve"><value>Opening briefing evidence grew insight.</value></data>
+  <data name="Companion_RitualHeader" xml:space="preserve"><value>Choose one for today</value></data>
+  <data name="Companion_RitualCapture" xml:space="preserve"><value>Capture</value></data>
+  <data name="Companion_RitualRecall" xml:space="preserve"><value>Recall</value></data>
+  <data name="Companion_RitualResolve" xml:space="preserve"><value>Resolve</value></data>
+  <data name="Companion_RitualPendingFormat" xml:space="preserve"><value>Try a little “{0}” today. It is fine if you don't.</value></data>
+  <data name="Companion_RitualDoneFormat" xml:space="preserve"><value>You did “{0}”. That is enough for today.</value></data>
 </root>

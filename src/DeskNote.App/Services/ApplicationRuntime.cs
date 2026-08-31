@@ -233,7 +233,13 @@ public sealed class ApplicationRuntime : IAsyncDisposable
             return;
         }
 
-        var window = new CompanionWindow(snapshot, settings, ShowSettings);
+        var window = new CompanionWindow(
+            snapshot,
+            settings,
+            ShowSettings,
+            ritual => _companionQueue.ChooseRitualAsync(
+                ritual,
+                DateOnly.FromDateTime(DateTime.Now)));
         _companionWindow = window;
         window.Closed += (_, _) => _companionWindow = null;
         window.Activate();

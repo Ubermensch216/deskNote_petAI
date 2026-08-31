@@ -220,4 +220,10 @@
   <data name="Companion_ReasonReminderHandled" xml:space="preserve"><value>알림을 처리해 신뢰가 자랐어요.</value></data>
   <data name="Companion_ReasonAiSuggestionAccepted" xml:space="preserve"><value>제안을 골라 적용해 통찰과 신뢰가 자랐어요.</value></data>
   <data name="Companion_ReasonBriefingEvidenceOpened" xml:space="preserve"><value>브리핑의 근거를 확인해 통찰이 자랐어요.</value></data>
+  <data name="Companion_RitualHeader" xml:space="preserve"><value>오늘 하나 고르기</value></data>
+  <data name="Companion_RitualCapture" xml:space="preserve"><value>기록</value></data>
+  <data name="Companion_RitualRecall" xml:space="preserve"><value>회상</value></data>
+  <data name="Companion_RitualResolve" xml:space="preserve"><value>해결</value></data>
+  <data name="Companion_RitualPendingFormat" xml:space="preserve"><value>오늘은 ‘{0}’을 가볍게 해 봐요. 못 해도 괜찮아요.</value></data>
+  <data name="Companion_RitualDoneFormat" xml:space="preserve"><value>‘{0}’을 해냈어요. 오늘은 이걸로 충분해요.</value></data>
 </root>

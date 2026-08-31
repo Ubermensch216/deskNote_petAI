@@ -10,24 +10,28 @@ namespace DeskNote.App.Views;
 public sealed partial class CompanionWindow : Window
 {
     private readonly Action _showSettings;
+    private readonly Func<DailyRitualKind, Task> _chooseRitual;
     private CompanionSettings _settings;
 
     public CompanionWindow(
         CompanionSnapshot snapshot,
         CompanionSettings settings,
-        Action showSettings)
+        Action showSettings,
+        Func<DailyRitualKind, Task> chooseRitual)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(showSettings);
+        ArgumentNullException.ThrowIfNull(chooseRitual);
 
         InitializeComponent();
         _settings = settings;
         _showSettings = showSettings;
+        _chooseRitual = chooseRitual;
 
         AppWindow.Title = Strings.Get("Companion_Title");
         AppIcon.Apply(this);
-        AppWindow.Resize(new SizeInt32(330, 340));
+        AppWindow.Resize(new SizeInt32(350, 440));
         if (AppWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsAlwaysOnTop = settings.AlwaysVisible;
@@ -39,6 +43,10 @@ public sealed partial class CompanionWindow : Window
         InsightLabel.Text = Strings.Get("Companion_Insight");
         ReliabilityLabel.Text = Strings.Get("Companion_Reliability");
         SettingsButton.Content = Strings.Get("Tray_Settings");
+        RitualHeader.Text = Strings.Get("Companion_RitualHeader");
+        CaptureRitual.Content = Strings.Get("Companion_RitualCapture");
+        RecallRitual.Content = Strings.Get("Companion_RitualRecall");
+        ResolveRitual.Content = Strings.Get("Companion_RitualResolve");
         UpdateSnapshot(snapshot);
         Activated += OnFirstActivated;
     }
@@ -77,6 +85,7 @@ public sealed partial class CompanionWindow : Window
         var grew = snapshot.LastReward.HasGrowth;
         MoodLabel.Text = grew ? Strings.Get("Companion_MoodGrowth") : Strings.Get("Companion_MoodCalm");
         Face.Text = grew ? "◕ᴗ◕" : "◕‿◕";
+        ShowRitual(snapshot.Today);
 
         // Motion reduction is respected by using an immediate state change. The beta intentionally
         // ships no looping animation; future motion must keep this branch as its static fallback.
@@ -97,4 +106,41 @@ public sealed partial class CompanionWindow : Window
     }
 
     private void OnSettingsClicked(object sender, RoutedEventArgs e) => _showSettings();
+
+    private async void OnRitualClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: string tag }
+            || !Enum.TryParse<DailyRitualKind>(tag, out var ritual))
+        {
+            return;
+        }
+
+        RitualChoices.IsEnabled = false;
+        try
+        {
+            await _chooseRitual(ritual).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            CrashLog.Write("Choosing a companion ritual failed", ex);
+            RitualChoices.IsEnabled = true;
+        }
+    }
+
+    private void ShowRitual(DailyProgress progress)
+    {
+        if (progress.ChosenRitual is not { } ritual)
+        {
+            RitualChoices.Visibility = Visibility.Visible;
+            RitualChoices.IsEnabled = true;
+            RitualStatus.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        RitualChoices.Visibility = Visibility.Collapsed;
+        RitualStatus.Visibility = Visibility.Visible;
+        RitualStatus.Text = Strings.Format(
+            progress.RitualCompleted ? "Companion_RitualDoneFormat" : "Companion_RitualPendingFormat",
+            Strings.Get($"Companion_Ritual{ritual}"));
+    }
 }
