@@ -192,4 +192,18 @@ Try adding a date or a weekday.</value></data>
   <data name="Palette_Title" xml:space="preserve"><value>DeskNote</value></data>
   <data name="Palette_Placeholder" xml:space="preserve"><value>search, ask, remind, or jot down</value></data>
   <data name="Palette_Hint" xml:space="preserve"><value>Just type to find a note. Enter opens the first result.</value></data>
+  <data name="Tray_Settings" xml:space="preserve"><value>Settings</value></data>
+  <data name="Settings_Title" xml:space="preserve"><value>DeskNote settings</value></data>
+  <data name="Settings_LocalOnly" xml:space="preserve"><value>Companion state and activity history stay on this PC.</value></data>
+  <data name="Settings_CompanionHeader" xml:space="preserve"><value>Desktop companion</value></data>
+  <data name="Settings_CompanionDescription" xml:space="preserve"><value>A small companion that notices completion and consistency without interrupting your work. It does nothing until you turn it on.</value></data>
+  <data name="Settings_CompanionEnabled" xml:space="preserve"><value>Use desktop companion</value></data>
+  <data name="Settings_Proactive" xml:space="preserve"><value>Offer timely suggestions</value></data>
+  <data name="Settings_AlwaysVisible" xml:space="preserve"><value>Keep visible</value></data>
+  <data name="Settings_ReduceMotion" xml:space="preserve"><value>Reduce motion</value></data>
+  <data name="Settings_QuietHours" xml:space="preserve"><value>Quiet hours</value></data>
+  <data name="Settings_QuietStart" xml:space="preserve"><value>Starts</value></data>
+  <data name="Settings_QuietEnd" xml:space="preserve"><value>Ends</value></data>
+  <data name="Settings_Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Settings_Saved" xml:space="preserve"><value>Saved.</value></data>
 </root>

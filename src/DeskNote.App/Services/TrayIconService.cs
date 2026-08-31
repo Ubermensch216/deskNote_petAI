@@ -36,6 +36,7 @@ public sealed class TrayIconService : IDisposable
     private readonly Action _onNewNote;
     private readonly Action _onOpenLibrary;
     private readonly Action _onBriefing;
+    private readonly Action _onSettings;
     private readonly Action _onExit;
     private readonly Action<bool> _onStartupChanged;
     private readonly ManualResetEventSlim _ready = new(false);
@@ -51,11 +52,13 @@ public sealed class TrayIconService : IDisposable
         Action onOpenLibrary,
         Action onExit,
         Action<bool> onStartupChanged,
-        Action onBriefing)
+        Action onBriefing,
+        Action onSettings)
     {
         _onNewNote = onNewNote;
         _onOpenLibrary = onOpenLibrary;
         _onBriefing = onBriefing;
+        _onSettings = onSettings;
         _onExit = onExit;
         _onStartupChanged = onStartupChanged;
     }
@@ -180,6 +183,7 @@ public sealed class TrayIconService : IDisposable
                     case 3: _onStartupChanged(!StartupRegistration.IsEnabled()); return nint.Zero;
                     case 4: _onExit(); return nint.Zero;
                     case 5: _onBriefing(); return nint.Zero;
+                    case 6: _onSettings(); return nint.Zero;
                 }
 
                 break;
@@ -198,6 +202,7 @@ public sealed class TrayIconService : IDisposable
         AppendMenu(menu, 0, 1, Strings.Get("Tray_NewNote"));
         AppendMenu(menu, 0, 2, Strings.Get("Tray_Library"));
         AppendMenu(menu, 0, 5, Strings.Get("Tray_Briefing"));
+        AppendMenu(menu, 0, 6, Strings.Get("Tray_Settings"));
         AppendMenu(menu, 0x800 /* MF_SEPARATOR */, 0, string.Empty);
 
         // MF_CHECKED reflects the live registry state rather than a cached flag, so the tick is

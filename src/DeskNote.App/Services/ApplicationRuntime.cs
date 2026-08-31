@@ -2,6 +2,7 @@ using DeskNote.Core.Abstractions;
 using DeskNote.Core.Ai;
 using DeskNote.Core.Models;
 using DeskNote.Core.Services;
+using DeskNote.App.Views;
 using Microsoft.UI.Dispatching;
 
 namespace DeskNote.App.Services;
@@ -23,6 +24,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
 
     private GlobalHotkeyService? _hotkeys;
     private TrayIconService? _tray;
+    private SettingsWindow? _settingsWindow;
     private bool _started;
     private int _stopping;
 
@@ -104,6 +106,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
             onOpenLibrary: () => RunHotkeyCommand(HotkeyCommands.SearchNotes),
             onExit: RequestExit,
             onBriefing: () => _dispatcher.TryEnqueue(async () => await Windows.ShowBriefingAsync()),
+            onSettings: () => _dispatcher.TryEnqueue(ShowSettings),
             onStartupChanged: enabled => _dispatcher.TryEnqueue(async () =>
             {
                 if (StartupRegistration.SetEnabled(enabled))
@@ -144,6 +147,20 @@ public sealed class ApplicationRuntime : IAsyncDisposable
     }
 
     public async ValueTask DisposeAsync() => await StopAsync().ConfigureAwait(false);
+
+    private void ShowSettings()
+    {
+        if (_settingsWindow is not null)
+        {
+            _settingsWindow.Activate();
+            return;
+        }
+
+        var window = new SettingsWindow(_settings);
+        _settingsWindow = window;
+        window.Closed += (_, _) => _settingsWindow = null;
+        window.Activate();
+    }
 
     private async void OnReminderNoteRequested(object? sender, Guid noteId)
     {
