@@ -194,6 +194,112 @@ public sealed class SqliteVectorIndex(SqliteConnectionFactory connectionFactory,
             .ToList();
     }
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// Every chunk of the source note is compared against every chunk of every other note, and a
+    /// note is scored by its single closest pair. Averaging instead would bury the case this is
+    /// most useful for: a long note that shares one paragraph with another is related through that
+    /// paragraph, and the rest of it should not be allowed to vote the match away.
+    /// </remarks>
+    public async Task<IReadOnlyList<VectorHit>> FindSimilarAsync(
+        Guid noteId,
+        int topK = 10,
+        CancellationToken cancellationToken = default)
+    {
+        if (topK <= 0)
+        {
+            return [];
+        }
+
+        await using var connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+
+        var source = await ReadVectorsAsync(
+            connection,
+            "e.note_id = @noteId",
+            new { model = modelId, noteId = noteId.ToString() },
+            cancellationToken).ConfigureAwait(false);
+
+        if (source.Count == 0)
+        {
+            return [];
+        }
+
+        var dim = source[0].Vector.Length;
+
+        var others = await ReadVectorsAsync(
+            connection,
+            "e.note_id <> @noteId AND e.dim = @dim",
+            new { model = modelId, noteId = noteId.ToString(), dim },
+            cancellationToken).ConfigureAwait(false);
+
+        var best = new Dictionary<Guid, VectorHit>();
+
+        foreach (var other in others)
+        {
+            if (other.Vector.Length != dim)
+            {
+                continue;
+            }
+
+            var otherNorm = Norm(other.Vector);
+            if (otherNorm == 0)
+            {
+                continue;
+            }
+
+            foreach (var mine in source)
+            {
+                var myNorm = Norm(mine.Vector);
+                if (myNorm == 0)
+                {
+                    continue;
+                }
+
+                var distance = 1.0 - (Dot(mine.Vector, other.Vector) / (myNorm * otherNorm));
+
+                if (!best.TryGetValue(other.NoteId, out var current) || distance < current.Distance)
+                {
+                    best[other.NoteId] = new VectorHit(other.NoteId, other.ChunkOrdinal, distance);
+                }
+            }
+        }
+
+        return [.. best.Values.OrderBy(hit => hit.Distance).Take(topK)];
+    }
+
+    private static async Task<List<(Guid NoteId, int ChunkOrdinal, float[] Vector)>> ReadVectorsAsync(
+        SqliteConnection connection,
+        string predicate,
+        object parameters,
+        CancellationToken cancellationToken)
+    {
+        var sql = $"""
+            SELECT e.note_id, e.chunk_ordinal, e.embedding
+            FROM note_embeddings e
+            JOIN notes n ON n.id = e.note_id
+            WHERE e.model = @model AND n.deleted_at IS NULL AND {predicate};
+            """;
+
+        await using var reader = await connection.ExecuteReaderAsync(new CommandDefinition(
+            sql,
+            parameters,
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        var rows = new List<(Guid, int, float[])>();
+
+        while (reader.Read())
+        {
+            var blob = (byte[])reader.GetValue(2);
+
+            rows.Add((
+                Guid.Parse(reader.GetString(0)),
+                reader.GetInt32(1),
+                MemoryMarshal.Cast<byte, float>(blob).ToArray()));
+        }
+
+        return rows;
+    }
+
     private static byte[] ToBlob(ReadOnlySpan<float> vector) =>
         MemoryMarshal.AsBytes(vector).ToArray();
 

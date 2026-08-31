@@ -24,13 +24,15 @@ public sealed class NoteWindowManager(
     LocalAiHost? ai = null,
     HybridLibrarySearch? hybridSearch = null,
     DeskNote.Ai.IAiRetriever? retriever = null,
-    INoteRevisionStore? revisions = null)
+    INoteRevisionStore? revisions = null,
+    NoteNeighbourhood? neighbourhood = null)
 {
     private readonly Dictionary<Guid, NoteWindow> _windows = [];
     private int _cascadeIndex;
     private NotesExplorerWindow? _explorer;
     private AiChatWindow? _chat;
     private NoteHistoryWindow? _history;
+    private RelatedNotesWindow? _related;
 
     public int OpenWindowCount => _windows.Count;
 
@@ -150,6 +152,31 @@ public sealed class NoteWindowManager(
     /// One sidecar at a time, re-scoped rather than duplicated: two chat windows answering about
     /// different notes would leave the user guessing which one their next question went to.
     /// </remarks>
+    /// <summary>
+    /// Opens the notes that read like this one.
+    /// </summary>
+    /// <remarks>
+    /// One window at a time, like the history: this is a view onto one note's surroundings, and
+    /// two of them open at once stop saying whose surroundings they are.
+    /// </remarks>
+    public void ShowRelated(Guid noteId)
+    {
+        if (neighbourhood is null)
+        {
+            return;
+        }
+
+        _related?.Close();
+        _related = new RelatedNotesWindow(noteId, neighbourhood, id => FocusAsync(id));
+        _related.Closed += (_, _) => _related = null;
+        _related.Activate();
+
+        if (_windows.TryGetValue(noteId, out var source))
+        {
+            _related.PlaceNear(source.AppWindow);
+        }
+    }
+
     public void ShowChat(Guid? noteId)
     {
         if (ai is null)
@@ -298,7 +325,7 @@ public sealed class NoteWindowManager(
             return existing;
         }
 
-        var window = new NoteWindow(note, ai);
+        var window = new NoteWindow(note, ai, neighbourhood);
         _windows[note.Id] = window;
 
         window.TextChanged += (_, text) => autosave.Schedule(note.Id, text.Title, text.Content);
@@ -309,6 +336,7 @@ public sealed class NoteWindowManager(
         window.LibraryRequested += (_, _) => ShowLibrary();
         window.HistoryRequested += (w, _) => ShowHistory(((NoteWindow)w!).NoteId);
         window.AiApplied += async (w, edit) => await OnAiAppliedAsync(((NoteWindow)w!).NoteId, edit);
+        window.RelatedRequested += (w, _) => ShowRelated(((NoteWindow)w!).NoteId);
         window.NewNoteRequested += async (_, seed) => await CreateAsync(seed.Preset, seed.ColorKey);
         window.ReminderRequested += async (_, offset) => await AddReminderAsync(note.Id, offset);
         window.ReminderAtRequested += async (_, dueAt) => await AddReminderAtAsync(note.Id, dueAt);

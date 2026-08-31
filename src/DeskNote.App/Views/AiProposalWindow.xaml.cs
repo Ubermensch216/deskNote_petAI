@@ -114,7 +114,12 @@ public sealed partial class AiProposalWindow : Window
         }
 
         ProposalScroll.Visibility = Visibility.Visible;
-        Attribution.Text = Strings.Format("Ai_ModelFormat", modelId ?? string.Empty);
+
+        // No model means these did not come from one — tag suggestions read off the note's
+        // neighbours never call it. Naming an empty model would credit the work to nobody.
+        Attribution.Text = string.IsNullOrWhiteSpace(modelId)
+            ? Strings.Get("Ai_FromRelatedNotes")
+            : Strings.Format("Ai_ModelFormat", modelId);
         Elapsed.Text = Strings.Format("Ai_ElapsedFormat", elapsed.TotalSeconds.ToString("F1"));
         CancelButton.Content = Strings.Get("Ai_Discard");
 

@@ -154,4 +154,11 @@
   <data name="History_NoteGone" xml:space="preserve"><value>메모가 삭제되어 복원할 수 없습니다</value></data>
   <data name="History_ByUser" xml:space="preserve"><value>직접 편집</value></data>
   <data name="History_ByAiFormat" xml:space="preserve"><value>AI · {0}</value></data>
+  <data name="Related_Title" xml:space="preserve"><value>관련 메모</value></data>
+  <data name="Related_Hint" xml:space="preserve"><value>이 메모와 비슷하게 읽히는 메모입니다. 누르면 바탕화면에 뜹니다.</value></data>
+  <data name="Related_None" xml:space="preserve"><value>비슷한 메모를 찾지 못했습니다</value></data>
+  <data name="Related_NearDuplicate" xml:space="preserve"><value>거의 같음</value></data>
+  <data name="Related_CountWithDuplicatesFormat" xml:space="preserve"><value>{0}개 · 거의 같은 메모 {1}개</value></data>
+  <data name="Ai_TagFromRelated" xml:space="preserve"><value>비슷한 메모에서</value></data>
+  <data name="Ai_FromRelatedNotes" xml:space="preserve"><value>비슷한 메모에서 찾은 태그입니다</value></data>
 </root>

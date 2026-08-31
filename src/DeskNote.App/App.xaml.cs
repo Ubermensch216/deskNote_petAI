@@ -95,6 +95,7 @@ public partial class App : Application
             // window asks it the same question first so it can show which notes the answer rests on.
             var retriever = new HybridRetriever(new Fts5SearchIndex(connections), vectors, embedder, notes);
             var hybridSearch = new HybridLibrarySearch(library, vectors, embedder);
+            var neighbourhood = new NoteNeighbourhood(vectors, library);
 
             _ai = await LocalAiHost.CreateAsync(
                 settings,
@@ -120,7 +121,7 @@ public partial class App : Application
 
             _windows = new NoteWindowManager(
                 notes, clock, _autosave, pipeline, library, reminders, attachmentStore, _ai,
-                hybridSearch, retriever, revisions);
+                hybridSearch, retriever, revisions, neighbourhood);
 
             // Recovery runs before the notes are shown, so a restored window opens already holding
             // the text that was rescued rather than flashing the stale version first.

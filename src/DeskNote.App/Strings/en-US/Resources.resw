@@ -154,4 +154,11 @@
   <data name="History_NoteGone" xml:space="preserve"><value>The note was deleted, so there is nothing to restore into</value></data>
   <data name="History_ByUser" xml:space="preserve"><value>Edited</value></data>
   <data name="History_ByAiFormat" xml:space="preserve"><value>AI · {0}</value></data>
+  <data name="Related_Title" xml:space="preserve"><value>Related notes</value></data>
+  <data name="Related_Hint" xml:space="preserve"><value>Notes that read like this one. Click one to bring it to the desktop.</value></data>
+  <data name="Related_None" xml:space="preserve"><value>No similar notes found</value></data>
+  <data name="Related_NearDuplicate" xml:space="preserve"><value>near-duplicate</value></data>
+  <data name="Related_CountWithDuplicatesFormat" xml:space="preserve"><value>{0} · {1} near-duplicate</value></data>
+  <data name="Ai_TagFromRelated" xml:space="preserve"><value>from related notes</value></data>
+  <data name="Ai_FromRelatedNotes" xml:space="preserve"><value>Tags carried by related notes</value></data>
 </root>

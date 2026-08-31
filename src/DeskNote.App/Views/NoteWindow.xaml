@@ -43,6 +43,17 @@
                 <Setter Property="FontSize" Value="14" />
             </Style>
 
+            <!--
+                Narrower than the format buttons on purpose. The bar already uses 219pt of the
+                298pt a medium note has, and these two only appear while text is selected — they
+                have to fit in what is left rather than push the image button off the edge.
+            -->
+            <Style x:Key="SelectionActionStyle" TargetType="Button" BasedOn="{StaticResource ChromeButtonStyle}">
+                <Setter Property="Width" Value="26" />
+                <Setter Property="Height" Value="26" />
+                <Setter Property="FontSize" Value="14" />
+            </Style>
+
             <!-- AI is what this app is for, so its entry point is a wider, named button. -->
             <Style x:Key="AiButtonStyle" TargetType="Button" BasedOn="{StaticResource ChromeButtonStyle}">
                 <Setter Property="Width" Value="40" />
@@ -253,10 +264,22 @@
                                         <Border x:Name="AiMenuSeparator" Height="1" Margin="4,6,4,4" />
 
                                         <!--
-                                            Q&A answers rather than edits, and it opens a window of
-                                            its own. A full-width row is what says that: it is not
-                                            one more thing that happens to this note's text.
+                                            Neither of these edits the note and both open a window
+                                            of their own, which is what the full-width rows say.
+                                            The related-notes row costs no generation at all — it
+                                            is a cosine over vectors that are already stored.
                                         -->
+                                        <Button x:Name="AiRelated" Style="{StaticResource NoteMenuRowStyle}" IsEnabled="False" Click="OnAiRelatedClicked">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="24" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <FontIcon Grid.Column="0" Glyph="&#xE71B;" FontSize="14" HorizontalAlignment="Left" />
+                                                <TextBlock x:Name="AiRelatedLabel" Grid.Column="1" VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Button>
+
                                         <Button x:Name="AiAsk" Style="{StaticResource NoteMenuRowStyle}" IsEnabled="False" Click="OnAiAskChipClicked">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
@@ -563,6 +586,7 @@
                 Paste="OnPasteRequested"
                 GotFocus="OnEditorFocusChanged"
                 LostFocus="OnEditorFocusChanged"
+                SelectionChanged="OnSelectionChanged"
                 TextChanged="OnTextChanged">
 
                 <!--
@@ -626,6 +650,21 @@
                 </Button>
                 <Button x:Name="ImageButton" Style="{StaticResource FormatButtonStyle}" Click="OnInsertImageClicked">
                     <FontIcon Glyph="&#xE91B;" FontSize="14" />
+                </Button>
+
+                <!--
+                    Shown only while text is selected, and only when a model can run. Both act on
+                    the selection alone — the AI menu already does that, but it costs three clicks
+                    and a menu that covers the very text being worked on. Collapsed rather than
+                    faded so they take no width at rest.
+                -->
+                <Border x:Name="SelectionSeparator" Width="1" Height="14" Margin="4,0" Visibility="Collapsed" />
+
+                <Button x:Name="SelectionSummarize" Style="{StaticResource SelectionActionStyle}" Visibility="Collapsed" Click="OnSelectionSummarizeClicked">
+                    <FontIcon Glyph="&#xE71C;" FontSize="13" />
+                </Button>
+                <Button x:Name="SelectionConcise" Style="{StaticResource SelectionActionStyle}" Visibility="Collapsed" Click="OnSelectionConciseClicked">
+                    <FontIcon Glyph="&#xE8C6;" FontSize="13" />
                 </Button>
             </StackPanel>
         </Grid>

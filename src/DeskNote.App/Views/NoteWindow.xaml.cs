@@ -55,13 +55,15 @@ public sealed partial class NoteWindow : Window
     private (int X, int Y) _dragCursorOrigin;
 
     private readonly LocalAiHost? _ai;
+    private readonly NoteNeighbourhood? _neighbourhood;
     private AiCapability _aiCapability;
 
-    public NoteWindow(Note note, LocalAiHost? ai = null)
+    public NoteWindow(Note note, LocalAiHost? ai = null, NoteNeighbourhood? neighbourhood = null)
     {
         InitializeComponent();
 
         _ai = ai;
+        _neighbourhood = neighbourhood;
         _aiCapability = ai?.Capability ?? AiCapability.Unavailable(AiAvailability.Disabled);
 
         NoteId = note.Id;
@@ -165,6 +167,9 @@ public sealed partial class NoteWindow : Window
     /// <summary>Raised when the user wants to ask a question about this note.</summary>
     public event EventHandler? AskRequested;
 
+    /// <summary>Raised when the user wants to see the notes that read like this one.</summary>
+    public event EventHandler? RelatedRequested;
+
     /// <summary>Raised when the user asks for another note from this one's <c>+</c> button.</summary>
     public event EventHandler<NoteSeed>? NewNoteRequested;
 
@@ -259,6 +264,8 @@ public sealed partial class NoteWindow : Window
         Describe(UnderlineButton, "Note_Underline");
         Describe(StrikethroughButton, "Note_Strikethrough");
         Describe(BulletButton, "Note_BulletList");
+        Describe(SelectionSummarize, "Note_AiSummarize");
+        Describe(SelectionConcise, "Note_AiRewriteConcise");
         Describe(ChecklistButton, "Note_Checklist");
         Describe(ImageButton, "Note_InsertImage");
 
@@ -289,6 +296,7 @@ public sealed partial class NoteWindow : Window
         AiSuggestTags.Tag = AiListAction.SuggestTags;
         DescribeTile(AiSuggestTags, AiSuggestTagsLabel, "Note_AiSuggestTags");
         AiAskLabel.Text = Strings.Get("Note_AiAsk");
+        AiRelatedLabel.Text = Strings.Get("Related_Title");
 
         foreach (var (button, label, style) in new[]
                  {
@@ -739,7 +747,7 @@ public sealed partial class NoteWindow : Window
 
         foreach (var chip in new[]
                  {
-                     AiSummarize, AiOrganize, AiExtractTasks, AiSuggestTags, AiAsk,
+                     AiSummarize, AiOrganize, AiExtractTasks, AiSuggestTags, AiAsk, AiRelated,
                      AiRewriteConcise, AiRewriteFormal, AiRewriteFriendly, AiRewriteReport,
                  })
         {
@@ -750,6 +758,8 @@ public sealed partial class NoteWindow : Window
         // able to tell local inference from a service without leaving the note. When it does not,
         // the line is the reason, because "greyed out with no explanation" is the state that makes
         // people think the app is broken.
+        UpdateSelectionActions();
+
         AiStatus.Text = ready
             ? Strings.Format(
                 "Note_AiReadyFormat",
@@ -781,6 +791,41 @@ public sealed partial class NoteWindow : Window
         AiFlyout.Hide();
         AskRequested?.Invoke(this, EventArgs.Empty);
     }
+
+    private void OnAiRelatedClicked(object sender, RoutedEventArgs e)
+    {
+        AiFlyout.Hide();
+        RelatedRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Shows the two selection actions while there is a selection to act on.
+    /// </summary>
+    /// <remarks>
+    /// Visibility rather than opacity: at rest these must take no width at all, because the format
+    /// bar already uses most of what a 보통 note has. They also stay hidden with no model, so the
+    /// bar never grows to hold buttons that would refuse to run.
+    /// </remarks>
+    private void UpdateSelectionActions()
+    {
+        var offered = ContentBox.SelectionLength > 0
+            && _ai is not null
+            && _aiCapability.IsAvailable;
+
+        var visibility = offered ? Visibility.Visible : Visibility.Collapsed;
+
+        SelectionSeparator.Visibility = visibility;
+        SelectionSummarize.Visibility = visibility;
+        SelectionConcise.Visibility = visibility;
+    }
+
+    private void OnSelectionChanged(object sender, RoutedEventArgs e) => UpdateSelectionActions();
+
+    private void OnSelectionSummarizeClicked(object sender, RoutedEventArgs e) =>
+        RunAi(AiTextAction.Summarize, RewriteStyle.Concise);
+
+    private void OnSelectionConciseClicked(object sender, RoutedEventArgs e) =>
+        RunAi(AiTextAction.Rewrite, RewriteStyle.Concise);
 
     private void OnAiListChipClicked(object sender, RoutedEventArgs e)
     {
@@ -838,12 +883,28 @@ public sealed partial class NoteWindow : Window
             }
             else
             {
-                var tags = await _ai.Service.SuggestTagsAsync(context, window.CancellationToken);
+                var carried = TagParser.Parse(ContentBox.Text);
+
+                // Asked of the vectors before the model. A note about the same thing as three
+                // tagged notes almost always wants one of their tags, and finding that out is a
+                // cosine over stored vectors rather than the 45 seconds the model takes to invent
+                // one. The model is the fallback for a note with no neighbours — a new subject,
+                // or a library that has not been indexed yet.
+                var nearby = _neighbourhood is null
+                    ? []
+                    : await _neighbourhood.NearbyTagsAsync(
+                        NoteId,
+                        [.. carried.Select(tag => tag.Name)],
+                        cancellationToken: window.CancellationToken);
+
+                var tags = nearby.Count > 0
+                    ? [.. nearby.Select(name => new SuggestedTag(name, 1.0))]
+                    : await _ai.Service.SuggestTagsAsync(context, window.CancellationToken);
 
                 // A tag the note already carries is not a proposal; offering it would only invite
                 // the user to accept a duplicate.
                 var fresh = tags
-                    .Where(tag => !TagParser.Parse(ContentBox.Text)
+                    .Where(tag => !carried
                         .Any(existing => string.Equals(
                             existing.NormalizedName,
                             Tag.Normalize(tag.Name),
@@ -856,11 +917,17 @@ public sealed partial class NoteWindow : Window
                     window.Close();
                 };
 
+                // A neighbour's tag has no confidence to report — it is a fact about other notes,
+                // not a guess — so it says where it came from instead of showing a fabricated 100%.
+                var fromNeighbours = nearby.Count > 0;
+
                 window.ShowProposals(
                     [.. fresh.Select(tag => new AiProposal(
                         "#" + tag.Name,
-                        Strings.Format("Ai_ConfidenceFormat", (int)Math.Round(tag.Confidence * 100))))],
-                    _aiCapability.ModelId,
+                        fromNeighbours
+                            ? Strings.Get("Ai_TagFromRelated")
+                            : Strings.Format("Ai_ConfidenceFormat", (int)Math.Round(tag.Confidence * 100))))],
+                    fromNeighbours ? null : _aiCapability.ModelId,
                     System.Diagnostics.Stopwatch.GetElapsedTime(started));
             }
         }

@@ -32,4 +32,18 @@ public interface IVectorIndex
         int topK = 10,
         IReadOnlyList<Guid>? scopedNoteIds = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Notes whose text sits near this note's, nearest first, excluding the note itself.
+    /// </summary>
+    /// <remarks>
+    /// Takes a note rather than an embedding because the note already has one. Re-embedding text
+    /// that is sitting in the index would cost a model round trip to reproduce a vector that is
+    /// already stored — and reproduce it slightly differently, since it would be embedded as one
+    /// blob rather than as the chunks the index actually holds.
+    /// </remarks>
+    Task<IReadOnlyList<VectorHit>> FindSimilarAsync(
+        Guid noteId,
+        int topK = 10,
+        CancellationToken cancellationToken = default);
 }
