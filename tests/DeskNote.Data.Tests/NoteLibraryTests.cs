@@ -258,4 +258,59 @@ public class NoteLibraryTests
         Assert.Single(deleted);
         Assert.True(deleted[0].IsDeleted);
     }
+
+    /// <summary>
+    /// The ordering has to survive the round trip, because it is the only thing the semantic half
+    /// of hybrid search produces — SQLite would otherwise return these in rowid order and quietly
+    /// discard the ranking.
+    /// </summary>
+    [Fact]
+    public async Task Listing_by_ids_keeps_the_order_it_was_given()
+    {
+        await using var db = await TestDatabase.CreateAsync();
+        var first = await AddAsync(db, "하나", "결제 모듈");
+        var second = await AddAsync(db, "둘", "배송 모듈");
+        var third = await AddAsync(db, "셋", "정산 모듈");
+
+        var rows = await Library(db).ListByIdsAsync([third, first, second], NoteQuery.Default);
+
+        Assert.Equal([third, first, second], rows.Select(r => r.Id));
+    }
+
+    /// <summary>
+    /// Vectors know nothing about the sidebar. A note the embeddings liked but the current filter
+    /// excludes must not appear as a result the filter says should not exist.
+    /// </summary>
+    [Fact]
+    public async Task Listing_by_ids_still_honours_the_filter()
+    {
+        await using var db = await TestDatabase.CreateAsync();
+        var kept = await AddAsync(db, "살아있는 메모", "본문");
+        var removed = await AddAsync(db, "지워진 메모", "본문");
+        await db.Notes.SoftDeleteAsync(removed);
+
+        var rows = await Library(db).ListByIdsAsync([removed, kept], NoteQuery.Default);
+
+        Assert.Equal(kept, Assert.Single(rows).Id);
+    }
+
+    [Fact]
+    public async Task Listing_by_ids_skips_notes_that_no_longer_exist()
+    {
+        await using var db = await TestDatabase.CreateAsync();
+        var real = await AddAsync(db, "메모", "본문");
+
+        var rows = await Library(db).ListByIdsAsync([Guid.CreateVersion7(), real], NoteQuery.Default);
+
+        Assert.Equal(real, Assert.Single(rows).Id);
+    }
+
+    [Fact]
+    public async Task Listing_by_no_ids_returns_nothing_without_querying()
+    {
+        await using var db = await TestDatabase.CreateAsync();
+        await AddAsync(db, "메모", "본문");
+
+        Assert.Empty(await Library(db).ListByIdsAsync([], NoteQuery.Default));
+    }
 }

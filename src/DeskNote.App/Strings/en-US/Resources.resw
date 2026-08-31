@@ -146,4 +146,12 @@
   <data name="Ai_AskPlaceholder" xml:space="preserve"><value>Ask about this note</value></data>
   <data name="Ai_ScopeLibrary" xml:space="preserve"><value>No note is open, so the whole library is searched</value></data>
   <data name="Ai_ScopeNoteFormat" xml:space="preserve"><value>Answered from the note “{0}” only</value></data>
+  <data name="Ai_Sources" xml:space="preserve"><value>Sources</value></data>
+  <data name="History_Title" xml:space="preserve"><value>History</value></data>
+  <data name="History_Hint" xml:space="preserve"><value>The body as it was before it was replaced. Restoring keeps the current text in history too.</value></data>
+  <data name="History_Restore" xml:space="preserve"><value>Restore</value></data>
+  <data name="History_Empty" xml:space="preserve"><value>No versions kept yet</value></data>
+  <data name="History_NoteGone" xml:space="preserve"><value>The note was deleted, so there is nothing to restore into</value></data>
+  <data name="History_ByUser" xml:space="preserve"><value>Edited</value></data>
+  <data name="History_ByAiFormat" xml:space="preserve"><value>AI · {0}</value></data>
 </root>

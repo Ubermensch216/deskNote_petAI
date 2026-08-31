@@ -47,4 +47,14 @@ public static class SettingKeys
 
     /// <summary>Model tag used for retrieval embeddings, e.g. "bge-m3:latest".</summary>
     public const string AiEmbeddingModel = "ai.embeddingModel";
+
+    /// <summary>
+    /// How long the local server should keep the model resident between calls, as minutes.
+    /// </summary>
+    /// <remarks>
+    /// Exposed because the right value is a property of the machine, not of the app: a 7GB model
+    /// held for twenty minutes is free on a workstation and ruinous on a laptop with 8GB. "0"
+    /// unloads immediately, which is the setting for a machine that cannot spare the memory.
+    /// </remarks>
+    public const string AiKeepAliveMinutes = "ai.keepAliveMinutes";
 }

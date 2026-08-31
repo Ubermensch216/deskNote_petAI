@@ -25,18 +25,34 @@ public sealed partial class NotesExplorerWindow : Window
 
     private readonly INoteLibrary _library;
     private readonly INoteRepository _notes;
+    private readonly HybridLibrarySearch? _hybrid;
     private readonly Func<Guid, Task> _openNote;
     private readonly DispatcherTimer _searchTimer = new() { Interval = SearchDebounce };
 
     private NoteQuery _query = NoteQuery.Default;
     private bool _suppressFilterEvents;
 
-    public NotesExplorerWindow(INoteLibrary library, INoteRepository notes, Func<Guid, Task> openNote)
+    /// <summary>
+    /// Cancels the semantic pass of a search that has been superseded.
+    /// </summary>
+    /// <remarks>
+    /// Embedding a query takes about 0.3 s, which is longer than a fast typist's pause. Without
+    /// this, an abandoned query could come back after the next one and reorder the list under a
+    /// pointer that was already moving toward a row.
+    /// </remarks>
+    private CancellationTokenSource? _semanticPass;
+
+    public NotesExplorerWindow(
+        INoteLibrary library,
+        INoteRepository notes,
+        Func<Guid, Task> openNote,
+        HybridLibrarySearch? hybrid = null)
     {
         InitializeComponent();
 
         _library = library;
         _notes = notes;
+        _hybrid = hybrid;
         _openNote = openNote;
 
         AppWindow.Title = Strings.Get("Explorer_Title");
@@ -99,14 +115,60 @@ public sealed partial class NotesExplorerWindow : Window
         _suppressFilterEvents = false;
     }
 
+    /// <summary>
+    /// Renders the keyword answer, then improves it with the semantic one.
+    /// </summary>
+    /// <remarks>
+    /// Two passes rather than one slower pass. Keyword results are ready immediately and are what
+    /// most searches wanted; the semantic pass arrives about 0.3 s later and only redraws the list
+    /// when it actually changes the order. A user who found their note on the first pass never
+    /// learns there was a second.
+    /// </remarks>
     private async Task RefreshResultsAsync()
     {
+        _semanticPass?.Cancel();
+        _semanticPass?.Dispose();
+        _semanticPass = null;
+
         var text = SearchBox.Text ?? string.Empty;
 
         var rows = string.IsNullOrWhiteSpace(text)
             ? await _library.ListAsync(_query)
             : await _library.SearchAsync(text, _query);
 
+        Show(rows, text);
+
+        if (_hybrid is null || string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        _semanticPass = new CancellationTokenSource();
+        var pass = _semanticPass;
+
+        try
+        {
+            var fused = await _hybrid.FuseAsync(text, _query, rows, cancellationToken: pass.Token);
+
+            // The query that started this pass may no longer be the one on screen.
+            if (fused is not null && !pass.IsCancellationRequested && (SearchBox.Text ?? string.Empty) == text)
+            {
+                Show(fused, text);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Superseded by a newer query; its results are the ones that matter.
+        }
+        catch (Exception ex)
+        {
+            // Semantic search is the optional half. Losing it leaves the keyword results standing.
+            CrashLog.Write("Semantic search pass failed", ex);
+        }
+    }
+
+    private void Show(IReadOnlyList<NoteSummary> rows, string text)
+    {
         Results.ItemsSource = rows;
         RestoreButton.Visibility = _query.OnlyDeleted ? Visibility.Visible : Visibility.Collapsed;
 

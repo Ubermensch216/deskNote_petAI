@@ -517,6 +517,17 @@
                                         </Grid>
                                     </Button>
 
+                                    <Button x:Name="HistoryRow" Style="{StaticResource NoteMenuRowStyle}" Click="OnHistoryRowClicked">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <FontIcon Grid.Column="0" Glyph="&#xE81C;" FontSize="14" HorizontalAlignment="Left" />
+                                            <TextBlock x:Name="HistoryRowLabel" Grid.Column="1" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Button>
+
                                     <Button x:Name="DeleteRow" Style="{StaticResource NoteMenuRowStyle}" Click="OnDeleteRowClicked">
                                         <Grid>
                                             <Grid.ColumnDefinitions>

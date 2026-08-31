@@ -114,6 +114,42 @@ public sealed class SqliteNoteLibrary(SqliteConnectionFactory connectionFactory,
         return await AttachTagsAsync(connection, rows.ToList(), cancellationToken).ConfigureAwait(false);
     }
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// SQLite has no ordering by position in an <c>IN</c> list, and sorting in SQL by anything
+    /// else would throw away the ranking this method exists to preserve. So the filter runs in
+    /// the database and the ordering is reapplied here, over a set bounded by the caller's topK.
+    /// </remarks>
+    public async Task<IReadOnlyList<NoteSummary>> ListByIdsAsync(
+        IReadOnlyList<Guid> ids,
+        NoteQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        var (where, parameters) = BuildFilter(query);
+        parameters.Add("now", SqliteTime.ToDb(clock.UtcNow));
+        parameters.Add("ids", ids.Select(id => id.ToString()).ToArray());
+
+        await using var connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
+        var rows = await connection.QueryAsync<SummaryRow>(new CommandDefinition(
+            $"SELECT {SummaryColumns} FROM notes n WHERE {where} AND n.id IN @ids;",
+            parameters,
+            cancellationToken: cancellationToken)).ConfigureAwait(false);
+
+        var summaries = await AttachTagsAsync(connection, rows.ToList(), cancellationToken)
+            .ConfigureAwait(false);
+
+        var byId = summaries.ToDictionary(summary => summary.Id);
+
+        return [.. ids.Select(id => byId.TryGetValue(id, out var row) ? row : null).OfType<NoteSummary>()];
+    }
+
     public async Task<IReadOnlyList<TagUsage>> ListTagsAsync(CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);

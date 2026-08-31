@@ -55,7 +55,12 @@ public sealed class OllamaEmbeddingService : IEmbeddingService, IDisposable
             using var response = await _http
                 .PostAsJsonAsync(
                     "/api/embed",
-                    new EmbedRequest { Model = _options.EmbeddingModel, Input = inputs },
+                    new EmbedRequest
+                    {
+                        Model = _options.EmbeddingModel,
+                        Input = inputs,
+                        KeepAlive = _options.KeepAliveValue,
+                    },
                     OllamaWire.Json,
                     timeout.Token)
                 .ConfigureAwait(false);
@@ -104,6 +109,14 @@ public sealed class OllamaEmbeddingService : IEmbeddingService, IDisposable
 
         [JsonPropertyName("input")]
         public required IReadOnlyList<string> Input { get; init; }
+
+        /// <summary>
+        /// The embedding model unloads on the same schedule as the chat model, and it is called
+        /// far more often — once per save, once per search — so it pays for the reload far more
+        /// often too.
+        /// </summary>
+        [JsonPropertyName("keep_alive")]
+        public string? KeepAlive { get; init; }
     }
 
     private sealed record EmbedResponse

@@ -79,6 +79,28 @@ public sealed class LocalAiHost : IDisposable
     }
 
     /// <summary>
+    /// Asks the worker to load the model, without waiting for it.
+    /// </summary>
+    /// <remarks>
+    /// Called when an AI menu opens. The user then spends a few seconds reading the tiles, and
+    /// those seconds are spent loading weights instead of being spent twice — once reading, once
+    /// waiting. Nothing is awaited and nothing is reported: if the daemon is down the tiles are
+    /// already disabled, and if it comes up the next probe says so.
+    /// </remarks>
+    public void Warm() =>
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _service.WarmAsync(_stopping.Token).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                CrashLog.Write("AI warm-up failed", ex);
+            }
+        });
+
+    /// <summary>
     /// Probes in the background and keeps <see cref="Capability"/> current.
     /// </summary>
     /// <remarks>

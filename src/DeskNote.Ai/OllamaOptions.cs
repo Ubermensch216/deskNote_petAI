@@ -1,3 +1,4 @@
+using System.Globalization;
 using DeskNote.Core.Abstractions;
 
 namespace DeskNote.Ai;
@@ -41,6 +42,26 @@ public sealed record OllamaOptions
 
     /// <summary>Low but not zero: deterministic enough to be predictable, not so rigid it loops.</summary>
     public double Temperature { get; init; } = 0.2;
+
+    /// <summary>
+    /// How long the daemon should keep the model resident after a call.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Ollama's own default is five minutes, and it does not survive the way this app is used:
+    /// summarise a note, read the result, tag it — the second action pays the 60-second load
+    /// again because the pause in between was longer than the daemon's patience.
+    /// </para>
+    /// <para>
+    /// Fifteen minutes covers a working session without pretending memory is free. The value is a
+    /// setting because it is a property of the machine rather than of the app.
+    /// </para>
+    /// </remarks>
+    public TimeSpan KeepAlive { get; init; } = TimeSpan.FromMinutes(15);
+
+    /// <summary>The <c>keep_alive</c> value to send, in the seconds form the API accepts.</summary>
+    internal string KeepAliveValue =>
+        ((int)KeepAlive.TotalSeconds).ToString(CultureInfo.InvariantCulture) + "s";
 
     public static async Task<OllamaOptions> LoadAsync(
         ISettingsStore settings,
@@ -87,6 +108,14 @@ public sealed record OllamaOptions
             && !string.IsNullOrWhiteSpace(embedding))
         {
             options = options with { EmbeddingModel = embedding.Trim() };
+        }
+
+        // Clamped rather than trusted. A negative value is meaningless to the daemon, and an hour
+        // of a 7GB model resident is a decision a typo should not be able to make.
+        if (settings.TryGetValue(SettingKeys.AiKeepAliveMinutes, out var keepAlive)
+            && double.TryParse(keepAlive, NumberStyles.Float, CultureInfo.InvariantCulture, out var minutes))
+        {
+            options = options with { KeepAlive = TimeSpan.FromMinutes(Math.Clamp(minutes, 0, 60)) };
         }
 
         return options;

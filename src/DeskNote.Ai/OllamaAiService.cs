@@ -153,6 +153,50 @@ public sealed class OllamaAiService : ILocalAiService, IDisposable
         return AiResponseParser.ReadTags(json);
     }
 
+    /// <summary>
+    /// Asks the daemon to load the model without generating anything.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A chat request with no messages loads the weights and returns. That turns the 60-second
+    /// first load into something that happens while the user is reading the AI menu and choosing
+    /// a tile, instead of after they have already committed to waiting.
+    /// </para>
+    /// <para>
+    /// Every failure is swallowed. Warming is an optimisation, and an optimisation that reports
+    /// errors into a note window is worse than no optimisation — the real call that follows will
+    /// classify the daemon's state properly.
+    /// </para>
+    /// </remarks>
+    public async Task WarmAsync(CancellationToken cancellationToken = default)
+    {
+        if (!_options.Enabled || _options.KeepAlive <= TimeSpan.Zero)
+        {
+            return;
+        }
+
+        try
+        {
+            var request = new OllamaWire.ChatRequest
+            {
+                Model = _options.Model,
+                Stream = false,
+                Messages = [],
+                KeepAlive = _options.KeepAliveValue,
+            };
+
+            using var timeout = Linked(cancellationToken, _options.RequestTimeout);
+
+            using var response = await _http
+                .PostAsJsonAsync("/api/chat", request, OllamaWire.Json, timeout.Token)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Nothing to do and nothing to say: the next real call reports the daemon's state.
+        }
+    }
+
     public async IAsyncEnumerable<string> StreamAnswerAsync(
         AiQuery query,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -172,6 +216,7 @@ public sealed class OllamaAiService : ILocalAiService, IDisposable
                 new OllamaWire.Message("user", AiPrompts.UserForQuestion(query, retrieved)),
             ],
             Options = new OllamaWire.ChatOptions { Temperature = _options.Temperature },
+            KeepAlive = _options.KeepAliveValue,
         };
 
         using var timeout = Linked(cancellationToken, _options.RequestTimeout);
@@ -287,6 +332,7 @@ public sealed class OllamaAiService : ILocalAiService, IDisposable
                 new OllamaWire.Message("user", user),
             ],
             Options = new OllamaWire.ChatOptions { Temperature = _options.Temperature },
+            KeepAlive = _options.KeepAliveValue,
         };
 
         using var timeout = Linked(cancellationToken, _options.RequestTimeout);

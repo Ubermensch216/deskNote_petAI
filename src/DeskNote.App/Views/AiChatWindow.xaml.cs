@@ -1,7 +1,10 @@
+using DeskNote.Ai;
 using DeskNote.App.Services;
 using DeskNote.Core.Ai;
+using DeskNote.Core.Models;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Windows.Graphics;
 
@@ -25,10 +28,17 @@ public sealed partial class AiChatWindow : Window
 {
     private readonly LocalAiHost _ai;
     private readonly Guid? _noteId;
+    private readonly IAiRetriever? _retriever;
+    private readonly Func<Guid, Task>? _openNote;
 
     private CancellationTokenSource? _answering;
 
-    public AiChatWindow(LocalAiHost ai, Guid? noteId, string? noteTitle)
+    public AiChatWindow(
+        LocalAiHost ai,
+        Guid? noteId,
+        string? noteTitle,
+        IAiRetriever? retriever = null,
+        Func<Guid, Task>? openNote = null)
     {
         ArgumentNullException.ThrowIfNull(ai);
 
@@ -36,6 +46,10 @@ public sealed partial class AiChatWindow : Window
 
         _ai = ai;
         _noteId = noteId;
+        _retriever = retriever;
+        _openNote = openNote;
+
+        SourcesCaption.Text = Strings.Get("Ai_Sources");
 
         AppWindow.Title = Strings.Format("Ai_PreviewTitleFormat", Strings.Get("Ai_AskTitle"));
         ActionTitle.Text = Strings.Get("Ai_AskTitle");
@@ -104,6 +118,8 @@ public sealed partial class AiChatWindow : Window
         _answering = new CancellationTokenSource();
 
         AnswerText.Text = string.Empty;
+        SourcesPanel.Visibility = Visibility.Collapsed;
+        SourceList.ItemsSource = null;
         Progress.IsActive = true;
         Progress.Visibility = Visibility.Visible;
         AskButton.IsEnabled = false;
@@ -118,6 +134,8 @@ public sealed partial class AiChatWindow : Window
 
         try
         {
+            query = await ShowSourcesAsync(query, _answering.Token).ConfigureAwait(true);
+
             await foreach (var chunk in _ai.Service.StreamAnswerAsync(query, _answering.Token))
             {
                 // Appending as tokens arrive is the point of streaming; the ring goes away with
@@ -153,5 +171,80 @@ public sealed partial class AiChatWindow : Window
         }
     }
 
+    /// <summary>
+    /// Resolves the notes this question may read and shows them, before the answer starts.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Retrieval already happens inside the service; running it here first and handing the result
+    /// back as <see cref="AiQuery.ScopedNoteIds"/> means the search is not repeated — the
+    /// retriever takes the scoped path and only re-reads those bodies. The cost is a few indexed
+    /// reads, and what it buys is that the user can see what the answer is about to be based on
+    /// while it is still being written.
+    /// </para>
+    /// <para>
+    /// A failure here is not a failed question. Retrieval that throws leaves the query exactly as
+    /// it was, and the service does its own retrieval as before.
+    /// </para>
+    /// </remarks>
+    private async Task<AiQuery> ShowSourcesAsync(AiQuery query, CancellationToken cancellationToken)
+    {
+        if (_retriever is null)
+        {
+            return query;
+        }
+
+        IReadOnlyList<RetrievedNote> sources;
+
+        try
+        {
+            sources = await _retriever.RetrieveAsync(query, cancellationToken).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            CrashLog.Write("Could not resolve the notes behind an answer", ex);
+            return query;
+        }
+
+        if (sources.Count == 0)
+        {
+            return query;
+        }
+
+        SourceList.ItemsSource = sources
+            .Select(note => new AnswerSource(
+                note.NoteId,
+                string.IsNullOrWhiteSpace(note.Title)
+                    ? NoteContent.DeriveTitle(note.Content)
+                    : note.Title))
+            .ToList();
+
+        SourcesPanel.Visibility = Visibility.Visible;
+
+        return query with { ScopedNoteIds = [.. sources.Select(note => note.NoteId)] };
+    }
+
+    private async void OnSourceClicked(object sender, RoutedEventArgs e)
+    {
+        if (_openNote is null || sender is not HyperlinkButton { Tag: Guid noteId })
+        {
+            return;
+        }
+
+        try
+        {
+            await _openNote(noteId);
+        }
+        catch (Exception ex)
+        {
+            CrashLog.Write("Could not open the note behind an answer", ex);
+        }
+    }
+
     private void OnCloseClicked(object sender, RoutedEventArgs e) => Close();
 }
+
+/// <summary>One note an answer was allowed to read, as the sources list shows it.</summary>
+/// <param name="NoteId">The note to open when the row is clicked.</param>
+/// <param name="Label">The note's title, or its first line when it has none.</param>
+public sealed record AnswerSource(Guid NoteId, string Label);

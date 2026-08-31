@@ -146,4 +146,12 @@
   <data name="Ai_AskPlaceholder" xml:space="preserve"><value>이 메모에 대해 물어보세요</value></data>
   <data name="Ai_ScopeLibrary" xml:space="preserve"><value>열려 있는 메모가 없어 전체 메모에서 찾습니다</value></data>
   <data name="Ai_ScopeNoteFormat" xml:space="preserve"><value>“{0}” 메모만 근거로 답합니다</value></data>
+  <data name="Ai_Sources" xml:space="preserve"><value>근거 메모</value></data>
+  <data name="History_Title" xml:space="preserve"><value>기록</value></data>
+  <data name="History_Hint" xml:space="preserve"><value>덮어쓰기 전의 본문입니다. 복원해도 지금 본문은 기록에 남습니다.</value></data>
+  <data name="History_Restore" xml:space="preserve"><value>복원</value></data>
+  <data name="History_Empty" xml:space="preserve"><value>아직 남은 기록이 없습니다</value></data>
+  <data name="History_NoteGone" xml:space="preserve"><value>메모가 삭제되어 복원할 수 없습니다</value></data>
+  <data name="History_ByUser" xml:space="preserve"><value>직접 편집</value></data>
+  <data name="History_ByAiFormat" xml:space="preserve"><value>AI · {0}</value></data>
 </root>

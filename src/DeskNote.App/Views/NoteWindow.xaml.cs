@@ -142,6 +142,20 @@ public sealed partial class NoteWindow : Window
     /// <summary>Raised when the user asks to open the note library.</summary>
     public event EventHandler? LibraryRequested;
 
+    /// <summary>Raised when the user asks to see this note's stored versions.</summary>
+    public event EventHandler? HistoryRequested;
+
+    /// <summary>
+    /// Raised when an AI proposal was accepted, carrying the whole new body.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="TextChanged"/> because the two need different storage rules. A
+    /// keystroke checkpoints on an interval; a model replacing the note is exactly the edit report
+    /// p15 says must always be recoverable, and it has to be recorded as the model's doing rather
+    /// than the user's — otherwise the history cannot answer "where did my wording go".
+    /// </remarks>
+    public event EventHandler<AiEdit>? AiApplied;
+
     /// <summary>Raised when the user asks to set a reminder, with how far ahead it should fire.</summary>
     public event EventHandler<TimeSpan>? ReminderRequested;
 
@@ -192,6 +206,22 @@ public sealed partial class NoteWindow : Window
         RaiseGeometryChanged();
     }
 
+    /// <summary>
+    /// Replaces the whole body, for a restore that has already been persisted.
+    /// </summary>
+    /// <remarks>
+    /// Change events are suppressed: the pipeline has written this text already, and letting the
+    /// editor announce it would schedule a save of what was just saved — and, worse, checkpoint
+    /// the restored version on top of the one it replaced.
+    /// </remarks>
+    public void ReplaceContent(string content)
+    {
+        _suppressChangeEvents = true;
+        ContentBox.Text = content;
+        ContentBox.SelectionStart = content.Length;
+        _suppressChangeEvents = false;
+    }
+
     /// <summary>Inserts text at the caret, as an ordinary undoable edit.</summary>
     public void InsertAtCaret(string text)
     {
@@ -236,6 +266,7 @@ public sealed partial class NoteWindow : Window
 
         PinRowLabel.Text = Strings.Get("Note_PinLabel");
         LibraryRowLabel.Text = Strings.Get("Note_Library");
+        HistoryRowLabel.Text = Strings.Get("History_Title");
         DeleteRowLabel.Text = Strings.Get("Note_Delete");
 
         // The section captions became glyphs, so the words they used to carry live on the glyph as
@@ -682,6 +713,12 @@ public sealed partial class NoteWindow : Window
         MoreFlyout.Hide();
     }
 
+    private void OnHistoryRowClicked(object sender, RoutedEventArgs e)
+    {
+        HistoryRequested?.Invoke(this, EventArgs.Empty);
+        MoreFlyout.Hide();
+    }
+
     /// <summary>
     /// Updates what the AI section offers, from a probe the host ran in the background.
     /// </summary>
@@ -882,7 +919,7 @@ public sealed partial class NoteWindow : Window
             return;
         }
 
-        AppendLines(tasks.Select(task => "- [ ] " + task.Title));
+        AppendLines(tasks.Select(task => "- [ ] " + task.Title), nameof(AiListAction.ExtractTasks));
 
         foreach (var due in tasks.Select(task => task.DueAt).OfType<DateTimeOffset>())
         {
@@ -895,7 +932,9 @@ public sealed partial class NoteWindow : Window
     {
         if (names.Count > 0)
         {
-            AppendLines([string.Join(" ", names.Select(name => "#" + name))]);
+            AppendLines(
+                [string.Join(" ", names.Select(name => "#" + name))],
+                nameof(AiListAction.SuggestTags));
         }
     }
 
@@ -906,7 +945,7 @@ public sealed partial class NoteWindow : Window
     /// Goes through the editor rather than the text property so Ctrl+Z removes everything that was
     /// just applied in a single press, the same as any other block edit.
     /// </remarks>
-    private void AppendLines(IEnumerable<string> lines)
+    private void AppendLines(IEnumerable<string> lines, string? actionName = null)
     {
         var current = ContentBox.Text;
         var separator = current.Length == 0 || current.EndsWith('\n') ? string.Empty : "\n";
@@ -919,8 +958,20 @@ public sealed partial class NoteWindow : Window
 
         var appended = current + separator + block;
 
+        // Suppressed for an AI append for the same reason as an AI rewrite: the write is the
+        // model's, and the debounced path would file it as the user's typing.
+        _suppressChangeEvents = actionName is not null;
         ApplyEditorState(new NoteTextState(appended, appended.Length, 0));
-        RaiseTextChanged();
+        _suppressChangeEvents = false;
+
+        if (actionName is null)
+        {
+            RaiseTextChanged();
+        }
+        else
+        {
+            RaiseAiApplied(actionName);
+        }
     }
 
     /// <summary>
@@ -948,10 +999,14 @@ public sealed partial class NoteWindow : Window
             return;
         }
 
+        // The name the history will show. A rewrite is identified by its tone, because "재작성"
+        // alone does not say which of the four the note was put through.
+        var actionName = action == AiTextAction.Rewrite ? $"Rewrite{style}" : action.ToString();
+
         var preview = new AiPreviewWindow(Strings.Get($"Note_Ai{action}"));
         preview.Applied += (_, proposed) =>
         {
-            if (TryApplyAiText(start, length, target, proposed))
+            if (TryApplyAiText(start, length, target, proposed, actionName))
             {
                 preview.Close();
             }
@@ -1008,7 +1063,7 @@ public sealed partial class NoteWindow : Window
     /// suggestion in one press and the autosave pipeline records it as an ordinary revision — an
     /// AI edit is not a special kind of write, it is just a write the user approved.
     /// </remarks>
-    private bool TryApplyAiText(int start, int length, string original, string proposed)
+    private bool TryApplyAiText(int start, int length, string original, string proposed, string actionName)
     {
         var current = ContentBox.Text;
 
@@ -1018,14 +1073,22 @@ public sealed partial class NoteWindow : Window
             return false;
         }
 
+        // Applied through the editor, so Ctrl+Z still takes it back in one press, but with the
+        // ordinary save suppressed: this write goes to storage as an AI replacement rather than
+        // as another keystroke, and the debounced path cannot label it that way.
+        _suppressChangeEvents = true;
         ApplyEditorState(new NoteTextState(
             current.Remove(start, length).Insert(start, proposed),
             start,
             proposed.Length));
+        _suppressChangeEvents = false;
 
-        RaiseTextChanged();
+        RaiseAiApplied(actionName);
         return true;
     }
+
+    private void RaiseAiApplied(string actionName) =>
+        AiApplied?.Invoke(this, new AiEdit(CurrentTitle, ContentBox.Text, actionName));
 
     private void OnDeleteRowClicked(object sender, RoutedEventArgs e)
     {
@@ -1163,6 +1226,12 @@ public sealed partial class NoteWindow : Window
     {
         _menuOpen = true;
         FitMenuToNote(AiMenuPanel, AiMenuScroll, preferredWidth: 248);
+
+        // Opening the menu is the earliest honest signal that an action is coming. Loading the
+        // weights now overlaps the 60-second cold start with the seconds the user spends choosing
+        // a tile, which is the only part of that minute anyone can get back.
+        _ai?.Warm();
+
         UpdateChrome();
     }
 
@@ -1397,3 +1466,14 @@ public readonly record struct NoteAppearance(string ColorKey, double Opacity, bo
 
 /// <summary>Editor text a note window reports back for autosave.</summary>
 public readonly record struct NoteText(string Title, string Content);
+
+/// <summary>
+/// A note body an AI action replaced, with the action that replaced it.
+/// </summary>
+/// <param name="Title">Title derived from the new body.</param>
+/// <param name="Content">The whole new body, not a fragment.</param>
+/// <param name="ActionName">
+/// Names the action for the history list, in the form the UI strings use — "Summarize",
+/// "RewriteFormal", "ExtractTasks".
+/// </param>
+public readonly record struct AiEdit(string Title, string Content, string ActionName);

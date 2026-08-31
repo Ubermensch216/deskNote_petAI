@@ -21,12 +21,16 @@ public sealed class NoteWindowManager(
     INoteLibrary library,
     IReminderRepository reminders,
     AttachmentStore attachmentStore,
-    LocalAiHost? ai = null)
+    LocalAiHost? ai = null,
+    HybridLibrarySearch? hybridSearch = null,
+    DeskNote.Ai.IAiRetriever? retriever = null,
+    INoteRevisionStore? revisions = null)
 {
     private readonly Dictionary<Guid, NoteWindow> _windows = [];
     private int _cascadeIndex;
     private NotesExplorerWindow? _explorer;
     private AiChatWindow? _chat;
+    private NoteHistoryWindow? _history;
 
     public int OpenWindowCount => _windows.Count;
 
@@ -69,7 +73,7 @@ public sealed class NoteWindowManager(
             return;
         }
 
-        _explorer = new NotesExplorerWindow(library, notes, noteId => FocusAsync(noteId));
+        _explorer = new NotesExplorerWindow(library, notes, noteId => FocusAsync(noteId), hybridSearch);
         _explorer.Closed += (_, _) => _explorer = null;
         _explorer.Activate();
     }
@@ -98,6 +102,48 @@ public sealed class NoteWindowManager(
     }
 
     /// <summary>
+    /// Opens a note's stored versions, or replaces the window if another note's are showing.
+    /// </summary>
+    /// <remarks>
+    /// One window for every note rather than one per note: two histories side by side invite a
+    /// restore into the wrong note, and the restore is the one action here that writes.
+    /// </remarks>
+    public void ShowHistory(Guid noteId)
+    {
+        if (revisions is null)
+        {
+            return;
+        }
+
+        _history?.Close();
+
+        _history = new NoteHistoryWindow(
+            noteId,
+            revisions,
+            notes,
+            savePipeline,
+            (id, content) =>
+            {
+                // The desktop window is still holding the text that was just replaced; it has to
+                // show what the database now says the note is.
+                if (_windows.TryGetValue(id, out var open))
+                {
+                    open.ReplaceContent(content);
+                }
+
+                return Task.CompletedTask;
+            });
+
+        _history.Closed += (_, _) => _history = null;
+        _history.Activate();
+
+        if (_windows.TryGetValue(noteId, out var source))
+        {
+            _history.PlaceNear(source.AppWindow);
+        }
+    }
+
+    /// <summary>
     /// Opens 메모 Q&amp;A, scoped to one note or to the whole library.
     /// </summary>
     /// <remarks>
@@ -114,7 +160,12 @@ public sealed class NoteWindowManager(
         var source = noteId is { } id && _windows.TryGetValue(id, out var window) ? window : null;
 
         _chat?.Close();
-        _chat = new AiChatWindow(ai, noteId, source?.CurrentTitle);
+        _chat = new AiChatWindow(
+            ai,
+            noteId,
+            source?.CurrentTitle,
+            retriever,
+            id => FocusAsync(id));
         _chat.Closed += (_, _) => _chat = null;
         _chat.Activate();
 
@@ -256,6 +307,8 @@ public sealed class NoteWindowManager(
         window.CloseRequested += async (_, _) => await OnCloseRequestedAsync(note.Id);
         window.DeleteRequested += async (_, _) => await OnDeleteRequestedAsync(note.Id);
         window.LibraryRequested += (_, _) => ShowLibrary();
+        window.HistoryRequested += (w, _) => ShowHistory(((NoteWindow)w!).NoteId);
+        window.AiApplied += async (w, edit) => await OnAiAppliedAsync(((NoteWindow)w!).NoteId, edit);
         window.NewNoteRequested += async (_, seed) => await CreateAsync(seed.Preset, seed.ColorKey);
         window.ReminderRequested += async (_, offset) => await AddReminderAsync(note.Id, offset);
         window.ReminderAtRequested += async (_, dueAt) => await AddReminderAtAsync(note.Id, dueAt);
@@ -313,6 +366,44 @@ public sealed class NoteWindowManager(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             CrashLog.Write($"Attaching to note {request.NoteId} failed", ex);
+        }
+    }
+
+    /// <summary>
+    /// Stores an accepted AI proposal as what it is.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Not the debounced path. Autosave checkpoints ordinary typing on an interval, so a second
+    /// summary within five minutes of the first would have replaced the note with nothing kept —
+    /// the opposite of report p15's requirement that an AI rewrite preserve the original.
+    /// <see cref="RevisionReason.BulkReplace"/> always snapshots, and
+    /// <see cref="RevisionSource.Ai"/> is what lets the history say which action did it.
+    /// </para>
+    /// <para>
+    /// The pending autosave is flushed first so the checkpoint captures what the user actually
+    /// had. Without it, text typed in the seconds before the proposal was accepted would still be
+    /// sitting in the debounce, and the version stored as "before the AI" would be missing the
+    /// last sentence they wrote.
+    /// </para>
+    /// </remarks>
+    private async Task OnAiAppliedAsync(Guid noteId, AiEdit edit)
+    {
+        try
+        {
+            await autosave.FlushAsync(noteId).ConfigureAwait(true);
+
+            await savePipeline.SaveAsync(
+                noteId,
+                edit.Title,
+                edit.Content,
+                RevisionReason.BulkReplace,
+                RevisionSource.Ai,
+                edit.ActionName).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            CrashLog.Write("Storing an applied AI edit failed", ex);
         }
     }
 

@@ -91,9 +91,14 @@ public partial class App : Application
             _indexer = new EmbeddingIndexer(notes, vectors, embedder);
             _indexer.Failed += (_, ex) => CrashLog.Write("Embedding index update failed", ex);
 
+            // One retriever, two callers: Q&A asks it for note bodies to answer from, and the chat
+            // window asks it the same question first so it can show which notes the answer rests on.
+            var retriever = new HybridRetriever(new Fts5SearchIndex(connections), vectors, embedder, notes);
+            var hybridSearch = new HybridLibrarySearch(library, vectors, embedder);
+
             _ai = await LocalAiHost.CreateAsync(
                 settings,
-                new HybridRetriever(new Fts5SearchIndex(connections), vectors, embedder, notes),
+                retriever,
                 Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread()).ConfigureAwait(true);
 
             var journal = new CrashJournal(AppPaths.JournalDirectory);
@@ -114,7 +119,8 @@ public partial class App : Application
             _autosave.SaveFailed += (_, ex) => CrashLog.Write("Autosave failed", ex);
 
             _windows = new NoteWindowManager(
-                notes, clock, _autosave, pipeline, library, reminders, attachmentStore, _ai);
+                notes, clock, _autosave, pipeline, library, reminders, attachmentStore, _ai,
+                hybridSearch, retriever, revisions);
 
             // Recovery runs before the notes are shown, so a restored window opens already holding
             // the text that was rescued rather than flashing the stale version first.

@@ -64,6 +64,21 @@ public interface INoteLibrary
         int limit = 50,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Rows for specific notes, in the order given, with the query's filters still applied.
+    /// </summary>
+    /// <remarks>
+    /// Semantic search ranks note ids and knows nothing about notebooks, tags or the deleted view.
+    /// This is how that ranking becomes a list the user asked for: the order comes from the
+    /// ranking, and the membership still comes from the filters — a note the vectors liked but the
+    /// current filter excludes is dropped here rather than shown as a result the sidebar denies.
+    /// Ids that no longer resolve are skipped, so a note deleted mid-search is simply absent.
+    /// </remarks>
+    Task<IReadOnlyList<NoteSummary>> ListByIdsAsync(
+        IReadOnlyList<Guid> ids,
+        NoteQuery query,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Tags in use, ordered by how many notes carry them.</summary>
     Task<IReadOnlyList<TagUsage>> ListTagsAsync(CancellationToken cancellationToken = default);
 

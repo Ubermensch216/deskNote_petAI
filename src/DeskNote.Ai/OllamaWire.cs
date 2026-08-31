@@ -32,6 +32,16 @@ internal static class OllamaWire
 
         [JsonPropertyName("options")]
         public ChatOptions? Options { get; init; }
+
+        /// <summary>
+        /// How long the daemon keeps this model resident once the call is done.
+        /// </summary>
+        /// <remarks>
+        /// Sent on every request because the daemon applies the value it was last told, and a
+        /// single request that omits it resets the model to the five-minute default.
+        /// </remarks>
+        [JsonPropertyName("keep_alive")]
+        public string? KeepAlive { get; init; }
     }
 
     internal sealed record ChatOptions

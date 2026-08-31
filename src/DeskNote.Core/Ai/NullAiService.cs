@@ -14,6 +14,9 @@ public sealed class NullAiService(AiAvailability reason = AiAvailability.ModelNo
     public Task<AiCapability> ProbeAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(_capability);
 
+    /// <summary>Does nothing, and says so by completing — warming is best effort by contract.</summary>
+    public Task WarmAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
     public Task<AiTextResult> SummarizeAsync(NoteContext context, CancellationToken cancellationToken = default) =>
         throw Unavailable();
 

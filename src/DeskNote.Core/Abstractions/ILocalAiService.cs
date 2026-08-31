@@ -25,6 +25,16 @@ public interface ILocalAiService
     /// </summary>
     Task<AiCapability> ProbeAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Asks the worker to load the model now, so the next real call does not pay for it.
+    /// </summary>
+    /// <remarks>
+    /// Best effort by contract: it never throws, never reports failure, and callers must work
+    /// exactly as well when it does nothing. It is the one method here that may be called before
+    /// <see cref="ProbeAsync"/> has said anything.
+    /// </remarks>
+    Task WarmAsync(CancellationToken cancellationToken = default);
+
     /// <summary>요약 — condenses the selection, or the whole note when nothing is selected.</summary>
     Task<AiTextResult> SummarizeAsync(NoteContext context, CancellationToken cancellationToken = default);
 
