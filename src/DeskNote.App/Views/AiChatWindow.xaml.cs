@@ -52,6 +52,7 @@ public sealed partial class AiChatWindow : Window
         SourcesCaption.Text = Strings.Get("Ai_Sources");
 
         AppWindow.Title = Strings.Format("Ai_PreviewTitleFormat", Strings.Get("Ai_AskTitle"));
+        AppIcon.Apply(this);
         ActionTitle.Text = Strings.Get("Ai_AskTitle");
         ScopeLabel.Text = noteId is null || string.IsNullOrWhiteSpace(noteTitle)
             ? Strings.Get("Ai_ScopeLibrary")

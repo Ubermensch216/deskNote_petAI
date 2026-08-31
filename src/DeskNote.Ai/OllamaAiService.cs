@@ -103,11 +103,114 @@ public sealed class OllamaAiService : ILocalAiService, IDisposable
         }
     }
 
+    /// <summary>
+    /// Text longer than this is summarised in sections and the sections combined.
+    /// </summary>
+    /// <remarks>
+    /// Below the model's usable context, one call is both faster and better — it sees the whole
+    /// note at once. Above it, a single call does not fail; it silently summarises the beginning
+    /// and drops the rest, which is the worst possible outcome for a meeting note. The threshold
+    /// is deliberately conservative: gemma-class models take far more than this, and the cost of
+    /// splitting early is extra minutes, while the cost of splitting late is a wrong answer.
+    /// </remarks>
+    public const int LongNoteChars = 6000;
+
+    /// <summary>Section size for the map pass. Big enough that a long note is a few calls, not many.</summary>
+    private const int SectionChars = 3000;
+
     public async Task<AiTextResult> SummarizeAsync(
         NoteContext context,
-        CancellationToken cancellationToken = default) =>
-        await RunTextActionAsync(AiAction.Summarize, context, RewriteStyle.Concise, cancellationToken)
-            .ConfigureAwait(false);
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        return context.EffectiveText.Length > LongNoteChars
+            ? await SummarizeInSectionsAsync(context, cancellationToken).ConfigureAwait(false)
+            : await RunTextActionAsync(AiAction.Summarize, context, RewriteStyle.Concise, cancellationToken)
+                .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Summarises a long note section by section, then combines the summaries.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// One model call per section plus one to combine, so a 12,000-character note costs five calls
+    /// — minutes on CPU. That is the price of an answer that covers the end of the note as well as
+    /// the start, and it is only paid by notes long enough to need it.
+    /// </para>
+    /// <para>
+    /// A note that produces a single section after splitting is summarised directly: paying for a
+    /// combine pass over one summary would add a minute and change nothing.
+    /// </para>
+    /// </remarks>
+    private async Task<AiTextResult> SummarizeInSectionsAsync(
+        NoteContext context,
+        CancellationToken cancellationToken)
+    {
+        var started = Stopwatch.GetTimestamp();
+
+        var sections = NoteChunker.Split(context.EffectiveText, SectionChars, overlapChars: 0);
+
+        if (sections.Count <= 1)
+        {
+            return await RunTextActionAsync(AiAction.Summarize, context, RewriteStyle.Concise, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        var partials = new List<string>(sections.Count);
+
+        foreach (var section in sections)
+        {
+            var part = await ChatAsync(
+                AiPrompts.SystemFor(AiAction.Summarize),
+                AiPrompts.UserFor(
+                    AiAction.Summarize,
+                    new NoteContext
+                    {
+                        NoteId = context.NoteId,
+                        Content = section.Text,
+                        Title = context.Title,
+                        LanguageTag = context.LanguageTag,
+                    }),
+                format: null,
+                cancellationToken).ConfigureAwait(false);
+
+            if (!string.IsNullOrWhiteSpace(part))
+            {
+                partials.Add(part.Trim());
+            }
+        }
+
+        if (partials.Count == 0)
+        {
+            return Result(context, string.Empty, started);
+        }
+
+        var combined = await ChatAsync(
+            AiPrompts.SystemFor(AiAction.CombineSummaries),
+            AiPrompts.UserFor(
+                AiAction.CombineSummaries,
+                new NoteContext
+                {
+                    NoteId = context.NoteId,
+                    Content = string.Join("\n\n", partials),
+                    Title = context.Title,
+                    LanguageTag = context.LanguageTag,
+                }),
+            format: null,
+            cancellationToken).ConfigureAwait(false);
+
+        return Result(context, combined, started);
+    }
+
+    private AiTextResult Result(NoteContext context, string content, long started) => new()
+    {
+        Original = context.EffectiveText,
+        Proposed = AiTextCleanup.ToNoteText(content),
+        ModelId = _capability.ModelId ?? _options.Model,
+        Elapsed = Stopwatch.GetElapsedTime(started),
+    };
 
     public async Task<AiTextResult> OrganizeAsync(
         NoteContext context,

@@ -29,3 +29,6 @@ local/
 # OS
 Thumbs.db
 desktop.ini
+
+# Publish output (the built app is not committed)
+dist/

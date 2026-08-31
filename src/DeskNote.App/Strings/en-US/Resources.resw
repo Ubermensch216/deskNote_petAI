@@ -78,6 +78,13 @@
   <data name="Tray_Exit" xml:space="preserve"><value>Exit</value></data>
   <data name="Reminder_Fallback" xml:space="preserve"><value>Note reminder</value></data>
   <data name="Tray_StartWithWindows" xml:space="preserve"><value>Start with Windows</value></data>
+  <data name="Tray_Briefing" xml:space="preserve"><value>Today's briefing</value></data>
+  <data name="Briefing_TitleFormat" xml:space="preserve"><value>Briefing for {0}</value></data>
+  <data name="Briefing_Composing" xml:space="preserve"><value>Composing the briefing…</value></data>
+  <data name="Briefing_Nothing" xml:space="preserve"><value>Nothing to cover today.</value></data>
+  <data name="Briefing_Due" xml:space="preserve"><value>Due today</value></data>
+  <data name="Briefing_Open" xml:space="preserve"><value>Still open</value></data>
+  <data name="Briefing_Touched" xml:space="preserve"><value>Recently edited</value></data>
   <data name="Note_PinLabel" xml:space="preserve"><value>Keep on top</value></data>
   <data name="Note_ColorLabel" xml:space="preserve"><value>Colour</value></data>
   <data name="Note_MoreLabel" xml:space="preserve"><value>Note settings</value></data>
@@ -160,6 +167,10 @@
   <data name="Related_None" xml:space="preserve"><value>No similar notes found</value></data>
   <data name="Related_NearDuplicate" xml:space="preserve"><value>near-duplicate</value></data>
   <data name="Related_CountWithDuplicatesFormat" xml:space="preserve"><value>{0} · {1} near-duplicate</value></data>
+  <data name="Related_Group" xml:space="preserve"><value>Group into a notebook</value></data>
+  <data name="Related_GroupFormat" xml:space="preserve"><value>Group {0} into a notebook</value></data>
+  <data name="Related_GroupedFormat" xml:space="preserve"><value>Filed {1} notes under “{0}”</value></data>
+  <data name="Related_GroupFailed" xml:space="preserve"><value>Could not name a notebook</value></data>
   <data name="Ai_TagFromRelated" xml:space="preserve"><value>from related notes</value></data>
   <data name="Ai_FromRelatedNotes" xml:space="preserve"><value>Tags carried by related notes</value></data>
   <data name="Remind_Chip" xml:space="preserve"><value>Custom</value></data>

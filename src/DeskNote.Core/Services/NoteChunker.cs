@@ -34,8 +34,23 @@ public static class NoteChunker
     /// <summary>Shorter than this and a chunk carries no retrievable meaning of its own.</summary>
     public const int MinChars = 2;
 
-    public static IReadOnlyList<NoteChunk> Split(string? content)
+    public static IReadOnlyList<NoteChunk> Split(string? content) =>
+        Split(content, MaxChars, OverlapChars);
+
+    /// <summary>
+    /// Splits at a caller's size, for readers other than the embedder.
+    /// </summary>
+    /// <remarks>
+    /// Summarisation wants sections, not vectors. 500 characters is the size at which one chunk
+    /// still stands for one idea, which is what an embedding needs; a summary of 500 characters is
+    /// barely shorter than the text, and a long note cut that finely would cost one model call per
+    /// paragraph. Same splitting rules, different size.
+    /// </remarks>
+    public static IReadOnlyList<NoteChunk> Split(string? content, int maxChars, int overlapChars)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxChars, MinChars + 1);
+        ArgumentOutOfRangeException.ThrowIfNegative(overlapChars);
+
         if (string.IsNullOrWhiteSpace(content))
         {
             return [];
@@ -46,18 +61,18 @@ public static class NoteChunker
 
         foreach (var block in Blocks(content))
         {
-            if (buffer.Length > 0 && buffer.Length + block.Length + 1 > MaxChars)
+            if (buffer.Length > 0 && buffer.Length + block.Length + 1 > maxChars)
             {
                 Flush(chunks, buffer);
             }
 
             // A single block over the limit is split on its own rather than dropped: one very long
             // paragraph is common in a note nobody bothered to format.
-            if (block.Length > MaxChars)
+            if (block.Length > maxChars)
             {
                 Flush(chunks, buffer);
 
-                foreach (var piece in Hard(block))
+                foreach (var piece in Hard(block, maxChars, overlapChars))
                 {
                     Add(chunks, piece);
                 }
@@ -111,13 +126,13 @@ public static class NoteChunker
     }
 
     /// <summary>Cuts an over-long block at a space near the limit, so words stay whole.</summary>
-    private static IEnumerable<string> Hard(string block)
+    private static IEnumerable<string> Hard(string block, int maxChars, int overlapChars)
     {
         var start = 0;
 
         while (start < block.Length)
         {
-            var length = Math.Min(MaxChars, block.Length - start);
+            var length = Math.Min(maxChars, block.Length - start);
 
             if (start + length < block.Length)
             {
@@ -132,7 +147,7 @@ public static class NoteChunker
             yield return block.Substring(start, length).Trim();
 
             // Step back by the overlap so the seam is covered by both pieces.
-            start += Math.Max(1, length - OverlapChars);
+            start += Math.Max(1, length - overlapChars);
         }
     }
 

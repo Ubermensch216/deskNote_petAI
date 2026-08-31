@@ -55,6 +55,7 @@ public sealed partial class NoteHistoryWindow : Window
         _restored = restored;
 
         AppWindow.Title = Strings.Format("Ai_PreviewTitleFormat", Strings.Get("History_Title"));
+        AppIcon.Apply(this);
         HistoryTitle.Text = Strings.Get("History_Title");
         HistoryHint.Text = Strings.Get("History_Hint");
         RestoreButton.Content = Strings.Get("History_Restore");

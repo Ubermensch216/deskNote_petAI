@@ -53,6 +53,7 @@ public sealed partial class ReminderWindow : Window
         _create = create;
 
         AppWindow.Title = Strings.Format("Ai_PreviewTitleFormat", Strings.Get("Remind_Title"));
+        AppIcon.Apply(this);
         ReminderTitle.Text = Strings.Get("Remind_Title");
         ReminderHint.Text = Strings.Get("Remind_Hint");
         PhraseBox.PlaceholderText = Strings.Get("Remind_Placeholder");

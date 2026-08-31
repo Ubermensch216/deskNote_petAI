@@ -98,6 +98,11 @@ public static class AiPrompts
                 "작업: 메모에 어울리는 제목 한 줄을 JSON으로만 제안하십시오. 메모에 있는 말로만 짓고, " +
                 "20자 이내의 명사구로 쓰십시오. 마침표, 따옴표, 목록 기호를 붙이지 마십시오.",
 
+            AiAction.CombineSummaries =>
+                "작업: 아래는 긴 메모를 앞에서부터 나누어 각각 요약한 것입니다. 순서는 원문 순서입니다. " +
+                "이것들을 하나의 요약으로 합치십시오. 같은 말이 여러 번 나오면 한 번만 쓰고, 순서는 " +
+                "그대로 두십시오. 새로운 내용을 더하지 마십시오.",
+
             _ => throw new ArgumentOutOfRangeException(nameof(action)),
         };
 
@@ -151,6 +156,7 @@ public static class AiPrompts
             AiAction.Answer => "위 블록을 근거로 질문에 답하십시오.",
             AiAction.ParseReminder => "위 블록의 문장에서 알림 시각을 읽어 JSON으로만 출력하십시오.",
             AiAction.SuggestTitle => "위 블록의 메모에 어울리는 제목을 JSON으로만 출력하십시오.",
+            AiAction.CombineSummaries => "위 블록의 부분 요약들을 하나로 합친 결과만 출력하십시오.",
             _ => throw new ArgumentOutOfRangeException(nameof(action)),
         });
 
@@ -238,6 +244,7 @@ public enum AiAction
     Answer,
     ParseReminder,
     SuggestTitle,
+    CombineSummaries,
 }
 
 /// <summary>One note handed to 메모 Q&amp;A by a retriever. Content is untrusted.</summary>

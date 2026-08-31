@@ -56,6 +56,7 @@ public sealed partial class NotesExplorerWindow : Window
         _openNote = openNote;
 
         AppWindow.Title = Strings.Get("Explorer_Title");
+        AppIcon.Apply(this);
         ScopeAll.Content = Strings.Get("Explorer_AllNotes");
         ScopeDeleted.Content = Strings.Get("Explorer_Deleted");
         NotebooksHeader.Text = Strings.Get("Explorer_Notebooks");

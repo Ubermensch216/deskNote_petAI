@@ -78,6 +78,13 @@
   <data name="Tray_Exit" xml:space="preserve"><value>종료</value></data>
   <data name="Reminder_Fallback" xml:space="preserve"><value>메모 알림</value></data>
   <data name="Tray_StartWithWindows" xml:space="preserve"><value>Windows 시작 시 실행</value></data>
+  <data name="Tray_Briefing" xml:space="preserve"><value>오늘 브리핑</value></data>
+  <data name="Briefing_TitleFormat" xml:space="preserve"><value>{0} 브리핑</value></data>
+  <data name="Briefing_Composing" xml:space="preserve"><value>브리핑을 만드는 중…</value></data>
+  <data name="Briefing_Nothing" xml:space="preserve"><value>오늘 다룰 것이 없습니다.</value></data>
+  <data name="Briefing_Due" xml:space="preserve"><value>오늘 알림</value></data>
+  <data name="Briefing_Open" xml:space="preserve"><value>아직 남은 것</value></data>
+  <data name="Briefing_Touched" xml:space="preserve"><value>최근에 고친 메모</value></data>
   <data name="Note_PinLabel" xml:space="preserve"><value>항상 위에 두기</value></data>
   <data name="Note_ColorLabel" xml:space="preserve"><value>색상</value></data>
   <data name="Note_MoreLabel" xml:space="preserve"><value>메모 설정</value></data>
@@ -160,6 +167,10 @@
   <data name="Related_None" xml:space="preserve"><value>비슷한 메모를 찾지 못했습니다</value></data>
   <data name="Related_NearDuplicate" xml:space="preserve"><value>거의 같음</value></data>
   <data name="Related_CountWithDuplicatesFormat" xml:space="preserve"><value>{0}개 · 거의 같은 메모 {1}개</value></data>
+  <data name="Related_Group" xml:space="preserve"><value>노트북으로 묶기</value></data>
+  <data name="Related_GroupFormat" xml:space="preserve"><value>{0}개를 노트북으로</value></data>
+  <data name="Related_GroupedFormat" xml:space="preserve"><value>“{0}” 노트북에 {1}개를 넣었습니다</value></data>
+  <data name="Related_GroupFailed" xml:space="preserve"><value>노트북 이름을 짓지 못했습니다</value></data>
   <data name="Ai_TagFromRelated" xml:space="preserve"><value>비슷한 메모에서</value></data>
   <data name="Ai_FromRelatedNotes" xml:space="preserve"><value>비슷한 메모에서 찾은 태그입니다</value></data>
   <data name="Remind_Chip" xml:space="preserve"><value>직접</value></data>

@@ -7,6 +7,7 @@
     <RootNamespace>DeskNote.App</RootNamespace>
     <AssemblyName>DeskNote</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\DeskNote.ico</ApplicationIcon>
     <UseWinUI>true</UseWinUI>
 
     <!--
@@ -17,7 +18,13 @@
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <SelfContained>true</SelfContained>
-    <EnableMsixTooling>false</EnableMsixTooling>
+
+    <!--
+      On by default in the WinUI templates, and `dotnet publish` needs it: without it the publish
+      output silently loses DeskNote.pri, and every window then dies with a XamlParseException the
+      moment it is constructed. It costs the build nothing here - the app is still unpackaged.
+    -->
+    <EnableMsixTooling>true</EnableMsixTooling>
 
     <Platforms>x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>

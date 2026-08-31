@@ -35,6 +35,7 @@ public sealed partial class AiProposalWindow : Window
         InitializeComponent();
 
         AppWindow.Title = Strings.Format("Ai_PreviewTitleFormat", actionName);
+        AppIcon.Apply(this);
         ActionTitle.Text = actionName;
         Attribution.Text = Strings.Get("Ai_LocalOnly");
         RunningLabel.Text = Strings.Get("Ai_Running");

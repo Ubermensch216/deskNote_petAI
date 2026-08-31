@@ -81,4 +81,51 @@ public class NoteChunkerTests
 
         Assert.All(chunks, chunk => Assert.False(string.IsNullOrWhiteSpace(chunk.Text)));
     }
+
+    /// <summary>
+    /// Summarisation reuses the splitter at a much larger size. 500 characters is the size at
+    /// which one chunk still means one thing for an embedding; a summary of 500 characters is
+    /// barely shorter than the text it came from.
+    /// </summary>
+    [Fact]
+    public void A_caller_can_ask_for_sections_instead_of_chunks()
+    {
+        var content = string.Join("\n\n", Enumerable.Range(0, 8).Select(i => new string('가', 400)));
+
+        var chunks = NoteChunker.Split(content);
+        var sections = NoteChunker.Split(content, maxChars: 3000, overlapChars: 0);
+
+        Assert.True(sections.Count < chunks.Count);
+        Assert.All(sections, section => Assert.True(section.Text.Length <= 3000));
+    }
+
+    [Fact]
+    public void Sections_can_be_asked_for_without_overlap()
+    {
+        var content = new string('가', 5000);
+
+        var sections = NoteChunker.Split(content, maxChars: 2000, overlapChars: 0);
+
+        // With no overlap the pieces add up to the original rather than repeating its seams.
+        Assert.Equal(content.Length, sections.Sum(section => section.Text.Length));
+    }
+
+    [Fact]
+    public void Ordinals_stay_sequential_at_any_size()
+    {
+        var content = string.Join("\n\n", Enumerable.Range(0, 10).Select(i => new string('나', 900)));
+
+        var sections = NoteChunker.Split(content, maxChars: 2500, overlapChars: 0);
+
+        Assert.Equal(Enumerable.Range(0, sections.Count), sections.Select(s => s.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(0)]
+    [InlineData(-100)]
+    public void A_section_size_too_small_to_hold_anything_is_refused(int maxChars)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => NoteChunker.Split("본문", maxChars, 0));
+    }
 }

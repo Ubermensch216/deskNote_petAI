@@ -85,6 +85,7 @@ public sealed partial class NoteWindow : Window
         AppWindow.SetPresenter(_presenter);
 
         AppWindow.Title = "DeskNote";
+        AppIcon.Apply(this);
 
         // Report p4 treats Mica and Acrylic as the system backdrops to reach for. Acrylic is the
         // right one here: at the default opacity of 1.0 the note's own surface covers it entirely,

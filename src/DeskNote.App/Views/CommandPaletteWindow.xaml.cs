@@ -16,6 +16,7 @@ public enum PaletteAction
     Ask = 1,
     Remind = 2,
     NewNote = 3,
+    Briefing = 4,
 }
 
 /// <summary>
@@ -81,10 +82,12 @@ public sealed partial class CommandPaletteWindow : Window
         _run = run;
 
         AppWindow.Title = Strings.Get("Palette_Title");
+        AppIcon.Apply(this);
         InputBox.PlaceholderText = Strings.Get("Palette_Placeholder");
         AskButton.Content = Strings.Get("Note_AiAsk");
         RemindButton.Content = Strings.Get("Remind_Title");
         NewNoteButton.Content = Strings.Get("Note_NewNote");
+        BriefingButton.Content = Strings.Get("Tray_Briefing");
         Hint.Text = Strings.Get("Palette_Hint");
 
         // Nothing is possible with an empty line, so the actions start off.
@@ -287,6 +290,8 @@ public sealed partial class CommandPaletteWindow : Window
         AskButton.IsEnabled = enabled && _ai?.IsAvailable == true;
         RemindButton.IsEnabled = enabled && _ai?.IsAvailable == true;
         NewNoteButton.IsEnabled = enabled;
+
+        // Left alone: the briefing is about the library, not about the line.
     }
 
     private async void OnResultClicked(object sender, ItemClickEventArgs e)
@@ -321,6 +326,12 @@ public sealed partial class CommandPaletteWindow : Window
     private void OnRemindClicked(object sender, RoutedEventArgs e) => Run(PaletteAction.Remind);
 
     private void OnNewNoteClicked(object sender, RoutedEventArgs e) => Run(PaletteAction.NewNote);
+
+    private void OnBriefingClicked(object sender, RoutedEventArgs e)
+    {
+        _run(PaletteAction.Briefing, string.Empty);
+        Close();
+    }
 
     private void Run(PaletteAction action)
     {

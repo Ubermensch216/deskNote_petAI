@@ -121,7 +121,8 @@ public partial class App : Application
 
             _windows = new NoteWindowManager(
                 notes, clock, _autosave, pipeline, library, reminders, attachmentStore, _ai,
-                hybridSearch, retriever, revisions, neighbourhood);
+                hybridSearch, retriever, revisions, neighbourhood,
+                new DailyBriefing(library, notes, clock, _ai));
 
             // Recovery runs before the notes are shown, so a restored window opens already holding
             // the text that was rescued rather than flashing the stale version first.
@@ -173,6 +174,7 @@ public partial class App : Application
                 onNewNote: () => RunHotkeyCommand(HotkeyCommands.NewNote),
                 onOpenLibrary: () => RunHotkeyCommand(HotkeyCommands.SearchNotes),
                 onExit: () => _dispatcher?.TryEnqueue(Exit),
+                onBriefing: () => _dispatcher?.TryEnqueue(async () => await Windows.ShowBriefingAsync()),
                 onStartupChanged: enabled => _dispatcher?.TryEnqueue(async () =>
                 {
                     if (StartupRegistration.SetEnabled(enabled))

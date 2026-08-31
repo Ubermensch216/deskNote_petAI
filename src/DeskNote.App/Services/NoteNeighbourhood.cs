@@ -67,6 +67,38 @@ public sealed class NoteNeighbourhood(IVectorIndex vectors, INoteLibrary library
     }
 
     /// <summary>
+    /// The note and the neighbours close enough to belong with it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Greedy rather than a clustering pass over the whole library: the question being answered is
+    /// "what belongs with <em>this</em> note", which the user asked by opening it. A k-means over
+    /// every vector would answer a different question — "how does the library divide" — and would
+    /// have to be recomputed on every edit.
+    /// </para>
+    /// <para>
+    /// The floor is well above the threshold for showing a note as related. A list worth reading
+    /// and a set worth filing together are different bars: the first can afford a loose match, the
+    /// second moves the user's notes into a folder.
+    /// </para>
+    /// </remarks>
+    public async Task<IReadOnlyList<NoteSummary>> GroupAsync(
+        Guid noteId,
+        double minimumSimilarity = 0.7,
+        int limit = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var related = await RelatedAsync(noteId, limit, cancellationToken).ConfigureAwait(false);
+
+        return
+        [
+            .. related
+                .Where(item => item.Similarity >= minimumSimilarity)
+                .Select(item => item.Note),
+        ];
+    }
+
+    /// <summary>
     /// Tags the note's neighbours carry and it does not, most widely shared first.
     /// </summary>
     /// <remarks>

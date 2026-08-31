@@ -41,6 +41,12 @@
             <Button x:Name="AskButton" Click="OnAskClicked" />
             <Button x:Name="RemindButton" Click="OnRemindClicked" />
             <Button x:Name="NewNoteButton" Click="OnNewNoteClicked" />
+
+            <!--
+                The one action here that does not read the typed line — it reads the whole library
+                — so it is the one that stays available with the box empty.
+            -->
+            <Button x:Name="BriefingButton" Click="OnBriefingClicked" />
         </StackPanel>
 
         <ListView

@@ -96,6 +96,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
             <TextBlock
@@ -106,7 +107,18 @@
                 Opacity="0.6"
                 TextWrapping="Wrap" />
 
-            <Button x:Name="CloseButton" Grid.Column="1" Click="OnCloseClicked" />
+            <!--
+                The one thing this window can do besides open a note. It appears only when enough
+                neighbours are close enough to be worth filing together.
+            -->
+            <Button
+                x:Name="GroupButton"
+                Grid.Column="1"
+                Style="{ThemeResource AccentButtonStyle}"
+                Visibility="Collapsed"
+                Click="OnGroupClicked" />
+
+            <Button x:Name="CloseButton" Grid.Column="2" Click="OnCloseClicked" />
         </Grid>
     </Grid>
 </Window>

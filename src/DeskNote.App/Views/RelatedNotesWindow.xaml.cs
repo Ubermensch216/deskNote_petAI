@@ -27,11 +27,27 @@ namespace DeskNote.App.Views;
 /// </remarks>
 public sealed partial class RelatedNotesWindow : Window
 {
+    /// <summary>
+    /// Fewest neighbours worth offering a notebook for.
+    /// </summary>
+    /// <remarks>
+    /// Two notes are a coincidence. Three that all read alike is a subject, and a subject is what
+    /// a notebook is for — offering one for every pair would fill the sidebar with folders of two.
+    /// </remarks>
+    private const int MinimumToGroup = 3;
+
     private readonly Guid _noteId;
     private readonly NoteNeighbourhood _neighbourhood;
     private readonly Func<Guid, Task> _openNote;
+    private readonly Func<Guid, IReadOnlyList<Guid>, Task<string?>>? _group;
 
-    public RelatedNotesWindow(Guid noteId, NoteNeighbourhood neighbourhood, Func<Guid, Task> openNote)
+    private IReadOnlyList<Guid> _groupable = [];
+
+    public RelatedNotesWindow(
+        Guid noteId,
+        NoteNeighbourhood neighbourhood,
+        Func<Guid, Task> openNote,
+        Func<Guid, IReadOnlyList<Guid>, Task<string?>>? group = null)
     {
         ArgumentNullException.ThrowIfNull(neighbourhood);
         ArgumentNullException.ThrowIfNull(openNote);
@@ -41,8 +57,12 @@ public sealed partial class RelatedNotesWindow : Window
         _noteId = noteId;
         _neighbourhood = neighbourhood;
         _openNote = openNote;
+        _group = group;
+
+        GroupButton.Content = Strings.Get("Related_Group");
 
         AppWindow.Title = Strings.Format("Ai_PreviewTitleFormat", Strings.Get("Related_Title"));
+        AppIcon.Apply(this);
         RelatedTitle.Text = Strings.Get("Related_Title");
         RelatedHint.Text = Strings.Get("Related_Hint");
         CloseButton.Content = Strings.Get("Ai_Close");
@@ -100,6 +120,8 @@ public sealed partial class RelatedNotesWindow : Window
             Status.Text = duplicates > 0
                 ? Strings.Format("Related_CountWithDuplicatesFormat", related.Count, duplicates)
                 : Strings.Format("Explorer_CountFormat", related.Count);
+
+            await OfferGroupingAsync();
         }
         catch (Exception ex)
         {
@@ -108,6 +130,66 @@ public sealed partial class RelatedNotesWindow : Window
             Progress.IsActive = false;
             Progress.Visibility = Visibility.Collapsed;
             Status.Text = ex.Message;
+        }
+    }
+
+    /// <summary>
+    /// Shows the notebook offer when enough neighbours are close enough to file together.
+    /// </summary>
+    /// <remarks>
+    /// A separate, stricter read than the list above it. Being worth reading and being worth
+    /// moving into a folder are different bars, and this is the one that moves the user's notes.
+    /// </remarks>
+    private async Task OfferGroupingAsync()
+    {
+        if (_group is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var group = await _neighbourhood.GroupAsync(_noteId);
+
+            if (group.Count + 1 < MinimumToGroup)
+            {
+                return;
+            }
+
+            _groupable = [.. group.Select(note => note.Id)];
+            GroupButton.Content = Strings.Format("Related_GroupFormat", group.Count + 1);
+            GroupButton.Visibility = Visibility.Visible;
+        }
+        catch (Exception ex)
+        {
+            CrashLog.Write("Could not work out a notebook for these notes", ex);
+        }
+    }
+
+    private async void OnGroupClicked(object sender, RoutedEventArgs e)
+    {
+        if (_group is null || _groupable.Count == 0)
+        {
+            return;
+        }
+
+        GroupButton.IsEnabled = false;
+
+        try
+        {
+            var name = await _group(_noteId, _groupable);
+
+            Status.Text = string.IsNullOrWhiteSpace(name)
+                ? Strings.Get("Related_GroupFailed")
+                : Strings.Format("Related_GroupedFormat", name, _groupable.Count + 1);
+
+            GroupButton.Visibility = Visibility.Collapsed;
+        }
+        catch (Exception ex)
+        {
+            CrashLog.Write("Filing these notes into a notebook failed", ex);
+            Status.Text = ex.Message;
+            GroupButton.IsEnabled = true;
         }
     }
 
