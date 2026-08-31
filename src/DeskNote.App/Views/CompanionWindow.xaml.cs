@@ -115,7 +115,7 @@ public sealed partial class CompanionWindow : Window
             return;
         }
 
-        RitualChoices.IsEnabled = false;
+        SetRitualChoicesEnabled(false);
         try
         {
             await _chooseRitual(ritual).ConfigureAwait(true);
@@ -123,7 +123,7 @@ public sealed partial class CompanionWindow : Window
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             CrashLog.Write("Choosing a companion ritual failed", ex);
-            RitualChoices.IsEnabled = true;
+            SetRitualChoicesEnabled(true);
         }
     }
 
@@ -132,7 +132,7 @@ public sealed partial class CompanionWindow : Window
         if (progress.ChosenRitual is not { } ritual)
         {
             RitualChoices.Visibility = Visibility.Visible;
-            RitualChoices.IsEnabled = true;
+            SetRitualChoicesEnabled(true);
             RitualStatus.Visibility = Visibility.Collapsed;
             return;
         }
@@ -142,5 +142,12 @@ public sealed partial class CompanionWindow : Window
         RitualStatus.Text = Strings.Format(
             progress.RitualCompleted ? "Companion_RitualDoneFormat" : "Companion_RitualPendingFormat",
             Strings.Get($"Companion_Ritual{ritual}"));
+    }
+
+    private void SetRitualChoicesEnabled(bool enabled)
+    {
+        CaptureRitual.IsEnabled = enabled;
+        RecallRitual.IsEnabled = enabled;
+        ResolveRitual.IsEnabled = enabled;
     }
 }
