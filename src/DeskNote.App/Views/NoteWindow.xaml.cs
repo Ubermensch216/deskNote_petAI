@@ -62,6 +62,11 @@ public sealed partial class NoteWindow : Window
     {
         InitializeComponent();
 
+        // Fill the non-client title-bar band with the note surface. Without this, WinUI keeps a
+        // caption-height strip above the XAML content; the acrylic backdrop showing through that
+        // strip looks like a second sheet of paper stacked behind the note.
+        ExtendsContentIntoTitleBar = true;
+
         _ai = ai;
         _neighbourhood = neighbourhood;
         _aiCapability = ai?.Capability ?? AiCapability.Unavailable(AiAvailability.Disabled);
@@ -73,7 +78,6 @@ public sealed partial class NoteWindow : Window
         _alwaysOnTop = note.AlwaysOnTop;
 
         _presenter = OverlappedPresenter.Create();
-        _presenter.SetBorderAndTitleBar(hasBorder: false, hasTitleBar: false);
         _presenter.IsMaximizable = false;
         _presenter.IsMinimizable = false;
         _presenter.IsResizable = true;
@@ -83,6 +87,7 @@ public sealed partial class NoteWindow : Window
         _presenter.PreferredMinimumWidth = NoteGeometry.MinWidth;
         _presenter.PreferredMinimumHeight = NoteGeometry.MinHeight;
         AppWindow.SetPresenter(_presenter);
+        _presenter.SetBorderAndTitleBar(hasBorder: false, hasTitleBar: false);
 
         AppWindow.Title = "DeskNote";
         AppIcon.Apply(this);
