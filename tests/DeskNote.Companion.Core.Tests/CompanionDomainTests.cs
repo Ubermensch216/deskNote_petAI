@@ -37,6 +37,23 @@ public class CompanionDomainTests
         }));
     }
 
+    [Fact]
+    public void Checklist_transition_has_a_stable_key_and_retoggle_is_the_same_event()
+    {
+        var noteId = Guid.NewGuid();
+        var first = ChecklistCompletionDetector.FindCompletedKeys(
+            noteId,
+            "- [ ] Ship beta",
+            "- [x] Ship beta");
+        var retoggle = ChecklistCompletionDetector.FindCompletedKeys(
+            noteId,
+            "- [ ]   SHIP   beta ",
+            "- [X] ship beta");
+
+        Assert.Single(first);
+        Assert.Equal(first, retoggle);
+    }
+
     [Theory]
     [InlineData(CompanionActivityType.MeaningfulCapture, 5)]
     [InlineData(CompanionActivityType.UsefulRecall, 4)]

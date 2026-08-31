@@ -6,6 +6,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\DeskNote.Companion.Core\DeskNote.Companion.Core.csproj" />
     <ProjectReference Include="..\DeskNote.Core\DeskNote.Core.csproj" />
   </ItemGroup>
 

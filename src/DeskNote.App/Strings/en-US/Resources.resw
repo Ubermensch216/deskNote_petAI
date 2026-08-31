@@ -206,4 +206,18 @@ Try adding a date or a weekday.</value></data>
   <data name="Settings_QuietEnd" xml:space="preserve"><value>Ends</value></data>
   <data name="Settings_Save" xml:space="preserve"><value>Save</value></data>
   <data name="Settings_Saved" xml:space="preserve"><value>Saved.</value></data>
+  <data name="Companion_Title" xml:space="preserve"><value>DeskNote companion</value></data>
+  <data name="Companion_Curiosity" xml:space="preserve"><value>Curiosity</value></data>
+  <data name="Companion_Insight" xml:space="preserve"><value>Insight</value></data>
+  <data name="Companion_Reliability" xml:space="preserve"><value>Reliability</value></data>
+  <data name="Companion_StageFormat" xml:space="preserve"><value>Growth stage {0}/5</value></data>
+  <data name="Companion_MoodGrowth" xml:space="preserve"><value>I noticed a good flow</value></data>
+  <data name="Companion_MoodCalm" xml:space="preserve"><value>Quietly here when needed</value></data>
+  <data name="Companion_ReasonWelcome" xml:space="preserve"><value>Let's begin today's notes together.</value></data>
+  <data name="Companion_ReasonMeaningfulCapture" xml:space="preserve"><value>A meaningful note grew curiosity.</value></data>
+  <data name="Companion_ReasonUsefulRecall" xml:space="preserve"><value>Reusing an older note grew insight.</value></data>
+  <data name="Companion_ReasonChecklistCompleted" xml:space="preserve"><value>Finishing a task strengthened reliability.</value></data>
+  <data name="Companion_ReasonReminderHandled" xml:space="preserve"><value>Handling a reminder grew reliability.</value></data>
+  <data name="Companion_ReasonAiSuggestionAccepted" xml:space="preserve"><value>Choosing a suggestion grew insight and reliability.</value></data>
+  <data name="Companion_ReasonBriefingEvidenceOpened" xml:space="preserve"><value>Opening briefing evidence grew insight.</value></data>
 </root>

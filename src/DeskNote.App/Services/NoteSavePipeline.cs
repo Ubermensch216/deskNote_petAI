@@ -22,6 +22,8 @@ public sealed class NoteSavePipeline(
     RevisionPolicy policy,
     IClock clock)
 {
+    public event Action<NoteSaveResult>? Saved;
+
     /// <summary>Writes note text, checkpointing the previous version first when the policy says so.</summary>
     public async Task<NoteSaveResult> SaveAsync(
         Guid noteId,
@@ -45,12 +47,16 @@ public sealed class NoteSavePipeline(
 
         await notes.UpdateContentAsync(noteId, title, content, cancellationToken).ConfigureAwait(false);
 
-        return new NoteSaveResult(
+        var result = new NoteSaveResult(
             noteId,
             existing?.Content,
             content,
             contentChanged,
-            clock.UtcNow);
+            clock.UtcNow,
+            source,
+            actionName);
+        Saved?.Invoke(result);
+        return result;
     }
 
     /// <summary>Forgets a note's checkpoint timer, so reopening it checkpoints on the next edit.</summary>
@@ -88,4 +94,6 @@ public sealed record NoteSaveResult(
     string? PreviousContent,
     string CurrentContent,
     bool ContentChanged,
-    DateTimeOffset SavedAt);
+    DateTimeOffset SavedAt,
+    RevisionSource Source,
+    string? ActionName);

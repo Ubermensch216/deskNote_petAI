@@ -1,6 +1,7 @@
 using DeskNote.Core.Abstractions;
 using DeskNote.Core.Services;
 using DeskNote.Data;
+using DeskNote.Companion.Core;
 using Microsoft.UI.Dispatching;
 
 namespace DeskNote.App.Services;
@@ -69,6 +70,9 @@ public static class CompositionRoot
 
         var journal = new CrashJournal(AppPaths.JournalDirectory);
         var pipeline = new NoteSavePipeline(notes, revisions, new RevisionPolicy(), clock);
+        var companionRepository = new SqliteCompanionRepository(connections, new RewardPolicy());
+        var companionQueue = new CompanionActivityQueue(companionRepository, new ActivityClassifier());
+        companionQueue.Failed += ex => CrashLog.Write("Companion activity persistence failed", ex);
 
         // Embedding follows a successful save and never extends the note transaction.
         var autosave = new AutosaveScheduler(
@@ -109,6 +113,7 @@ public static class CompositionRoot
             reminders,
             ai,
             indexer,
+            companionQueue,
             dispatcher,
             exitApplication);
     }

@@ -1,0 +1,118 @@
+<Window
+    x:Class="DeskNote.App.Views.CompanionWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Border
+        Padding="18"
+        CornerRadius="16"
+        BorderThickness="1"
+        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+        <Grid RowSpacing="14">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="72" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border
+                    Width="68"
+                    Height="68"
+                    CornerRadius="34"
+                    Background="{ThemeResource AccentFillColorSecondaryBrush}">
+                    <TextBlock
+                        x:Name="Face"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        FontSize="26"
+                        Text="◕‿◕"
+                        AutomationProperties.Name="Desktop companion" />
+                </Border>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                    <TextBlock x:Name="CompanionName" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock
+                        x:Name="MoodLabel"
+                        Opacity="0.72"
+                        TextWrapping="Wrap" />
+                </StackPanel>
+            </Grid>
+
+            <Border
+                Grid.Row="1"
+                Padding="12"
+                CornerRadius="10"
+                Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                <TextBlock x:Name="RecentReason" TextWrapping="Wrap" />
+            </Border>
+
+            <StackPanel Grid.Row="2" Spacing="9">
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="76" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="32" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="CuriosityLabel" VerticalAlignment="Center" />
+                    <ProgressBar x:Name="CuriosityBar" Grid.Column="1" Maximum="100" />
+                    <TextBlock x:Name="CuriosityValue" Grid.Column="2" TextAlignment="Right" />
+                </Grid>
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="76" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="32" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="InsightLabel" VerticalAlignment="Center" />
+                    <ProgressBar x:Name="InsightBar" Grid.Column="1" Maximum="100" />
+                    <TextBlock x:Name="InsightValue" Grid.Column="2" TextAlignment="Right" />
+                </Grid>
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="76" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="32" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="ReliabilityLabel" VerticalAlignment="Center" />
+                    <ProgressBar x:Name="ReliabilityBar" Grid.Column="1" Maximum="100" />
+                    <TextBlock x:Name="ReliabilityValue" Grid.Column="2" TextAlignment="Right" />
+                </Grid>
+            </StackPanel>
+
+            <StackPanel Grid.Row="3" Spacing="8">
+                <TextBlock x:Name="RitualHeader" FontWeight="SemiBold" />
+                <StackPanel x:Name="RitualChoices" Orientation="Horizontal" Spacing="6">
+                    <Button x:Name="CaptureRitual" Tag="Capture" Click="OnRitualClicked" />
+                    <Button x:Name="RecallRitual" Tag="Recall" Click="OnRitualClicked" />
+                    <Button x:Name="ResolveRitual" Tag="Resolve" Click="OnRitualClicked" />
+                </StackPanel>
+                <TextBlock
+                    x:Name="RitualStatus"
+                    TextWrapping="Wrap"
+                    Visibility="Collapsed" />
+            </StackPanel>
+
+            <Grid Grid.Row="4" ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    x:Name="StageLabel"
+                    VerticalAlignment="Center"
+                    Style="{ThemeResource CaptionTextBlockStyle}"
+                    Opacity="0.7" />
+                <Button x:Name="SettingsButton" Grid.Column="1" Click="OnSettingsClicked" />
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

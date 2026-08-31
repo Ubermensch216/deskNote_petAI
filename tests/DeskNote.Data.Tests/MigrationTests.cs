@@ -5,7 +5,7 @@ namespace DeskNote.Data.Tests;
 public class MigrationTests
 {
     /// <summary>Highest migration in <c>Migrations/</c>; bump when one is added.</summary>
-    private const int LatestVersion = 2;
+    private const int LatestVersion = 3;
 
     private static string NewDirectory()
     {
@@ -36,6 +36,11 @@ public class MigrationTests
         Assert.Contains("reminders", tables);
         Assert.Contains("note_revisions", tables);
         Assert.Contains("note_embeddings", tables);
+        Assert.Contains("companion_profiles", tables);
+        Assert.Contains("companion_event_ledger", tables);
+        Assert.Contains("companion_daily_progress", tables);
+        Assert.Contains("companion_suggestions", tables);
+        Assert.Contains("companion_preferences", tables);
         Assert.Contains("schema_version", tables);
     }
 

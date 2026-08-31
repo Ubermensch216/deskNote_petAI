@@ -40,6 +40,8 @@ public sealed partial class NoteWindowManager(
 
     public int OpenWindowCount => _windows.Count;
 
+    public bool IsOpen(Guid noteId) => _windows.ContainsKey(noteId);
+
     /// <summary>Raised after a note has successfully been brought into view.</summary>
     public event EventHandler<NoteOpened>? NoteOpened;
 
