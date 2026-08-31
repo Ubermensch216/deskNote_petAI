@@ -54,5 +54,35 @@ internal static class AiSchemas
         }
         """);
 
+    /// <summary>
+    /// One moment, and optionally a rule for repeating it.
+    /// </summary>
+    /// <remarks>
+    /// <c>freq</c> is an enum rather than free text so the model cannot invent a frequency the
+    /// scheduler does not implement — <c>Recurrence</c> reads exactly these four.
+    /// </remarks>
+    internal static JsonElement ParsedReminder { get; } = Parse("""
+        {
+          "type": "object",
+          "properties": {
+            "dueAt": { "type": ["string", "null"] },
+            "freq": { "type": ["string", "null"], "enum": ["daily", "weekly", "monthly", "yearly", null] },
+            "interval": { "type": ["integer", "null"] }
+          },
+          "required": ["dueAt"]
+        }
+        """);
+
+    /// <summary>A single line, which is all a note title ever is.</summary>
+    internal static JsonElement SuggestedTitle { get; } = Parse("""
+        {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string" }
+          },
+          "required": ["title"]
+        }
+        """);
+
     private static JsonElement Parse(string schema) => JsonDocument.Parse(schema).RootElement.Clone();
 }

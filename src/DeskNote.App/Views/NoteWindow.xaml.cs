@@ -170,6 +170,9 @@ public sealed partial class NoteWindow : Window
     /// <summary>Raised when the user wants to see the notes that read like this one.</summary>
     public event EventHandler? RelatedRequested;
 
+    /// <summary>Raised when the user wants to describe a reminder in their own words.</summary>
+    public event EventHandler? CustomReminderRequested;
+
     /// <summary>Raised when the user asks for another note from this one's <c>+</c> button.</summary>
     public event EventHandler<NoteSeed>? NewNoteRequested;
 
@@ -297,6 +300,9 @@ public sealed partial class NoteWindow : Window
         DescribeTile(AiSuggestTags, AiSuggestTagsLabel, "Note_AiSuggestTags");
         AiAskLabel.Text = Strings.Get("Note_AiAsk");
         AiRelatedLabel.Text = Strings.Get("Related_Title");
+        AiTitleLabel.Text = Strings.Get("Note_AiSuggestTitle");
+        RemindCustomLabel.Text = Strings.Get("Remind_Chip");
+        Describe(RemindCustom, "Remind_Title");
 
         foreach (var (button, label, style) in new[]
                  {
@@ -748,6 +754,7 @@ public sealed partial class NoteWindow : Window
         foreach (var chip in new[]
                  {
                      AiSummarize, AiOrganize, AiExtractTasks, AiSuggestTags, AiAsk, AiRelated,
+                     AiTitle, RemindCustom,
                      AiRewriteConcise, AiRewriteFormal, AiRewriteFriendly, AiRewriteReport,
                  })
         {
@@ -796,6 +803,125 @@ public sealed partial class NoteWindow : Window
     {
         AiFlyout.Hide();
         RelatedRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnRemindCustomClicked(object sender, RoutedEventArgs e)
+    {
+        MoreFlyout.Hide();
+        CustomReminderRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnAiTitleClicked(object sender, RoutedEventArgs e)
+    {
+        AiFlyout.Hide();
+        RunAiTitle();
+    }
+
+    /// <summary>
+    /// Proposes a heading line for a note whose first line makes a poor name.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The note has no title field; its name is the first line with the markup stripped, so a note
+    /// starting with <c>- [ ] 김대리 확인</c> is filed under that. Adding a heading line is how a
+    /// note gets a name in this app's own notation, and it stays the user's text rather than a
+    /// hidden field only the library can see.
+    /// </para>
+    /// <para>
+    /// Presented through the same preview as a rewrite, because it is one: the proposal is the
+    /// whole note with a line in front. That means the diff, the apply, the revision and the
+    /// conflict check all work here without knowing this action exists.
+    /// </para>
+    /// </remarks>
+    private async void RunAiTitle()
+    {
+        if (_ai is null || !_aiCapability.IsAvailable || string.IsNullOrWhiteSpace(ContentBox.Text))
+        {
+            return;
+        }
+
+        var original = ContentBox.Text;
+
+        var preview = new AiPreviewWindow(Strings.Get("Note_AiSuggestTitle"));
+        preview.Applied += (_, proposed) =>
+        {
+            if (TryApplyAiText(0, original.Length, original, proposed, "SuggestTitle"))
+            {
+                preview.Close();
+            }
+            else
+            {
+                preview.ShowFailure(Strings.Get("Ai_NoteChanged"));
+            }
+        };
+
+        preview.Activate();
+        preview.PlaceNear(AppWindow);
+
+        var context = new NoteContext
+        {
+            NoteId = NoteId,
+            Content = original,
+            Title = CurrentTitle,
+            LanguageTag = Strings.OverrideLocale ?? "ko-KR",
+        };
+
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+
+        try
+        {
+            var title = await _ai.Service.SuggestTitleAsync(context, preview.CancellationToken);
+
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                preview.ShowFailure(Strings.Get("Ai_NothingFound"));
+                return;
+            }
+
+            preview.ShowResult(new AiTextResult
+            {
+                Original = original,
+                Proposed = WithHeading(original, title),
+                ModelId = _aiCapability.ModelId,
+                Elapsed = System.Diagnostics.Stopwatch.GetElapsedTime(started),
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            // The window is already gone: cancellation only happens when it closed.
+        }
+        catch (AiUnavailableException ex)
+        {
+            SetAiCapability(AiCapability.Unavailable(ex.Reason));
+            preview.ShowFailure(Strings.Get($"Note_AiUnavailable{ex.Reason}"));
+        }
+        catch (Exception ex)
+        {
+            CrashLog.Write("Suggesting a title failed", ex);
+            preview.ShowFailure(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// The note with <paramref name="title"/> as its heading.
+    /// </summary>
+    /// <remarks>
+    /// A note that already opens with a heading has that line replaced rather than a second one
+    /// added: two headings in a row is not a note with a better name, it is a note with a stutter.
+    /// </remarks>
+    private static string WithHeading(string content, string title)
+    {
+        var heading = "# " + title.TrimStart('#', ' ');
+        var lines = NoteContent.NormalizeLineEndings(content).Split('\n');
+
+        if (lines.Length > 0 && MarkdownEditing.StyleOf(lines[0]) is
+            LineStyle.Heading1 or LineStyle.Heading2 or LineStyle.Heading3)
+        {
+            lines[0] = heading;
+            return string.Join('\n', lines);
+        }
+
+        return heading + "\n" + content;
     }
 
     /// <summary>

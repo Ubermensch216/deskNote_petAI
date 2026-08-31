@@ -43,6 +43,23 @@ public sealed record ExtractedTask
 /// <summary>A tag the model suggests for a note. Never applied without the user accepting it.</summary>
 public sealed record SuggestedTag(string Name, double Confidence);
 
+/// <summary>
+/// A reminder read out of a phrase like "매주 화요일 오전 10시".
+/// </summary>
+/// <remarks>
+/// The date is the part worth guarding. A misread "다음 주 화요일" is a reminder that fires on the
+/// wrong day and is trusted anyway, so a phrase that cannot be resolved to a real moment produces
+/// no reminder at all rather than a guessed one (report p11) — and the user is shown what was
+/// understood before anything is scheduled.
+/// </remarks>
+public sealed record ParsedReminder
+{
+    public required DateTimeOffset DueAt { get; init; }
+
+    /// <summary>RFC 5545 RRULE fragment for a repeating reminder; null for a one-shot.</summary>
+    public string? RecurrenceRule { get; init; }
+}
+
 /// <summary>Rewrite tone presets offered by the 재작성 action (report p7).</summary>
 public enum RewriteStyle
 {

@@ -16,9 +16,63 @@ public partial class LocalizationGuardTests
     [GeneratedRegex(@"[가-힣]", RegexOptions.CultureInvariant)]
     private static partial Regex Hangul { get; }
 
-    /// <summary>Comment lines, which may quote the report in Korean, and are never shown to a user.</summary>
+    /// <summary>A line that opens as a comment, which may quote the report in Korean.</summary>
     [GeneratedRegex(@"^\s*(//|///|\*|/\*|<!--)", RegexOptions.CultureInvariant)]
     private static partial Regex CommentLine { get; }
+
+    /// <summary>
+    /// Whether the line leaves an unterminated block comment open behind it.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately crude: it counts openers and closers rather than parsing, because the only
+    /// thing that has to be right is "is the next line still inside a comment". A comment marker
+    /// inside a string literal would fool it, and a Korean UI string on that same line would then
+    /// go unreported — a narrower hole than the one this closes, and one no line in this codebase
+    /// has ever had.
+    /// </remarks>
+    private static bool StillInsideComment(string line, bool alreadyInside)
+    {
+        var index = 0;
+        var inside = alreadyInside;
+
+        while (index < line.Length)
+        {
+            if (!inside)
+            {
+                var open = NextOpener(line, index);
+                if (open < 0)
+                {
+                    return false;
+                }
+
+                inside = true;
+                index = open + 2;
+                continue;
+            }
+
+            var close = NextCloser(line, index);
+            if (close < 0)
+            {
+                return true;
+            }
+
+            inside = false;
+            index = close + 2;
+        }
+
+        return inside;
+    }
+
+    private static int NextOpener(string line, int from) =>
+        Earliest(line.IndexOf("<!--", from, StringComparison.Ordinal),
+                 line.IndexOf("/*", from, StringComparison.Ordinal));
+
+    private static int NextCloser(string line, int from) =>
+        Earliest(line.IndexOf("-->", from, StringComparison.Ordinal),
+                 line.IndexOf("*/", from, StringComparison.Ordinal));
+
+    private static int Earliest(int left, int right) =>
+        left < 0 ? right : right < 0 ? left : Math.Min(left, right);
 
     private static DirectoryInfo RepositoryRoot()
     {
@@ -54,15 +108,30 @@ public partial class LocalizationGuardTests
         foreach (var path in UiSourceFiles())
         {
             var lines = File.ReadAllLines(path);
+            var inBlockComment = false;
 
             for (var i = 0; i < lines.Length; i++)
             {
-                if (CommentLine.IsMatch(lines[i]) || !Hangul.IsMatch(lines[i]))
+                var line = lines[i];
+                var wasInBlockComment = inBlockComment;
+
+                inBlockComment = StillInsideComment(line, inBlockComment);
+
+                // A comment that runs over several lines is a comment on every one of them. The
+                // first line opens with a marker and the rest do not, so checking only the start
+                // of each line reported the middle of every explanatory block as hardcoded UI —
+                // which taught the wrong lesson: write the comment in English, or write less.
+                if (wasInBlockComment || inBlockComment || CommentLine.IsMatch(line))
                 {
                     continue;
                 }
 
-                offenders.Add($"{Path.GetFileName(path)}:{i + 1}  {lines[i].Trim()}");
+                if (!Hangul.IsMatch(line))
+                {
+                    continue;
+                }
+
+                offenders.Add($"{Path.GetFileName(path)}:{i + 1}  {line.Trim()}");
             }
         }
 

@@ -106,6 +106,71 @@ public static class AiResponseParser
         return result;
     }
 
+    /// <summary>
+    /// Reads a parsed reminder, or null when the phrase did not resolve to a real moment.
+    /// </summary>
+    /// <remarks>
+    /// Null is the honest answer for "다음에" or a date the model could not place. A reminder is
+    /// only useful if it fires at the right time, and one that fires at a guessed time is worse
+    /// than none — the user stops trusting the ones that were right (report p11).
+    /// </remarks>
+    public static ParsedReminder? ReadReminder(string json)
+    {
+        using var document = Parse(json);
+        var root = document.RootElement;
+
+        if (ReadDate(ReadString(root, "dueAt")) is not { } dueAt)
+        {
+            return null;
+        }
+
+        return new ParsedReminder
+        {
+            DueAt = dueAt,
+            RecurrenceRule = ReadRecurrence(root),
+        };
+    }
+
+    /// <summary>The title the model proposed, trimmed to one clean line.</summary>
+    /// <remarks>
+    /// Run through the same cleanup as a rewritten body, because a model asked for a bare title
+    /// still sometimes returns "# 회의 준비" or "- 회의 준비".
+    /// </remarks>
+    public static string ReadTitle(string json)
+    {
+        using var document = Parse(json);
+
+        return AiTextCleanup.ToNoteLine(ReadString(document.RootElement, "title"));
+    }
+
+    private static string? ReadRecurrence(JsonElement root)
+    {
+        var frequency = ReadString(root, "freq")?.Trim().ToLowerInvariant() switch
+        {
+            "daily" => RecurrenceFrequency.Daily,
+            "weekly" => RecurrenceFrequency.Weekly,
+            "monthly" => RecurrenceFrequency.Monthly,
+            "yearly" => RecurrenceFrequency.Yearly,
+            _ => (RecurrenceFrequency?)null,
+        };
+
+        if (frequency is not { } freq)
+        {
+            return null;
+        }
+
+        // A zero or negative interval is not a schedule, and an absurd one is a typo the model
+        // made rather than a plan the user has. Either way it falls back to "every time".
+        var interval = root.TryGetProperty("interval", out var raw)
+            && raw.ValueKind == JsonValueKind.Number
+            && raw.TryGetInt32(out var value)
+            && value is > 0 and <= 366
+                ? value
+                : 1;
+
+        return new Recurrence(freq, interval).ToRule();
+    }
+
     private static JsonDocument Parse(string json)
     {
         try

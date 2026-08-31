@@ -33,6 +33,8 @@ public sealed class NoteWindowManager(
     private AiChatWindow? _chat;
     private NoteHistoryWindow? _history;
     private RelatedNotesWindow? _related;
+    private ReminderWindow? _reminderWindow;
+    private CommandPaletteWindow? _palette;
 
     public int OpenWindowCount => _windows.Count;
 
@@ -177,6 +179,35 @@ public sealed class NoteWindowManager(
         }
     }
 
+    /// <summary>
+    /// Opens the composer for a reminder described in the user's own words.
+    /// </summary>
+    /// <remarks>
+    /// The window creates nothing itself; it hands back a resolved moment and this method stores
+    /// it, so the one place that decides what a user gesture means stays the one place.
+    /// </remarks>
+    public void ShowReminderComposer(Guid noteId)
+    {
+        if (ai is null)
+        {
+            return;
+        }
+
+        _reminderWindow?.Close();
+        _reminderWindow = new ReminderWindow(
+            ai,
+            clock,
+            (dueAt, rule) => AddReminderAtAsync(noteId, dueAt, rule));
+
+        _reminderWindow.Closed += (_, _) => _reminderWindow = null;
+        _reminderWindow.Activate();
+
+        if (_windows.TryGetValue(noteId, out var source))
+        {
+            _reminderWindow.PlaceNear(source.AppWindow);
+        }
+    }
+
     public void ShowChat(Guid? noteId)
     {
         if (ai is null)
@@ -202,8 +233,69 @@ public sealed class NoteWindowManager(
         }
     }
 
-    /// <summary>Opens 메모 Q&amp;A for the note the user was last in, for the global palette hotkey.</summary>
+    /// <summary>Opens 메모 Q&amp;A for the note the user was last in.</summary>
     public void ShowChatForActiveNote() => ShowChat(ActiveNote?.NoteId);
+
+    /// <summary>
+    /// Opens the command palette, the app's one global entry point for a line of text.
+    /// </summary>
+    /// <remarks>
+    /// The palette decides nothing itself. It collects a line and an action and hands both back
+    /// here, so creating a note, opening a question or composing a reminder still happen in the
+    /// one place that owns those gestures.
+    /// </remarks>
+    public void ShowPalette()
+    {
+        _palette?.Close();
+
+        _palette = new CommandPaletteWindow(
+            library,
+            hybridSearch,
+            ai,
+            noteId => FocusAsync(noteId),
+            RunPaletteAction);
+
+        _palette.Closed += (_, _) => _palette = null;
+        _palette.Activate();
+        _palette.CenterOnScreen();
+    }
+
+    private async void RunPaletteAction(PaletteAction action, string text)
+    {
+        try
+        {
+            switch (action)
+            {
+                case PaletteAction.Ask:
+                    ShowChat(ActiveNote?.NoteId);
+                    break;
+
+                case PaletteAction.Remind:
+                    // Needs a note to hang the reminder on. The one the user was last in is the
+                    // note they were thinking about; with none open, the line becomes its own note
+                    // so the reminder has something to point at.
+                    var target = ActiveNote?.NoteId
+                        ?? (await CreateAsync().ConfigureAwait(true)).Id;
+
+                    ShowReminderComposer(target);
+                    break;
+
+                case PaletteAction.NewNote:
+                    var created = await CreateAsync().ConfigureAwait(true);
+
+                    if (_windows.TryGetValue(created.Id, out var window))
+                    {
+                        window.InsertAtCaret(text);
+                    }
+
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            CrashLog.Write($"Palette action {action} failed", ex);
+        }
+    }
 
     /// <summary>
     /// Adds a reminder for an absolute moment, as an extracted task's deadline gives it.
@@ -215,6 +307,7 @@ public sealed class NoteWindowManager(
     public async Task AddReminderAtAsync(
         Guid noteId,
         DateTimeOffset dueAt,
+        string? recurrenceRule = null,
         CancellationToken cancellationToken = default) =>
         await reminders.AddAsync(
             new Reminder
@@ -222,6 +315,7 @@ public sealed class NoteWindowManager(
                 Id = Guid.CreateVersion7(),
                 NoteId = noteId,
                 DueAt = dueAt.ToUniversalTime(),
+                RecurrenceRule = recurrenceRule,
             },
             cancellationToken).ConfigureAwait(true);
 
@@ -337,6 +431,7 @@ public sealed class NoteWindowManager(
         window.HistoryRequested += (w, _) => ShowHistory(((NoteWindow)w!).NoteId);
         window.AiApplied += async (w, edit) => await OnAiAppliedAsync(((NoteWindow)w!).NoteId, edit);
         window.RelatedRequested += (w, _) => ShowRelated(((NoteWindow)w!).NoteId);
+        window.CustomReminderRequested += (w, _) => ShowReminderComposer(((NoteWindow)w!).NoteId);
         window.NewNoteRequested += async (_, seed) => await CreateAsync(seed.Preset, seed.ColorKey);
         window.ReminderRequested += async (_, offset) => await AddReminderAsync(note.Id, offset);
         window.ReminderAtRequested += async (_, dueAt) => await AddReminderAtAsync(note.Id, dueAt);

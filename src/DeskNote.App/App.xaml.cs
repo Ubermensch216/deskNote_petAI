@@ -232,7 +232,7 @@ public partial class App : Application
                         break;
 
                     case HotkeyCommands.AiPalette:
-                        Windows.ShowChatForActiveNote();
+                        Windows.ShowPalette();
                         break;
                 }
             }

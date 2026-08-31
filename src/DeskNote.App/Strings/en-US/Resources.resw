@@ -105,6 +105,7 @@
   <data name="Note_AiRewrite" xml:space="preserve"><value>Rewrite</value></data>
   <data name="Note_AiExtract" xml:space="preserve"><value>Extract</value></data>
   <data name="Note_AiTidy" xml:space="preserve"><value>Tidy</value></data>
+  <data name="Note_AiSuggestTitle" xml:space="preserve"><value>Title</value></data>
   <data name="Note_AiRewriteConcise" xml:space="preserve"><value>Concise</value></data>
   <data name="Note_AiRewriteFormal" xml:space="preserve"><value>Formal</value></data>
   <data name="Note_AiRewriteFriendly" xml:space="preserve"><value>Friendly</value></data>
@@ -161,4 +162,23 @@
   <data name="Related_CountWithDuplicatesFormat" xml:space="preserve"><value>{0} · {1} near-duplicate</value></data>
   <data name="Ai_TagFromRelated" xml:space="preserve"><value>from related notes</value></data>
   <data name="Ai_FromRelatedNotes" xml:space="preserve"><value>Tags carried by related notes</value></data>
+  <data name="Remind_Chip" xml:space="preserve"><value>Custom</value></data>
+  <data name="Remind_Title" xml:space="preserve"><value>New reminder</value></data>
+  <data name="Remind_Hint" xml:space="preserve"><value>Write when to remind you. You will see how it was read before anything is created.</value></data>
+  <data name="Remind_Placeholder" xml:space="preserve"><value>next Tuesday at 3pm · every Friday at 10</value></data>
+  <data name="Remind_Read" xml:space="preserve"><value>Read</value></data>
+  <data name="Remind_Create" xml:space="preserve"><value>Create</value></data>
+  <data name="Remind_Empty" xml:space="preserve"><value>Could not tell when that is.
+Try adding a date or a weekday.</value></data>
+  <data name="Remind_Once" xml:space="preserve"><value>Once</value></data>
+  <data name="Remind_RepeatFormat" xml:space="preserve"><value>Every {1} {0}</value></data>
+  <data name="Remind_RepeatEveryFormat" xml:space="preserve"><value>Every {0}</value></data>
+  <data name="Remind_FreqDaily" xml:space="preserve"><value>day(s)</value></data>
+  <data name="Remind_FreqWeekly" xml:space="preserve"><value>week(s)</value></data>
+  <data name="Remind_FreqMonthly" xml:space="preserve"><value>month(s)</value></data>
+  <data name="Remind_FreqYearly" xml:space="preserve"><value>year(s)</value></data>
+  <data name="Remind_AlreadyPast" xml:space="preserve"><value>That moment has passed, so it fires at once</value></data>
+  <data name="Palette_Title" xml:space="preserve"><value>DeskNote</value></data>
+  <data name="Palette_Placeholder" xml:space="preserve"><value>search, ask, remind, or jot down</value></data>
+  <data name="Palette_Hint" xml:space="preserve"><value>Just type to find a note. Enter opens the first result.</value></data>
 </root>

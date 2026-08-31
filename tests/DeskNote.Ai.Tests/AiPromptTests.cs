@@ -131,7 +131,7 @@ public class AiPromptTests
 
         await service.SummarizeAsync(OllamaProbeTests.Note("본문"), TestContext.Current.CancellationToken);
 
-        Assert.DoesNotContain("오늘: ", SentMessages(daemon)["user"], StringComparison.Ordinal);
+        Assert.DoesNotContain("지금: ", SentMessages(daemon)["user"], StringComparison.Ordinal);
     }
 
     [Fact]

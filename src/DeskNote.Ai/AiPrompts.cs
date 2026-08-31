@@ -72,7 +72,7 @@ public static class AiPrompts
 
             AiAction.ExtractTasks =>
                 "작업: 주어진 텍스트에서 할 일을 뽑아 JSON으로만 답하십시오. 텍스트에 실제로 있는 " +
-                "할 일만 넣으십시오. dueAt 은 '오늘' 로 주어진 날짜를 기준으로 계산해 " +
+                "할 일만 넣으십시오. dueAt 은 '지금' 으로 주어진 시각을 기준으로 계산해 " +
                 "ISO 8601(예: 2026-09-01T09:00:00+09:00)로 쓰고, 마감이 적혀 있지 않으면 null 로 " +
                 "두십시오. 적혀 있지 않은 마감을 지어내지 마십시오. 담당자가 이름으로 적혀 있으면 " +
                 "assignee 에 그 이름을 그대로 넣으십시오.",
@@ -85,6 +85,18 @@ public static class AiPrompts
             AiAction.Answer =>
                 "작업: 사용자의 질문에 메모 내용만 근거로 답하십시오. 메모에서 답을 찾을 수 없으면 " +
                 "찾을 수 없다고 말하십시오.",
+
+            AiAction.ParseReminder =>
+                "작업: 사용자가 쓴 한 줄에서 알림 시각을 읽어 JSON으로만 답하십시오. dueAt 은 '지금' 으로 " +
+                "주어진 시각을 기준으로 계산해 ISO 8601(예: 2026-09-01T15:00:00+09:00)로 쓰십시오. " +
+                "시각이 적혀 있지 않으면 오전 9시로 두되, 날짜를 읽을 수 없으면 dueAt 을 null 로 " +
+                "두십시오 — 읽지 못한 것을 지어내지 마십시오. '매일·매주·매달·매년' 처럼 반복이 " +
+                "적혀 있을 때만 freq 를 채우고, 아니면 null 로 두십시오. '격주' 는 freq=weekly, " +
+                "interval=2 입니다.",
+
+            AiAction.SuggestTitle =>
+                "작업: 메모에 어울리는 제목 한 줄을 JSON으로만 제안하십시오. 메모에 있는 말로만 짓고, " +
+                "20자 이내의 명사구로 쓰십시오. 마침표, 따옴표, 목록 기호를 붙이지 마십시오.",
 
             _ => throw new ArgumentOutOfRangeException(nameof(action)),
         };
@@ -105,10 +117,12 @@ public static class AiPrompts
         var builder = new StringBuilder();
         builder.Append(LanguageLine(context.LanguageTag)).Append('\n');
 
-        if (action == AiAction.ExtractTasks && now is { } today)
+        // Both actions that resolve a date need to know what day it is. A note says "내일까지";
+        // without today's date the model can only guess, and a guessed reminder is worse than none.
+        if (action is AiAction.ExtractTasks or AiAction.ParseReminder && now is { } today)
         {
             builder
-                .Append("오늘: ")
+                .Append("지금: ")
                 .Append(today.ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.InvariantCulture))
                 .Append(" (")
                 .Append(DayName(today))
@@ -135,6 +149,8 @@ public static class AiPrompts
             AiAction.ExtractTasks => "위 블록에서 뽑은 할 일을 JSON으로만 출력하십시오.",
             AiAction.SuggestTags => "위 블록에 어울리는 태그를 JSON으로만 출력하십시오.",
             AiAction.Answer => "위 블록을 근거로 질문에 답하십시오.",
+            AiAction.ParseReminder => "위 블록의 문장에서 알림 시각을 읽어 JSON으로만 출력하십시오.",
+            AiAction.SuggestTitle => "위 블록의 메모에 어울리는 제목을 JSON으로만 출력하십시오.",
             _ => throw new ArgumentOutOfRangeException(nameof(action)),
         });
 
@@ -220,6 +236,8 @@ public enum AiAction
     ExtractTasks,
     SuggestTags,
     Answer,
+    ParseReminder,
+    SuggestTitle,
 }
 
 /// <summary>One note handed to 메모 Q&amp;A by a retriever. Content is untrusted.</summary>

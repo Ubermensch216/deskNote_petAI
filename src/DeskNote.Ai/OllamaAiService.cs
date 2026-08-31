@@ -153,6 +153,45 @@ public sealed class OllamaAiService : ILocalAiService, IDisposable
         return AiResponseParser.ReadTags(json);
     }
 
+    public async Task<ParsedReminder?> ParseReminderAsync(
+        string phrase,
+        DateTimeOffset now,
+        string languageTag = "ko-KR",
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(phrase);
+        await EnsureAvailableAsync(cancellationToken).ConfigureAwait(false);
+
+        // The phrase is the user's own words, but it still goes in the untrusted block: it is text
+        // that reached the model, and the boundary is structural rather than a judgement about who
+        // typed it.
+        var context = new NoteContext { NoteId = Guid.Empty, Content = phrase };
+
+        var json = await ChatAsync(
+            AiPrompts.SystemFor(AiAction.ParseReminder),
+            AiPrompts.UserFor(AiAction.ParseReminder, context, now: now),
+            AiSchemas.ParsedReminder,
+            cancellationToken).ConfigureAwait(false);
+
+        return AiResponseParser.ReadReminder(json);
+    }
+
+    public async Task<string> SuggestTitleAsync(
+        NoteContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        await EnsureAvailableAsync(cancellationToken).ConfigureAwait(false);
+
+        var json = await ChatAsync(
+            AiPrompts.SystemFor(AiAction.SuggestTitle),
+            AiPrompts.UserFor(AiAction.SuggestTitle, context),
+            AiSchemas.SuggestedTitle,
+            cancellationToken).ConfigureAwait(false);
+
+        return AiResponseParser.ReadTitle(json);
+    }
+
     /// <summary>
     /// Asks the daemon to load the model without generating anything.
     /// </summary>

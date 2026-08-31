@@ -177,6 +177,7 @@
                                                 <ColumnDefinition Width="26" />
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
 
                                             <FontIcon x:Name="AiTidySectionIcon" Grid.Column="0" Glyph="&#xE70F;" Style="{StaticResource NoteMenuSectionIconStyle}" />
@@ -191,6 +192,19 @@
                                                 <StackPanel Spacing="4">
                                                     <FontIcon Glyph="&#xE8A1;" Style="{StaticResource NoteMenuTileIconStyle}" />
                                                     <TextBlock x:Name="AiOrganizeLabel" Style="{StaticResource NoteMenuTileLabelStyle}" />
+                                                </StackPanel>
+                                            </Button>
+
+                                            <!--
+                                                A note is named by its first line, so a note that
+                                                opens with a checklist item is filed under that
+                                                item. This proposes a heading line instead of
+                                                inventing a title field the note does not have.
+                                            -->
+                                            <Button x:Name="AiTitle" Grid.Column="3" Style="{StaticResource NoteMenuTileStyle}" IsEnabled="False" Click="OnAiTitleClicked">
+                                                <StackPanel Spacing="4">
+                                                    <FontIcon Glyph="&#xE8AC;" Style="{StaticResource NoteMenuTileIconStyle}" />
+                                                    <TextBlock x:Name="AiTitleLabel" Style="{StaticResource NoteMenuTileLabelStyle}" />
                                                 </StackPanel>
                                             </Button>
                                         </Grid>
@@ -484,6 +498,7 @@
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
 
                                         <FontIcon x:Name="RemindSectionIcon" Grid.Column="0" Glyph="&#xEA8F;" Style="{StaticResource NoteMenuSectionIconStyle}" />
@@ -509,6 +524,19 @@
                                             <StackPanel Spacing="4">
                                                 <FontIcon Glyph="&#xE787;" Style="{StaticResource NoteMenuTileIconStyle}" />
                                                 <TextBlock x:Name="RemindTomorrowLabel" Style="{StaticResource NoteMenuTileLabelStyle}" />
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!--
+                                            The fourth chip is for everything the other three
+                                            cannot say: a weekday, a date, or a repeat. It needs a
+                                            model, so it greys out with the rest of the AI when
+                                            there is none.
+                                        -->
+                                        <Button x:Name="RemindCustom" Grid.Column="4" Style="{StaticResource NoteMenuTileStyle}" IsEnabled="False" Click="OnRemindCustomClicked">
+                                            <StackPanel Spacing="4">
+                                                <FontIcon Glyph="&#xE70F;" Style="{StaticResource NoteMenuTileIconStyle}" />
+                                                <TextBlock x:Name="RemindCustomLabel" Style="{StaticResource NoteMenuTileLabelStyle}" />
                                             </StackPanel>
                                         </Button>
                                     </Grid>

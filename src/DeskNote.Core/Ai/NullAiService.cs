@@ -36,6 +36,16 @@ public sealed class NullAiService(AiAvailability reason = AiAvailability.ModelNo
         NoteContext context,
         CancellationToken cancellationToken = default) => throw Unavailable();
 
+    public Task<ParsedReminder?> ParseReminderAsync(
+        string phrase,
+        DateTimeOffset now,
+        string languageTag = "ko-KR",
+        CancellationToken cancellationToken = default) => throw Unavailable();
+
+    public Task<string> SuggestTitleAsync(
+        NoteContext context,
+        CancellationToken cancellationToken = default) => throw Unavailable();
+
     /// <summary>Throws eagerly rather than at first enumeration; callers must probe before streaming.</summary>
     public IAsyncEnumerable<string> StreamAnswerAsync(
         AiQuery query,

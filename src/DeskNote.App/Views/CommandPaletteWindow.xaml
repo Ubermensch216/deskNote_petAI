@@ -1,0 +1,84 @@
+<Window
+    x:Class="DeskNote.App.Views.CommandPaletteWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:views="using:DeskNote.App.Views">
+
+    <!--
+        One line in, and everything the app can do with it. Search runs on every keystroke because
+        it costs nothing; the model is asked what the line means in parallel, and its answer only
+        ever moves a button to the front — it never stands between the typing and the results.
+    -->
+    <Grid Padding="16,14,16,14" RowSpacing="10">
+        <!--
+            On the root rather than on the input box: a launcher has to close on Escape from
+            wherever focus happens to be, and after arrowing into the results it is not in the box.
+        -->
+        <Grid.KeyboardAccelerators>
+            <KeyboardAccelerator Key="Escape" Invoked="OnEscapeInvoked" />
+        </Grid.KeyboardAccelerators>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBox
+            x:Name="InputBox"
+            Grid.Row="0"
+            FontSize="18"
+            AcceptsReturn="False"
+            TextChanged="OnInputChanged"
+            KeyDown="OnInputKeyDown" />
+
+        <!--
+            Always present, never reordered. A palette whose buttons move as a model changes its
+            mind cannot be used by muscle memory, so the recommendation is a highlight rather than
+            a rearrangement.
+        -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+            <Button x:Name="AskButton" Click="OnAskClicked" />
+            <Button x:Name="RemindButton" Click="OnRemindClicked" />
+            <Button x:Name="NewNoteButton" Click="OnNewNoteClicked" />
+        </StackPanel>
+
+        <ListView
+            x:Name="Results"
+            Grid.Row="2"
+            SelectionMode="Single"
+            IsItemClickEnabled="True"
+            ItemClick="OnResultClicked">
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="views:PaletteRow">
+                    <Grid ColumnSpacing="10" Padding="0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="4" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" CornerRadius="2" Background="{x:Bind Color}" />
+
+                        <StackPanel Grid.Column="1" Spacing="1">
+                            <TextBlock Text="{x:Bind Title}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock
+                                Text="{x:Bind Preview}"
+                                Style="{ThemeResource CaptionTextBlockStyle}"
+                                Opacity="0.65"
+                                TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+        <TextBlock
+            x:Name="Hint"
+            Grid.Row="2"
+            VerticalAlignment="Center"
+            HorizontalAlignment="Center"
+            Opacity="0.5"
+            TextWrapping="Wrap"
+            TextAlignment="Center" />
+    </Grid>
+</Window>

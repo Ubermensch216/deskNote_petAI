@@ -57,6 +57,22 @@ public interface ILocalAiService
         NoteContext context,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// 자연어 알림 — reads a moment out of a phrase, or returns null if it could not.
+    /// </summary>
+    /// <remarks>
+    /// Short input and short output, which is why this one is usable interactively where the
+    /// text actions are not: the model answers in a second or two rather than in half a minute.
+    /// </remarks>
+    Task<ParsedReminder?> ParseReminderAsync(
+        string phrase,
+        DateTimeOffset now,
+        string languageTag = "ko-KR",
+        CancellationToken cancellationToken = default);
+
+    /// <summary>제목 제안 — one line for a note whose first line makes a poor name.</summary>
+    Task<string> SuggestTitleAsync(NoteContext context, CancellationToken cancellationToken = default);
+
     /// <summary>메모 Q&amp;A — streams an answer so the sidecar shows tokens as they arrive.</summary>
     IAsyncEnumerable<string> StreamAnswerAsync(
         AiQuery query,
