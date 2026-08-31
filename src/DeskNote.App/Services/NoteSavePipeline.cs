@@ -23,7 +23,7 @@ public sealed class NoteSavePipeline(
     IClock clock)
 {
     /// <summary>Writes note text, checkpointing the previous version first when the policy says so.</summary>
-    public async Task SaveAsync(
+    public async Task<NoteSaveResult> SaveAsync(
         Guid noteId,
         string title,
         string content,
@@ -34,13 +34,23 @@ public sealed class NoteSavePipeline(
     {
         var existing = await notes.GetAsync(noteId, cancellationToken).ConfigureAwait(false);
 
-        if (existing is not null && !string.Equals(existing.Content, content, StringComparison.Ordinal))
+        var contentChanged = existing is not null
+            && !string.Equals(existing.Content, content, StringComparison.Ordinal);
+
+        if (existing is not null && contentChanged)
         {
             await CheckpointAsync(noteId, existing.Content, reason, source, actionName, cancellationToken)
                 .ConfigureAwait(false);
         }
 
         await notes.UpdateContentAsync(noteId, title, content, cancellationToken).ConfigureAwait(false);
+
+        return new NoteSaveResult(
+            noteId,
+            existing?.Content,
+            content,
+            contentChanged,
+            clock.UtcNow);
     }
 
     /// <summary>Forgets a note's checkpoint timer, so reopening it checkpoints on the next edit.</summary>
@@ -68,3 +78,14 @@ public sealed class NoteSavePipeline(
         await revisions.PruneAsync(noteId, policy.KeepPerNote, cancellationToken).ConfigureAwait(false);
     }
 }
+
+/// <summary>
+/// The observable result of a note save. Consumers may derive optional activity after persistence
+/// succeeds without putting that work on the note transaction's critical path.
+/// </summary>
+public sealed record NoteSaveResult(
+    Guid NoteId,
+    string? PreviousContent,
+    string CurrentContent,
+    bool ContentChanged,
+    DateTimeOffset SavedAt);

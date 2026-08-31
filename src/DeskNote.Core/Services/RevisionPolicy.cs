@@ -67,12 +67,12 @@ public sealed class RevisionPolicy(TimeSpan? interval = null, int? keepPerNote =
         DateTimeOffset now,
         RevisionSource source = RevisionSource.User,
         string? actionName = null) => new()
-    {
-        Id = Guid.CreateVersion7(),
-        NoteId = noteId,
-        Content = previousContent,
-        CreatedAt = now,
-        Source = source,
-        ActionName = actionName,
-    };
+        {
+            Id = Guid.CreateVersion7(),
+            NoteId = noteId,
+            Content = previousContent,
+            CreatedAt = now,
+            Source = source,
+            ActionName = actionName,
+        };
 }

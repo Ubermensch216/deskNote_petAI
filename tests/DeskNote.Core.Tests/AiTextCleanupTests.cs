@@ -1,3 +1,4 @@
+using DeskNote.Core.Models;
 using DeskNote.Core.Services;
 
 namespace DeskNote.Core.Tests;
@@ -189,7 +190,7 @@ public class AiTextCleanupTests
             - [X] 회의실 예약 #회의
             """);
 
-        Assert.Equal(
+        var expected = NoteContent.NormalizeLineEndings(
             """
             회의 요약
 
@@ -199,7 +200,8 @@ public class AiTextCleanupTests
             할 일
             - [ ] 자료 모으기
             - [x] 회의실 예약 #회의
-            """,
-            cleaned);
+            """);
+
+        Assert.Equal(expected, cleaned);
     }
 }

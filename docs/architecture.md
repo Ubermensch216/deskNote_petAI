@@ -22,6 +22,26 @@ AI 계층은 `Core`의 `ILocalAiService` 뒤에만 존재한다. 구현은 `src/
 `OllamaAiService`이고, 로컬 모델이 없거나 `ai.enabled` 가 꺼져 있으면 항상 "사용 불가"를
 반환하는 `NullAiService`로 내려간다.
 
+## 앱 조립과 수명주기
+
+`App.xaml.cs`는 WinUI 진입점과 최상위 오류 기록만 맡는다. `CompositionRoot`가 데이터베이스,
+리포지토리, 저장 파이프라인, 검색, AI host와 창 관리자를 조립하고 `ApplicationRuntime`이 실행 중인
+서비스의 시작과 종료 순서를 소유한다.
+
+시작 순서는 마이그레이션·언어 설정 → 크래시 복구 → 메모 창 복원 → 알림·단축키·트레이 → AI probe·
+임베딩 backfill이다. 종료는 외부 입력을 먼저 끊고 대기 중인 자동 저장을 flush한 뒤 인덱서와 AI host를
+정리한다. 따라서 조립 코드가 늘어나도 `App`에 기능별 필드와 콜백이 다시 쌓이지 않는다.
+
+기존 메모를 다시 여는 경로는 `NoteOpenContext`로 라이브러리·검색·관련 메모·AI 근거·알림을 구분한다.
+`NoteWindowManager.NoteOpened`는 메모가 실제로 포커스된 뒤에만 발생한다. 이 이벤트는 메모 계층에서는
+해석하지 않으며, 이후 컴패니언이 회상 후보를 계산할 수 있는 typed seam으로만 사용한다.
+
+대형 WinUI 클래스는 기능별 partial로 나눈다. `NoteWindow.xaml.cs`는 편집기·창·표면 수명주기를,
+`NoteWindow.Ai.cs`는 AI 가용성·제안·미리보기·승인 적용을 소유한다. `NoteWindowManager.cs`는 메모 창과
+저장 수명주기를, `NoteWindowManager.Memory.cs`는 라이브러리·관련 메모·브리핑·Q&A·명령 팔레트 탐색을
+소유한다. partial은 런타임 추상화가 아니라 UI 이벤트 이름을 바꾸지 않고 기능 경계를 먼저 세우는
+중간 단계이며, 컴패니언은 이 파일들에 직접 추가하지 않고 별도 coordinator에서 연결한다.
+
 ## 저장과 버전
 
 타이핑이 멈추고 300ms 뒤에 저장이 시작된다(보고서 p5의 250–500ms 대역 중간). 노트마다 타이머가
@@ -41,6 +61,10 @@ AI 적용은 **자동저장 경로를 타지 않는다**. 타이핑은 5분 간�
 대기 중인 자동저장을 먼저 flush 한 뒤 `BulkReplace` + `RevisionSource.Ai` + 동작 이름으로 직접
 쓴다. flush 가 필요한 이유는, 적용 직전에 친 문장이 아직 디바운스 안에 있으면 "AI 이전" 으로
 저장되는 버전에 그 문장이 빠지기 때문이다.
+
+`NoteSavePipeline.SaveAsync`는 저장 성공 뒤 `NoteSaveResult`를 반환한다. 이전 본문, 현재 본문,
+실제 변경 여부와 저장 시각을 담되 어떤 점수나 분석도 계산하지 않는다. 컴패니언 활동 분류는 이 결과를
+비동기로 받아 처리하므로 note save 트랜잭션과 30ms SLO에 들어오지 않는다.
 
 ## 본문이 원본이다
 

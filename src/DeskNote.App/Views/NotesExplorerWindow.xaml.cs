@@ -1,5 +1,6 @@
 using DeskNote.App.Services;
 using DeskNote.Core.Abstractions;
+using DeskNote.Core.Models;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -26,7 +27,7 @@ public sealed partial class NotesExplorerWindow : Window
     private readonly INoteLibrary _library;
     private readonly INoteRepository _notes;
     private readonly HybridLibrarySearch? _hybrid;
-    private readonly Func<Guid, Task> _openNote;
+    private readonly Func<Guid, NoteOpenOrigin, Task> _openNote;
     private readonly DispatcherTimer _searchTimer = new() { Interval = SearchDebounce };
 
     private NoteQuery _query = NoteQuery.Default;
@@ -45,7 +46,7 @@ public sealed partial class NotesExplorerWindow : Window
     public NotesExplorerWindow(
         INoteLibrary library,
         INoteRepository notes,
-        Func<Guid, Task> openNote,
+        Func<Guid, NoteOpenOrigin, Task> openNote,
         HybridLibrarySearch? hybrid = null)
     {
         InitializeComponent();
@@ -241,7 +242,11 @@ public sealed partial class NotesExplorerWindow : Window
             return;
         }
 
-        await _openNote(summary.Id);
+        var origin = string.IsNullOrWhiteSpace(SearchBox.Text)
+            ? NoteOpenOrigin.Library
+            : NoteOpenOrigin.Search;
+
+        await _openNote(summary.Id, origin);
     }
 
     private async void OnRestoreClicked(object sender, RoutedEventArgs e)

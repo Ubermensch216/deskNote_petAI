@@ -1,0 +1,60 @@
+name: Build, test, and package
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Windows verification
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore DeskNote.slnx
+
+      - name: Verify formatting
+        run: dotnet format DeskNote.slnx --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build DeskNote.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test DeskNote.slnx --configuration Release --no-restore
+
+      - name: Publish win-x64 single-file app
+        run: >-
+          dotnet publish src/DeskNote.App/DeskNote.App.csproj
+          --configuration Release
+          --runtime win-x64
+          --output dist/single
+          --no-restore
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=none
+
+      - name: Verify packaged executable
+        shell: pwsh
+        run: |
+          $app = Get-Item -LiteralPath dist/single/DeskNote.exe
+          if ($app.Length -lt 1MB) {
+            throw "Published executable is unexpectedly small: $($app.Length) bytes"
+          }

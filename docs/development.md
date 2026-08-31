@@ -21,7 +21,16 @@ dotnet test
 
 xunit.v3 는 Microsoft.Testing.Platform 러너를 직접 호스팅하고 .NET 10 SDK 는 VSTest 로 그것을 실행하지
 않는다. 그래서 `global.json` 의 `test.runner` 로 러너를 지정해 둔다 — 이 항목이 없으면 `dotnet test` 는
-바로 오류로 끝난다. 현재 `Core`·`Data`·`Ai` 504개 테스트가 모두 통과한다.
+바로 오류로 끝난다. 테스트 수는 기능과 이론 데이터에 따라 계속 달라지므로 문서에 고정하지 않는다.
+현재 통과 여부와 실행된 테스트 수의 기준은 GitHub Actions의 `Build, test, and package` 실행 결과다.
+
+## CI
+
+`main` 과 pull request는 Windows에서 복원·서식 검증·Release 빌드·테스트·win-x64 단일 파일 publish를 순서대로
+실행한다. 로컬과 CI가 같은 진입점을 쓰도록 별도 테스트 스크립트를 두지 않는다.
+
+CI가 실패한 변경은 병합하지 않는다. 특히 테스트 성공 뒤 publish까지 실행하는 이유는 WinUI 앱이
+`dotnet run`에서는 정상이어도 publish 출력에서 리소스 인덱스를 잃을 수 있기 때문이다.
 
 ## 실행 파일 만들기
 

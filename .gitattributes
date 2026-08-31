@@ -1,0 +1,19 @@
+* text=auto
+
+# Keep source and documentation deterministic across Windows and CI checkouts.
+*.cs text eol=lf
+*.csproj text eol=lf
+*.props text eol=lf
+*.slnx text eol=lf
+*.xaml text eol=lf
+*.xml text eol=lf
+*.sql text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.py text eol=lf
+
+*.ico binary
+*.png binary
+*.jpg binary
+*.pdf binary

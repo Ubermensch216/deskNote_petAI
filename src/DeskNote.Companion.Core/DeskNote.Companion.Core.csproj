@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\DeskNote.Core\DeskNote.Core.csproj" />
+  </ItemGroup>
+
+</Project>

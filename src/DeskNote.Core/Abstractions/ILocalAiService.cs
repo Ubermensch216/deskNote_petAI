@@ -7,8 +7,11 @@ namespace DeskNote.Core.Abstractions;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Implementations live behind a named pipe in a separate worker process, so a model that
-/// exhausts memory or trips a GPU driver cannot take the note windows down with it (report p10).
+/// Implementations keep model execution outside the DeskNote process. The current implementation
+/// talks to the separately running Ollama process over local HTTP; the contract deliberately does
+/// not expose that transport, so a dedicated worker can replace it without changing the note app.
+/// A failure or resource exhaustion in the model host must be reported as AI unavailability and
+/// must never make the note layer depend on model startup (report p10).
 /// </para>
 /// <para>
 /// Every method requires <see cref="ProbeAsync"/> to have reported

@@ -57,4 +57,25 @@ public static class SettingKeys
     /// unloads immediately, which is the setting for a machine that cannot spare the memory.
     /// </remarks>
     public const string AiKeepAliveMinutes = "ai.keepAliveMinutes";
+
+    /// <summary>Whether the companion feature is active. Absent means opt-in has not happened.</summary>
+    public const string CompanionEnabled = "companion.enabled";
+
+    /// <summary>Whether guarded proactive suggestion cards may be produced.</summary>
+    public const string CompanionProactiveEnabled = "companion.proactive.enabled";
+
+    /// <summary>Whether the companion may stay above ordinary windows.</summary>
+    public const string CompanionAlwaysVisible = "companion.alwaysVisible";
+
+    /// <summary>Whether movement is replaced with static state changes.</summary>
+    public const string CompanionReduceMotion = "companion.reduceMotion";
+
+    /// <summary>Local quiet-hours start in 24-hour HH:mm form.</summary>
+    public const string CompanionQuietHoursStart = "companion.quietHours.start";
+
+    /// <summary>Local quiet-hours end in 24-hour HH:mm form.</summary>
+    public const string CompanionQuietHoursEnd = "companion.quietHours.end";
+
+    /// <summary>Version of the deterministic reward rules used for new events.</summary>
+    public const string CompanionRuleVersion = "companion.ruleVersion";
 }

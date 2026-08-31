@@ -8,6 +8,12 @@ artifacts/
 *.suo
 .vs/
 .vscode/
+.idea/
+
+# Python tooling used to regenerate artwork
+__pycache__/
+*.py[cod]
+.pytest_cache/
 
 # NuGet
 *.nupkg
@@ -32,3 +38,9 @@ desktop.ini
 
 # Publish output (the built app is not committed)
 dist/
+
+# Test reports and coverage output
+TestResults/
+*.trx
+.coverage
+coverage/
