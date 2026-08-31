@@ -42,6 +42,11 @@
                 <Setter Property="Height" Value="26" />
                 <Setter Property="FontSize" Value="14" />
             </Style>
+
+            <!-- AI is what this app is for, so its entry point is a wider, named button. -->
+            <Style x:Key="AiButtonStyle" TargetType="Button" BasedOn="{StaticResource ChromeButtonStyle}">
+                <Setter Property="Width" Value="40" />
+            </Style>
         </Border.Resources>
 
         <Grid Padding="12,3,10,4">
@@ -92,6 +97,195 @@
                         <ScalarTransition Duration="0:0:0.12" />
                     </StackPanel.OpacityTransition>
 
+                    <!--
+                        AI has its own button rather than a section inside the ⋯ menu. It is the
+                        product, not one more note setting, and burying it three scrolls down a
+                        menu of colours said the opposite. The sparkle carries it and the word
+                        "AI" is spelled out beside it: this is the one place in the note where a
+                        glyph on its own would leave the app's whole point to be guessed at.
+                    -->
+                    <Button x:Name="AiButton" Style="{StaticResource AiButtonStyle}">
+                        <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                            <FontIcon x:Name="AiButtonIcon" Glyph="&#xE794;" FontSize="12" />
+                            <TextBlock Text="AI" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <Button.Flyout>
+                            <Flyout x:Name="AiFlyout" Placement="Bottom" Opened="OnAiFlyoutOpened" Closed="OnMenuFlyoutClosed">
+                                <Flyout.FlyoutPresenterStyle>
+                                    <Style TargetType="FlyoutPresenter">
+                                        <Setter Property="Padding" Value="6" />
+                                        <Setter Property="CornerRadius" Value="10" />
+                                        <Setter Property="MinWidth" Value="0" />
+                                        <Setter Property="MaxWidth" Value="320" />
+                                        <Setter Property="ScrollViewer.HorizontalScrollMode" Value="Disabled" />
+                                        <Setter Property="ScrollViewer.VerticalScrollMode" Value="Enabled" />
+                                        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+                                    </Style>
+                                </Flyout.FlyoutPresenterStyle>
+
+                                <!--
+                                    Capped and scrollable for the same reason as the settings menu:
+                                    an unpackaged WinUI popup cannot leave its window, so on a
+                                    240×180 note the rows past the bottom edge would be drawn where
+                                    nobody can click them.
+                                -->
+                                <ScrollViewer
+                                    x:Name="AiMenuScroll"
+                                    VerticalScrollMode="Enabled"
+                                    VerticalScrollBarVisibility="Auto"
+                                    HorizontalScrollMode="Disabled"
+                                    HorizontalScrollBarVisibility="Disabled">
+                                    <StackPanel x:Name="AiMenuPanel" Width="248" Spacing="2">
+                                        <StackPanel.Resources>
+                                            <!--
+                                                The flyout lives in the popup root, outside the
+                                                note's visual tree, so the paper brushes applied to
+                                                Surface do not reach it. These keys make the rows
+                                                flat here, and the system supplies the hover fill.
+                                            -->
+                                            <SolidColorBrush x:Key="ButtonBackground" Color="Transparent" />
+                                            <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="Transparent" />
+                                            <SolidColorBrush x:Key="ButtonBorderBrush" Color="Transparent" />
+                                            <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent" />
+                                            <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
+                                            <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="Transparent" />
+                                        </StackPanel.Resources>
+
+                                        <!--
+                                            The same shape as the settings menu: the category sits
+                                            in the 26pt gutter and everything to its right belongs
+                                            to it. Read down the gutter and the three things AI
+                                            does to a note are there before a single tile has been
+                                            read. Captions above the rows said as much, but each
+                                            spent a row of its own saying it, and a 180pt note
+                                            cannot spare that three times over.
+                                        -->
+                                        <Grid ColumnSpacing="4" Margin="4,2,4,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="26" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <FontIcon x:Name="AiTidySectionIcon" Grid.Column="0" Glyph="&#xE70F;" Style="{StaticResource NoteMenuSectionIconStyle}" />
+
+                                            <Button x:Name="AiSummarize" Grid.Column="1" Style="{StaticResource NoteMenuTileStyle}" IsEnabled="False" Click="OnAiActionChipClicked">
+                                                <StackPanel Spacing="4">
+                                                    <FontIcon Glyph="&#xE71C;" Style="{StaticResource NoteMenuTileIconStyle}" />
+                                                    <TextBlock x:Name="AiSummarizeLabel" Style="{StaticResource NoteMenuTileLabelStyle}" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button x:Name="AiOrganize" Grid.Column="2" Style="{StaticResource NoteMenuTileStyle}" IsEnabled="False" Click="OnAiActionChipClicked">
+                                                <StackPanel Spacing="4">
+                                                    <FontIcon Glyph="&#xE8A1;" Style="{StaticResource NoteMenuTileIconStyle}" />
+                                                    <TextBlock x:Name="AiOrganizeLabel" Style="{StaticResource NoteMenuTileLabelStyle}" />
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+
+                                        <Grid ColumnSpacing="4" Margin="4,2,4,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="26" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <FontIcon x:Name="AiRewriteSectionIcon" Grid.Column="0" Glyph="&#xE8AB;" Style="{StaticResource NoteMenuSectionIconStyle}" />
+
+                                            <Button x:Name="AiRewriteConcise" Grid.Column="1" Style="{StaticResource NoteMenuTileStyle}" IsEnabled="False" Click="OnAiRewriteChipClicked">
+                                                <StackPanel Spacing="4">
+                                                    <FontIcon Glyph="&#xE8C6;" Style="{StaticResource NoteMenuTileIconStyle}" />
+                                                    <TextBlock x:Name="AiRewriteConciseLabel" Style="{StaticResource NoteMenuTileLabelStyle}" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button x:Name="AiRewriteFormal" Grid.Column="2" Style="{StaticResource NoteMenuTileStyle}" IsEnabled="False" Click="OnAiRewriteChipClicked">
+                                                <StackPanel Spacing="4">
+                                                    <FontIcon Glyph="&#xE8A5;" Style="{StaticResource NoteMenuTileIconStyle}" />
+                                                    <TextBlock x:Name="AiRewriteFormalLabel" Style="{StaticResource NoteMenuTileLabelStyle}" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button x:Name="AiRewriteFriendly" Grid.Column="3" Style="{StaticResource NoteMenuTileStyle}" IsEnabled="False" Click="OnAiRewriteChipClicked">
+                                                <StackPanel Spacing="4">
+                                                    <FontIcon Glyph="&#xE76E;" Style="{StaticResource NoteMenuTileIconStyle}" />
+                                                    <TextBlock x:Name="AiRewriteFriendlyLabel" Style="{StaticResource NoteMenuTileLabelStyle}" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button x:Name="AiRewriteReport" Grid.Column="4" Style="{StaticResource NoteMenuTileStyle}" IsEnabled="False" Click="OnAiRewriteChipClicked">
+                                                <StackPanel Spacing="4">
+                                                    <FontIcon Glyph="&#xE9F9;" Style="{StaticResource NoteMenuTileIconStyle}" />
+                                                    <TextBlock x:Name="AiRewriteReportLabel" Style="{StaticResource NoteMenuTileLabelStyle}" />
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+
+                                        <!--
+                                            These two do not rewrite the note: they propose a list
+                                            the user ticks through, which is why they answer to a
+                                            category of their own rather than sitting among the
+                                            rewrite tiles.
+                                        -->
+                                        <Grid ColumnSpacing="4" Margin="4,2,4,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="26" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <FontIcon x:Name="AiExtractSectionIcon" Grid.Column="0" Glyph="&#xE896;" Style="{StaticResource NoteMenuSectionIconStyle}" />
+
+                                            <Button x:Name="AiExtractTasks" Grid.Column="1" Style="{StaticResource NoteMenuTileStyle}" IsEnabled="False" Click="OnAiListChipClicked">
+                                                <StackPanel Spacing="4">
+                                                    <FontIcon Glyph="&#xE762;" Style="{StaticResource NoteMenuTileIconStyle}" />
+                                                    <TextBlock x:Name="AiExtractTasksLabel" Style="{StaticResource NoteMenuTileLabelStyle}" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button x:Name="AiSuggestTags" Grid.Column="2" Style="{StaticResource NoteMenuTileStyle}" IsEnabled="False" Click="OnAiListChipClicked">
+                                                <StackPanel Spacing="4">
+                                                    <FontIcon Glyph="&#xE8EC;" Style="{StaticResource NoteMenuTileIconStyle}" />
+                                                    <TextBlock x:Name="AiSuggestTagsLabel" Style="{StaticResource NoteMenuTileLabelStyle}" />
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+
+                                        <Border x:Name="AiMenuSeparator" Height="1" Margin="4,6,4,4" />
+
+                                        <!--
+                                            Q&A answers rather than edits, and it opens a window of
+                                            its own. A full-width row is what says that: it is not
+                                            one more thing that happens to this note's text.
+                                        -->
+                                        <Button x:Name="AiAsk" Style="{StaticResource NoteMenuRowStyle}" IsEnabled="False" Click="OnAiAskChipClicked">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="24" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <FontIcon Grid.Column="0" Glyph="&#xE9CE;" FontSize="14" HorizontalAlignment="Left" />
+                                                <TextBlock x:Name="AiAskLabel" Grid.Column="1" VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Button>
+
+                                        <!--
+                                            Every tile above is disabled unless a local model
+                                            answered a probe. The note app never depends on AI, so
+                                            the menu is present but inert rather than hidden: a
+                                            user who installed a model should find where it went,
+                                            and one who did not should be told why nothing works.
+                                        -->
+                                        <TextBlock
+                                            x:Name="AiStatus"
+                                            Style="{StaticResource NoteMenuCaptionStyle}"
+                                            Margin="8,6,8,2"
+                                            TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+
                     <Button x:Name="MoreButton" Style="{StaticResource ChromeButtonStyle}">
                         <FontIcon Glyph="&#xE712;" FontSize="12" />
 
@@ -99,8 +293,11 @@
                             <!--
                                 A custom Flyout rather than a MenuFlyout: the colours are the first
                                 thing this menu is for, and a MenuFlyout cannot hold a swatch row.
+                                What is left here is everything about the note as an object — how it
+                                looks, how big it is, when it speaks up, where it is filed. The AI
+                                commands moved to their own button.
                             -->
-                            <Flyout x:Name="MoreFlyout" Placement="Bottom" Opened="OnMoreFlyoutOpened" Closed="OnMoreFlyoutClosed">
+                            <Flyout x:Name="MoreFlyout" Placement="Bottom" Opened="OnMoreFlyoutOpened" Closed="OnMenuFlyoutClosed">
                                 <Flyout.FlyoutPresenterStyle>
                                     <Style TargetType="FlyoutPresenter">
                                         <Setter Property="Padding" Value="6" />
@@ -127,7 +324,7 @@
                                     VerticalScrollBarVisibility="Auto"
                                     HorizontalScrollMode="Disabled"
                                     HorizontalScrollBarVisibility="Disabled">
-                                <StackPanel Width="262" Spacing="2">
+                                <StackPanel x:Name="MenuPanel" Width="248" Spacing="2">
                                     <StackPanel.Resources>
                                         <!--
                                             The flyout lives in the popup root, outside the note's
@@ -141,28 +338,6 @@
                                         <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="Transparent" />
                                         <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="Transparent" />
                                         <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="Transparent" />
-
-                                        <Style x:Key="MenuRowStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
-                                            <Setter Property="HorizontalAlignment" Value="Stretch" />
-                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                            <Setter Property="Padding" Value="8,7" />
-                                            <Setter Property="CornerRadius" Value="6" />
-                                            <Setter Property="BorderThickness" Value="0" />
-                                        </Style>
-
-                                        <Style x:Key="ChipStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
-                                            <Setter Property="HorizontalAlignment" Value="Stretch" />
-                                            <Setter Property="Padding" Value="4,5" />
-                                            <Setter Property="CornerRadius" Value="6" />
-                                            <Setter Property="FontSize" Value="12" />
-                                            <Setter Property="BorderThickness" Value="0" />
-                                        </Style>
-
-                                        <Style x:Key="SectionCaptionStyle" TargetType="TextBlock">
-                                            <Setter Property="FontSize" Value="11" />
-                                            <Setter Property="Opacity" Value="0.6" />
-                                            <Setter Property="Margin" Value="8,6,0,2" />
-                                        </Style>
                                     </StackPanel.Resources>
 
                                     <!--
@@ -176,13 +351,13 @@
                                     <ItemsControl x:Name="ColorChoices">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
-                                                <VariableSizedWrapGrid Orientation="Horizontal" MaximumRowsOrColumns="8" />
+                                                <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="30" ItemHeight="34" />
                                             </ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="views:NoteColorChoice">
                                                 <Button
-                                                    Width="32"
+                                                    Width="30"
                                                     Height="34"
                                                     Padding="0"
                                                     MinWidth="0"
@@ -194,8 +369,8 @@
                                                     Click="OnColorChosen">
                                                     <Grid>
                                                         <Border
-                                                            Width="26"
-                                                            Height="26"
+                                                            Width="24"
+                                                            Height="24"
                                                             CornerRadius="7"
                                                             BorderThickness="1"
                                                             Background="{x:Bind Brush}"
@@ -217,125 +392,138 @@
                                         Opacity floors at Note.MinOpacity rather than 0: report p4
                                         allows the surface to be translucent but never at the cost of
                                         text contrast, and a fully transparent note is unreadable.
+
+                                        The half-filled disc replaces the slider's text header. On a
+                                        menu this narrow a caption line costs more than it explains,
+                                        and the glyph sits in the same 26px gutter as the two chip
+                                        rows below, which lines the whole menu up on one edge.
                                     -->
-                                    <Slider
-                                        x:Name="OpacitySlider"
-                                        Margin="8,2,8,0"
-                                        StepFrequency="5"
-                                        ValueChanged="OnOpacityChanged" />
+                                    <Grid ColumnSpacing="4" Margin="4,2,4,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="26" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <FontIcon x:Name="OpacityIcon" Grid.Column="0" Glyph="&#xE793;" Style="{StaticResource NoteMenuSectionIconStyle}" />
+                                        <Slider
+                                            x:Name="OpacitySlider"
+                                            Grid.Column="1"
+                                            VerticalAlignment="Center"
+                                            StepFrequency="5"
+                                            ValueChanged="OnOpacityChanged" />
+                                    </Grid>
 
                                     <Border x:Name="MenuSeparator1" Height="1" Margin="4,4" />
 
-                                    <Button x:Name="PinRow" Style="{StaticResource MenuRowStyle}" Click="OnPinRowClicked">
+                                    <Grid ColumnSpacing="4" Margin="4,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="26" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <FontIcon x:Name="SizeSectionIcon" Grid.Column="0" Glyph="&#xE740;" Style="{StaticResource NoteMenuSectionIconStyle}" />
+
+                                        <!--
+                                            Three rectangles at the sizes they stand for. No glyph in
+                                            the icon font means "medium note", and drawing the answer
+                                            needs no legend in any language.
+                                        -->
+                                        <Button x:Name="SizeSmall" Grid.Column="1" Style="{StaticResource NoteMenuTileStyle}" Click="OnSizeChipClicked">
+                                            <StackPanel Spacing="4">
+                                                <Grid Height="16">
+                                                    <Border x:Name="SizeSmallMark" Width="10" Height="8" CornerRadius="2" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                                </Grid>
+                                                <TextBlock x:Name="SizeSmallLabel" Style="{StaticResource NoteMenuTileLabelStyle}" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button x:Name="SizeMedium" Grid.Column="2" Style="{StaticResource NoteMenuTileStyle}" Click="OnSizeChipClicked">
+                                            <StackPanel Spacing="4">
+                                                <Grid Height="16">
+                                                    <Border x:Name="SizeMediumMark" Width="14" Height="11" CornerRadius="2" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                                </Grid>
+                                                <TextBlock x:Name="SizeMediumLabel" Style="{StaticResource NoteMenuTileLabelStyle}" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button x:Name="SizeLarge" Grid.Column="3" Style="{StaticResource NoteMenuTileStyle}" Click="OnSizeChipClicked">
+                                            <StackPanel Spacing="4">
+                                                <Grid Height="16">
+                                                    <Border x:Name="SizeLargeMark" Width="18" Height="14" CornerRadius="2" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                                </Grid>
+                                                <TextBlock x:Name="SizeLargeLabel" Style="{StaticResource NoteMenuTileLabelStyle}" />
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+
+                                    <Grid ColumnSpacing="4" Margin="4,2,4,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="26" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <FontIcon x:Name="RemindSectionIcon" Grid.Column="0" Glyph="&#xEA8F;" Style="{StaticResource NoteMenuSectionIconStyle}" />
+
+                                        <!--
+                                            The offsets keep their words. A stopwatch and a clock say
+                                            "soon" and "later"; no glyph says ten minutes rather than
+                                            fifteen, so the number stays written out.
+                                        -->
+                                        <Button x:Name="Remind10Minutes" Grid.Column="1" Style="{StaticResource NoteMenuTileStyle}" Click="OnReminderChipClicked">
+                                            <StackPanel Spacing="4">
+                                                <FontIcon Glyph="&#xE916;" Style="{StaticResource NoteMenuTileIconStyle}" />
+                                                <TextBlock x:Name="Remind10MinutesLabel" Style="{StaticResource NoteMenuTileLabelStyle}" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button x:Name="Remind1Hour" Grid.Column="2" Style="{StaticResource NoteMenuTileStyle}" Click="OnReminderChipClicked">
+                                            <StackPanel Spacing="4">
+                                                <FontIcon Glyph="&#xE917;" Style="{StaticResource NoteMenuTileIconStyle}" />
+                                                <TextBlock x:Name="Remind1HourLabel" Style="{StaticResource NoteMenuTileLabelStyle}" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button x:Name="RemindTomorrow" Grid.Column="3" Style="{StaticResource NoteMenuTileStyle}" Click="OnReminderChipClicked">
+                                            <StackPanel Spacing="4">
+                                                <FontIcon Glyph="&#xE787;" Style="{StaticResource NoteMenuTileIconStyle}" />
+                                                <TextBlock x:Name="RemindTomorrowLabel" Style="{StaticResource NoteMenuTileLabelStyle}" />
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+
+                                    <Border x:Name="MenuSeparator2" Height="1" Margin="4,6,4,4" />
+
+                                    <Button x:Name="PinRow" Style="{StaticResource NoteMenuRowStyle}" Click="OnPinRowClicked">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="24" />
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="&#x1F4CC;" FontSize="13" />
+                                            <!-- Outline pin when off, filled when on: the row states its answer twice. -->
+                                            <FontIcon x:Name="PinRowIcon" Grid.Column="0" Glyph="&#xE718;" FontSize="14" HorizontalAlignment="Left" />
                                             <TextBlock x:Name="PinRowLabel" Grid.Column="1" VerticalAlignment="Center" />
                                             <TextBlock x:Name="PinRowCheck" Grid.Column="2" Text="&#x2713;" FontSize="13" Visibility="Collapsed" />
                                         </Grid>
                                     </Button>
 
-                                    <TextBlock x:Name="SizeCaption" Style="{StaticResource SectionCaptionStyle}" />
-                                    <Grid ColumnSpacing="4" Margin="4,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <Button x:Name="SizeSmall" Grid.Column="0" Style="{StaticResource ChipStyle}" Click="OnSizeChipClicked" />
-                                        <Button x:Name="SizeMedium" Grid.Column="1" Style="{StaticResource ChipStyle}" Click="OnSizeChipClicked" />
-                                        <Button x:Name="SizeLarge" Grid.Column="2" Style="{StaticResource ChipStyle}" Click="OnSizeChipClicked" />
-                                    </Grid>
-
-                                    <TextBlock x:Name="RemindCaption" Style="{StaticResource SectionCaptionStyle}" />
-                                    <Grid ColumnSpacing="4" Margin="4,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <Button x:Name="Remind10Minutes" Grid.Column="0" Style="{StaticResource ChipStyle}" Click="OnReminderChipClicked" />
-                                        <Button x:Name="Remind1Hour" Grid.Column="1" Style="{StaticResource ChipStyle}" Click="OnReminderChipClicked" />
-                                        <Button x:Name="RemindTomorrow" Grid.Column="2" Style="{StaticResource ChipStyle}" Click="OnReminderChipClicked" />
-                                    </Grid>
-
-                                    <Border x:Name="MenuSeparator2" Height="1" Margin="4,6,4,4" />
-
-                                    <!--
-                                        Every AI chip is disabled unless a local model answered a
-                                        probe. The note app never depends on AI, so the section is
-                                        present but inert rather than hidden: a user who installed
-                                        a model should find where it went, and one who did not
-                                        should be told why the buttons do nothing.
-                                    -->
-                                    <TextBlock x:Name="AiCaption" Style="{StaticResource SectionCaptionStyle}" />
-                                    <Grid ColumnSpacing="4" Margin="4,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <Button x:Name="AiSummarize" Grid.Column="0" Style="{StaticResource ChipStyle}" IsEnabled="False" Click="OnAiActionChipClicked" />
-                                        <Button x:Name="AiOrganize" Grid.Column="1" Style="{StaticResource ChipStyle}" IsEnabled="False" Click="OnAiActionChipClicked" />
-                                    </Grid>
-
-                                    <!--
-                                        These two do not rewrite the note: they propose a list the
-                                        user ticks through, so they get their own row rather than
-                                        sitting beside the rewrite actions.
-                                    -->
-                                    <Grid ColumnSpacing="4" Margin="4,2,4,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <Button x:Name="AiExtractTasks" Grid.Column="0" Style="{StaticResource ChipStyle}" IsEnabled="False" Click="OnAiListChipClicked" />
-                                        <Button x:Name="AiSuggestTags" Grid.Column="1" Style="{StaticResource ChipStyle}" IsEnabled="False" Click="OnAiListChipClicked" />
-                                        <Button x:Name="AiAsk" Grid.Column="2" Style="{StaticResource ChipStyle}" IsEnabled="False" Click="OnAiAskChipClicked" />
-                                    </Grid>
-
-                                    <TextBlock x:Name="AiRewriteCaption" Style="{StaticResource SectionCaptionStyle}" />
-                                    <Grid ColumnSpacing="4" Margin="4,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <Button x:Name="AiRewriteConcise" Grid.Column="0" Style="{StaticResource ChipStyle}" IsEnabled="False" Click="OnAiRewriteChipClicked" />
-                                        <Button x:Name="AiRewriteFormal" Grid.Column="1" Style="{StaticResource ChipStyle}" IsEnabled="False" Click="OnAiRewriteChipClicked" />
-                                        <Button x:Name="AiRewriteFriendly" Grid.Column="2" Style="{StaticResource ChipStyle}" IsEnabled="False" Click="OnAiRewriteChipClicked" />
-                                        <Button x:Name="AiRewriteReport" Grid.Column="3" Style="{StaticResource ChipStyle}" IsEnabled="False" Click="OnAiRewriteChipClicked" />
-                                    </Grid>
-
-                                    <TextBlock
-                                        x:Name="AiStatus"
-                                        Style="{StaticResource SectionCaptionStyle}"
-                                        Margin="8,4,8,0"
-                                        TextWrapping="Wrap" />
-
-                                    <Button x:Name="LibraryRow" Style="{StaticResource MenuRowStyle}" Click="OnLibraryRowClicked">
+                                    <Button x:Name="LibraryRow" Style="{StaticResource NoteMenuRowStyle}" Click="OnLibraryRowClicked">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="24" />
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Text="&#x2630;" FontSize="13" />
+                                            <FontIcon Grid.Column="0" Glyph="&#xE8F1;" FontSize="14" HorizontalAlignment="Left" />
                                             <TextBlock x:Name="LibraryRowLabel" Grid.Column="1" VerticalAlignment="Center" />
                                         </Grid>
                                     </Button>
 
-                                    <Button x:Name="DeleteRow" Style="{StaticResource MenuRowStyle}" Click="OnDeleteRowClicked">
+                                    <Button x:Name="DeleteRow" Style="{StaticResource NoteMenuRowStyle}" Click="OnDeleteRowClicked">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="24" />
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock x:Name="DeleteRowIcon" Grid.Column="0" Text="&#x1F5D1;" FontSize="13" />
+                                            <FontIcon x:Name="DeleteRowIcon" Grid.Column="0" Glyph="&#xE74D;" FontSize="14" HorizontalAlignment="Left" />
                                             <TextBlock x:Name="DeleteRowLabel" Grid.Column="1" VerticalAlignment="Center" />
                                         </Grid>
                                     </Button>

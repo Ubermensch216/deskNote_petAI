@@ -123,4 +123,33 @@ public class AiResponseParserTests
 
         Assert.Equal(1, Assert.Single(tags).Confidence);
     }
+
+    /// <summary>
+    /// A task title is appended to the note as a checklist line, so it goes through the same
+    /// cleanup as a rewritten body — otherwise the note ends up holding "- [ ] **자료 정리**".
+    /// </summary>
+    [Fact]
+    public void A_task_title_arrives_as_the_line_the_note_will_hold()
+    {
+        var tasks = AiResponseParser.ReadTasks("""{"tasks":[{"title":"**자료** 정리"}]}""");
+
+        Assert.Equal("자료 정리", Assert.Single(tasks).Title);
+    }
+
+    /// <summary>The marker would be doubled by the one ApplyTasks writes in front of it.</summary>
+    [Fact]
+    public void A_task_title_that_arrives_with_its_own_checkbox_loses_it()
+    {
+        var tasks = AiResponseParser.ReadTasks("""{"tasks":[{"title":"- [ ] 초대장 보내기"}]}""");
+
+        Assert.Equal("초대장 보내기", Assert.Single(tasks).Title);
+    }
+
+    [Fact]
+    public void A_tag_name_loses_the_emphasis_a_model_put_around_it()
+    {
+        var tags = AiResponseParser.ReadTags("""{"tags":[{"name":"**backend**","confidence":0.8}]}""");
+
+        Assert.Equal("backend", Assert.Single(tags).Name);
+    }
 }

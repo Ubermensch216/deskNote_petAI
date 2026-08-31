@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using DeskNote.Core.Ai;
+using DeskNote.Core.Services;
 
 namespace DeskNote.Ai;
 
@@ -37,7 +38,9 @@ public static class AiResponseParser
                 continue;
             }
 
-            var title = ReadString(item, "title")?.Trim();
+            // Cleaned here rather than where it is appended, so the confirmation list shows the
+            // exact line the note is about to receive.
+            var title = AiTextCleanup.ToNoteLine(ReadString(item, "title"));
             if (string.IsNullOrEmpty(title))
             {
                 continue;
@@ -77,7 +80,7 @@ public static class AiResponseParser
                 continue;
             }
 
-            var name = ReadString(item, "name")?.Trim().TrimStart('#');
+            var name = AiTextCleanup.ToNoteLine(ReadString(item, "name")).TrimStart('#');
 
             // The note body is the source of truth for tags, and TagParser only recognises a
             // single unbroken word. A suggestion the user could not have typed is not offered.

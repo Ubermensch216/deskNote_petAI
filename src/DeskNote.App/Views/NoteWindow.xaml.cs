@@ -216,11 +216,11 @@ public sealed partial class NoteWindow : Window
     private void LocalizeChrome()
     {
         ContentBox.PlaceholderText = Strings.Get("Note_ContentPlaceholder");
-        OpacitySlider.Header = Strings.Get("Note_Opacity");
 
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(DragStrip, Strings.Get("Note_DragLabel"));
 
         Describe(NewNoteButton, "Note_NewNote");
+        Describe(AiButton, "Note_Ai");
         Describe(MoreButton, "Note_MoreLabel");
         Describe(CloseButton, "Note_Close");
 
@@ -237,66 +237,81 @@ public sealed partial class NoteWindow : Window
         PinRowLabel.Text = Strings.Get("Note_PinLabel");
         LibraryRowLabel.Text = Strings.Get("Note_Library");
         DeleteRowLabel.Text = Strings.Get("Note_Delete");
-        SizeCaption.Text = Strings.Get("Note_Size");
-        RemindCaption.Text = Strings.Get("Note_Remind");
-        AiCaption.Text = Strings.Get("Note_Ai");
-        AiRewriteCaption.Text = Strings.Get("Note_AiRewrite");
+
+        // The section captions became glyphs, so the words they used to carry live on the glyph as
+        // a tooltip and as the accessible name. A screen reader still hears "크기" before the three
+        // size chips; a sighted user gets it by resting on the icon.
+        Describe(OpacityIcon, "Note_Opacity");
+        Describe(SizeSectionIcon, "Note_Size");
+        Describe(RemindSectionIcon, "Note_Remind");
+
+        Describe(AiTidySectionIcon, "Note_AiTidy");
+        Describe(AiRewriteSectionIcon, "Note_AiRewrite");
+        Describe(AiExtractSectionIcon, "Note_AiExtract");
 
         AiSummarize.Tag = AiTextAction.Summarize;
-        AiSummarize.Content = Strings.Get("Note_AiSummarize");
+        DescribeTile(AiSummarize, AiSummarizeLabel, "Note_AiSummarize");
         AiOrganize.Tag = AiTextAction.Organize;
-        AiOrganize.Content = Strings.Get("Note_AiOrganize");
+        DescribeTile(AiOrganize, AiOrganizeLabel, "Note_AiOrganize");
         AiExtractTasks.Tag = AiListAction.ExtractTasks;
-        AiExtractTasks.Content = Strings.Get("Note_AiExtractTasks");
+        DescribeTile(AiExtractTasks, AiExtractTasksLabel, "Note_AiExtractTasks");
         AiSuggestTags.Tag = AiListAction.SuggestTags;
-        AiSuggestTags.Content = Strings.Get("Note_AiSuggestTags");
-        AiAsk.Content = Strings.Get("Note_AiAsk");
+        DescribeTile(AiSuggestTags, AiSuggestTagsLabel, "Note_AiSuggestTags");
+        AiAskLabel.Text = Strings.Get("Note_AiAsk");
 
-        foreach (var (button, style) in new[]
+        foreach (var (button, label, style) in new[]
                  {
-                     (AiRewriteConcise, RewriteStyle.Concise),
-                     (AiRewriteFormal, RewriteStyle.Formal),
-                     (AiRewriteFriendly, RewriteStyle.Friendly),
-                     (AiRewriteReport, RewriteStyle.Report),
+                     (AiRewriteConcise, AiRewriteConciseLabel, RewriteStyle.Concise),
+                     (AiRewriteFormal, AiRewriteFormalLabel, RewriteStyle.Formal),
+                     (AiRewriteFriendly, AiRewriteFriendlyLabel, RewriteStyle.Friendly),
+                     (AiRewriteReport, AiRewriteReportLabel, RewriteStyle.Report),
                  })
         {
             button.Tag = style;
-            button.Content = Strings.Get($"Note_AiRewrite{style}");
+            DescribeTile(button, label, $"Note_AiRewrite{style}");
         }
 
         UpdateAiState();
 
         // Chips carry the value they stand for, so the click handlers do not have to map a button
         // back to a preset by name.
-        foreach (var (button, preset) in new[]
+        foreach (var (button, label, preset) in new[]
                  {
-                     (SizeSmall, NoteSizePreset.Small),
-                     (SizeMedium, NoteSizePreset.Medium),
-                     (SizeLarge, NoteSizePreset.Large),
+                     (SizeSmall, SizeSmallLabel, NoteSizePreset.Small),
+                     (SizeMedium, SizeMediumLabel, NoteSizePreset.Medium),
+                     (SizeLarge, SizeLargeLabel, NoteSizePreset.Large),
                  })
         {
             var (width, height) = NoteGeometry.SizeOf(preset);
             var name = Strings.Get($"Note_Size{preset}");
 
             button.Tag = preset;
-            button.Content = name;
-            ToolTipService.SetToolTip(button, Strings.Format("Note_SizeFormat", name, width, height));
+            label.Text = name;
+
+            // The tooltip is the one that carries the pixels, so the chip stays a rectangle and a
+            // word while still answering "how large is large".
+            var described = Strings.Format("Note_SizeFormat", name, width, height);
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, described);
+            ToolTipService.SetToolTip(button, described);
         }
 
         // Relative offsets rather than a date picker: a sticky note reminder is almost always
         // "later today" or "tomorrow morning", and a full scheduling dialog on a note this small
         // would cost more attention than the reminder is worth. Zero means tomorrow morning, the
         // one offset that is a clock time rather than a duration.
-        foreach (var (button, key, offset) in new (Button, string, TimeSpan)[]
+        foreach (var (button, label, key, offset) in new (Button, TextBlock, string, TimeSpan)[]
                  {
-                     (Remind10Minutes, "Remind10Minutes", TimeSpan.FromMinutes(10)),
-                     (Remind1Hour, "Remind1Hour", TimeSpan.FromHours(1)),
-                     (RemindTomorrow, "RemindTomorrow", TimeSpan.Zero),
+                     (Remind10Minutes, Remind10MinutesLabel, "Remind10Minutes", TimeSpan.FromMinutes(10)),
+                     (Remind1Hour, Remind1HourLabel, "Remind1Hour", TimeSpan.FromHours(1)),
+                     (RemindTomorrow, RemindTomorrowLabel, "RemindTomorrow", TimeSpan.Zero),
                  })
         {
             button.Tag = offset;
-            button.Content = Strings.Get($"Note_{key}Short");
-            ToolTipService.SetToolTip(button, Strings.Get($"Note_{key}"));
+            label.Text = Strings.Get($"Note_{key}Short");
+
+            var described = Strings.Get($"Note_{key}");
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, described);
+            ToolTipService.SetToolTip(button, described);
         }
     }
 
@@ -305,6 +320,22 @@ public sealed partial class NoteWindow : Window
         var text = Strings.Get(key);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(element, text);
         ToolTipService.SetToolTip(element, text);
+    }
+
+    /// <summary>
+    /// Names an icon tile: the caption under the glyph, the tooltip, and the accessible name.
+    /// </summary>
+    /// <remarks>
+    /// The caption is deliberately not dropped in favour of the glyph alone. A funnel reads as
+    /// "요약" once you know, and never before — the word is what teaches the icon, and after that
+    /// the icon is what makes the menu scannable.
+    /// </remarks>
+    private static void DescribeTile(Button button, TextBlock caption, string key)
+    {
+        var text = Strings.Get(key);
+        caption.Text = text;
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, text);
+        ToolTipService.SetToolTip(button, text);
     }
 
     private void OnFirstActivated(object sender, WindowActivatedEventArgs args)
@@ -694,7 +725,7 @@ public sealed partial class NoteWindow : Window
     {
         if (sender is Button { Tag: AiTextAction action })
         {
-            MoreFlyout.Hide();
+            AiFlyout.Hide();
             RunAi(action, RewriteStyle.Concise);
         }
     }
@@ -703,14 +734,14 @@ public sealed partial class NoteWindow : Window
     {
         if (sender is Button { Tag: RewriteStyle style })
         {
-            MoreFlyout.Hide();
+            AiFlyout.Hide();
             RunAi(AiTextAction.Rewrite, style);
         }
     }
 
     private void OnAiAskChipClicked(object sender, RoutedEventArgs e)
     {
-        MoreFlyout.Hide();
+        AiFlyout.Hide();
         AskRequested?.Invoke(this, EventArgs.Empty);
     }
 
@@ -718,7 +749,7 @@ public sealed partial class NoteWindow : Window
     {
         if (sender is Button { Tag: AiListAction action })
         {
-            MoreFlyout.Hide();
+            AiFlyout.Hide();
             RunAiList(action);
         }
     }
@@ -1027,8 +1058,14 @@ public sealed partial class NoteWindow : Window
         RaiseAppearanceChanged();
     }
 
-    private void UpdatePinState() =>
+    private void UpdatePinState()
+    {
         PinRowCheck.Visibility = _alwaysOnTop ? Visibility.Visible : Visibility.Collapsed;
+
+        // A filled pin for a pinned note. The tick already says it, but the glyph is what the eye
+        // reaches first, and a row that only answers in the far-right column reads as unanswered.
+        PinRowIcon.Glyph = _alwaysOnTop ? "" : "";
+    }
 
     /// <summary>
     /// Records where a drag would start from. The pointer is deliberately not captured yet.
@@ -1118,16 +1155,49 @@ public sealed partial class NoteWindow : Window
     private void OnMoreFlyoutOpened(object? sender, object e)
     {
         _menuOpen = true;
-
-        // An unpackaged WinUI popup is clipped to its own window, so on a small note the rows at
-        // the bottom of this menu would be drawn where nobody can click them. Capping the menu to
-        // what the note can actually show turns the overflow into a scroll instead.
-        MenuScroll.MaxHeight = Math.Max(200, Surface.ActualHeight - 56);
-
+        FitMenuToNote(MenuPanel, MenuScroll, preferredWidth: 248);
         UpdateChrome();
     }
 
-    private void OnMoreFlyoutClosed(object? sender, object e)
+    private void OnAiFlyoutOpened(object? sender, object e)
+    {
+        _menuOpen = true;
+        FitMenuToNote(AiMenuPanel, AiMenuScroll, preferredWidth: 248);
+        UpdateChrome();
+    }
+
+    /// <summary>
+    /// Sizes an open menu to the note it belongs to, on both axes.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// An unpackaged WinUI popup is clipped to its own window rather than repositioned, so on a
+    /// small note anything past the note's edge is drawn where nobody can click it. Height turns
+    /// into a scroll. Width cannot: there is no horizontal scroll to fall back on, so the menu
+    /// gives up its preferred width and the rows reflow — the swatches wrap to a second line, the
+    /// chips narrow — which is what keeps every command reachable on a 180pt note.
+    /// </para>
+    /// <para>
+    /// Both floors sit below the smallest note on purpose. A menu is allowed to be cramped, but a
+    /// menu whose right-hand column is missing is not a menu, and neither is one whose last row is
+    /// scrolled to a place the window will not draw — which is what a floor above the note's own
+    /// height produces: the viewport keeps scrolling into the part that was clipped away.
+    /// </para>
+    /// </remarks>
+    private void FitMenuToNote(FrameworkElement panel, ScrollViewer scroll, double preferredWidth)
+    {
+        // The strip the menu hangs from, plus the presenter's own padding and border.
+        const double ChromeAllowance = 56;
+
+        panel.Width = Math.Clamp(Surface.ActualWidth - 26, 140, preferredWidth);
+        scroll.MaxHeight = Math.Max(64, Surface.ActualHeight - ChromeAllowance);
+    }
+
+    /// <summary>
+    /// Shared by both menus. Only one flyout can be open at a time — opening either dismisses the
+    /// other — so a single flag is enough to say "the chrome is in use, keep it visible".
+    /// </summary>
+    private void OnMenuFlyoutClosed(object? sender, object e)
     {
         _menuOpen = false;
         UpdateChrome();
@@ -1245,10 +1315,23 @@ public sealed partial class NoteWindow : Window
         ContentBox.Foreground = inkBrush;
         FormatSeparator.Background = Tint(ink, 0x33);
 
-        // The flyout is hosted in the popup root, outside this window's tree, so its accents are
-        // set here by hand rather than inherited.
+        // AI is the one command on the strip that is not about the note as an object, and it is
+        // what the app is for. Full ink rather than the 0xA6 the rest of the chrome rests at is
+        // how it reads as the primary action without needing a colour of its own.
+        AiButtonIcon.Foreground = inkBrush;
+
+        // The flyouts are hosted in the popup root, outside this window's tree, so their accents
+        // are set here by hand rather than inherited.
         MenuSeparator1.Background = Tint(ink, 0x33);
         MenuSeparator2.Background = Tint(ink, 0x33);
+        AiMenuSeparator.Background = Tint(ink, 0x33);
+
+        // The size chips are drawn, not glyphed, so their fill has to come from the ink too.
+        foreach (var mark in new[] { SizeSmallMark, SizeMediumMark, SizeLargeMark })
+        {
+            mark.Background = Tint(ink, 0xA6);
+        }
+
         DeleteRowLabel.Foreground = new SolidColorBrush(NotePalette.Danger(IsDarkTheme));
         DeleteRowIcon.Foreground = new SolidColorBrush(NotePalette.Danger(IsDarkTheme));
     }

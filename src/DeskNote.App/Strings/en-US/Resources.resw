@@ -80,7 +80,7 @@
   <data name="Tray_StartWithWindows" xml:space="preserve"><value>Start with Windows</value></data>
   <data name="Note_PinLabel" xml:space="preserve"><value>Keep on top</value></data>
   <data name="Note_ColorLabel" xml:space="preserve"><value>Colour</value></data>
-  <data name="Note_MoreLabel" xml:space="preserve"><value>More commands</value></data>
+  <data name="Note_MoreLabel" xml:space="preserve"><value>Note settings</value></data>
   <data name="Note_DragLabel" xml:space="preserve"><value>Note drag handle</value></data>
   <data name="Note_NewNote" xml:space="preserve"><value>New note</value></data>
   <data name="Note_Close" xml:space="preserve"><value>Close</value></data>
@@ -103,6 +103,8 @@
   <data name="Note_AiSummarize" xml:space="preserve"><value>Summarize</value></data>
   <data name="Note_AiOrganize" xml:space="preserve"><value>Organize</value></data>
   <data name="Note_AiRewrite" xml:space="preserve"><value>Rewrite</value></data>
+  <data name="Note_AiExtract" xml:space="preserve"><value>Extract</value></data>
+  <data name="Note_AiTidy" xml:space="preserve"><value>Tidy</value></data>
   <data name="Note_AiRewriteConcise" xml:space="preserve"><value>Concise</value></data>
   <data name="Note_AiRewriteFormal" xml:space="preserve"><value>Formal</value></data>
   <data name="Note_AiRewriteFriendly" xml:space="preserve"><value>Friendly</value></data>

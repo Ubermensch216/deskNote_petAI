@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using DeskNote.Core.Abstractions;
 using DeskNote.Core.Ai;
+using DeskNote.Core.Services;
 
 namespace DeskNote.Ai;
 
@@ -259,7 +260,11 @@ public sealed class OllamaAiService : ILocalAiService, IDisposable
         return new AiTextResult
         {
             Original = context.EffectiveText,
-            Proposed = content.Trim(),
+
+            // Cleaned here rather than at the point of applying, so the diff preview shows the
+            // same text the note will hold. A proposal the user approved and a proposal the note
+            // received being two different strings is the one thing this window exists to prevent.
+            Proposed = AiTextCleanup.ToNoteText(content),
             ModelId = _capability.ModelId ?? _options.Model,
             Elapsed = Stopwatch.GetElapsedTime(started),
         };
