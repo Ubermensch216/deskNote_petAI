@@ -1,0 +1,56 @@
+<Window
+    x:Class="DeskNote.App.Views.DesktopPetWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Pure black is removed with a Win32 colour key, leaving only the pet and its bubble. -->
+    <Grid Background="Black">
+        <Border
+            x:Name="SpeechBubble"
+            Width="210"
+            Padding="12,9"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Top"
+            Background="#EE202124"
+            BorderBrush="#5FFFFFFF"
+            BorderThickness="1"
+            CornerRadius="18"
+            Visibility="Collapsed">
+            <TextBlock
+                x:Name="SpeechText"
+                Foreground="White"
+                FontSize="13"
+                MaxLines="2"
+                TextAlignment="Center"
+                TextTrimming="CharacterEllipsis"
+                TextWrapping="Wrap" />
+        </Border>
+
+        <Grid
+            x:Name="SpriteViewport"
+            Width="140"
+            Height="204"
+            Margin="0,0,0,0"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            Background="Transparent"
+            Tapped="OnPetTapped">
+            <Grid.RenderTransform>
+                <ScaleTransform x:Name="FacingTransform" ScaleX="-1" ScaleY="1" />
+            </Grid.RenderTransform>
+            <Grid.Clip>
+                <RectangleGeometry Rect="0,0,140,204" />
+            </Grid.Clip>
+            <Canvas Width="140" Height="204">
+                <Image
+                    x:Name="SpriteStrip"
+                    Width="560"
+                    Height="204"
+                    Canvas.Left="0"
+                    Canvas.Top="0"
+                    Source="ms-appx:///Assets/Companion/mori-walk.png"
+                    Stretch="Fill" />
+            </Canvas>
+        </Grid>
+    </Grid>
+</Window>

@@ -30,6 +30,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
     private TrayIconService? _tray;
     private SettingsWindow? _settingsWindow;
     private CompanionWindow? _companionWindow;
+    private DesktopPetWindow? _desktopPetWindow;
     private CompanionSnapshot? _companionSnapshot;
     private CompanionSettings _companionSettings = new();
     private DispatcherQueueTimer? _suggestionTimer;
@@ -102,7 +103,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
 
         if (companionSettings.Enabled && _companionSnapshot is { } snapshot)
         {
-            ShowCompanion(snapshot, companionSettings);
+            ShowDesktopPet(snapshot, companionSettings);
         }
         ConfigureSuggestionTimer(companionSettings);
 
@@ -176,6 +177,8 @@ public sealed class ApplicationRuntime : IAsyncDisposable
         Windows.NoteOpened -= OnNoteOpened;
         _activityLifetime.Cancel();
         _companionQueue.SnapshotChanged -= OnCompanionSnapshotChanged;
+        _desktopPetWindow?.Close();
+        _desktopPetWindow = null;
         await _companionQueue.DisposeAsync().ConfigureAwait(true);
         Ai.Dispose();
         _activityLifetime.Dispose();
@@ -214,12 +217,16 @@ public sealed class ApplicationRuntime : IAsyncDisposable
 
             if (!settings.Enabled)
             {
+                _desktopPetWindow?.Close();
+                _desktopPetWindow = null;
                 _companionWindow?.Close();
                 _companionWindow = null;
             }
             else if (_companionSnapshot is { } snapshot)
             {
-                ShowCompanion(snapshot, settings);
+                ShowDesktopPet(snapshot, settings);
+                _companionWindow?.UpdateSettings(settings);
+                _companionWindow?.UpdateSnapshot(snapshot);
             }
             ConfigureSuggestionTimer(settings);
         }
@@ -232,7 +239,36 @@ public sealed class ApplicationRuntime : IAsyncDisposable
     private void OnCompanionSnapshotChanged(CompanionSnapshot snapshot)
     {
         _companionSnapshot = snapshot;
-        _dispatcher.TryEnqueue(() => _companionWindow?.UpdateSnapshot(snapshot));
+        _dispatcher.TryEnqueue(() =>
+        {
+            _desktopPetWindow?.UpdateSnapshot(snapshot);
+            _companionWindow?.UpdateSnapshot(snapshot);
+        });
+    }
+
+    private void ShowDesktopPet(CompanionSnapshot snapshot, CompanionSettings settings)
+    {
+        if (_desktopPetWindow is not null)
+        {
+            _desktopPetWindow.UpdateSettings(settings);
+            _desktopPetWindow.UpdateSnapshot(snapshot);
+            _desktopPetWindow.Activate();
+            return;
+        }
+
+        var window = new DesktopPetWindow(
+            snapshot,
+            settings,
+            () =>
+            {
+                if (_companionSnapshot is { } current)
+                {
+                    ShowCompanion(current, _companionSettings);
+                }
+            });
+        _desktopPetWindow = window;
+        window.Closed += (_, _) => _desktopPetWindow = null;
+        window.Activate();
     }
 
     private void ShowCompanion(CompanionSnapshot snapshot, CompanionSettings settings)
@@ -282,7 +318,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
     private async Task CheckForSuggestionAsync()
     {
         var now = DateTimeOffset.Now;
-        if (_companionWindow is null
+        if (_desktopPetWindow is null
             || !_companionSettings.AllowsProactiveAt(now)
             || !PresentationModeDetector.AllowsUserNotification()
             || (_lastUserInteractionAt is { } interaction
@@ -295,7 +331,11 @@ public sealed class ApplicationRuntime : IAsyncDisposable
         {
             if (await _companionSuggestions.TryOfferAsync(now).ConfigureAwait(true) is { } suggestion)
             {
-                _companionWindow?.ShowSuggestion(suggestion);
+                if (_companionSnapshot is { } snapshot)
+                {
+                    ShowCompanion(snapshot, _companionSettings);
+                    _companionWindow?.ShowSuggestion(suggestion);
+                }
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

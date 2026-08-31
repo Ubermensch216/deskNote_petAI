@@ -50,4 +50,8 @@
     <ProjectReference Include="..\DeskNote.Data\DeskNote.Data.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="Assets\Companion\mori-walk.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
