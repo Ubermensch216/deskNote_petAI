@@ -45,21 +45,13 @@ jobs:
           dotnet run --project tests/DeskNote.Benchmarks/DeskNote.Benchmarks.csproj
           --configuration Release --no-build -- 10000
 
-      - name: Publish win-x64 single-file app
-        run: >-
-          dotnet publish src/DeskNote.App/DeskNote.App.csproj
-          --configuration Release
-          --runtime win-x64
-          --output dist/single
-          --no-restore
-          -p:PublishSingleFile=true
-          -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:DebugType=none
-
-      - name: Verify packaged executable
+      - name: Publish and smoke-test win-x64 package
         shell: pwsh
-        run: |
-          $app = Get-Item -LiteralPath dist/single/DeskNote.exe
-          if ($app.Length -lt 1MB) {
-            throw "Published executable is unexpectedly small: $($app.Length) bytes"
-          }
+        run: ./scripts/publish-win-x64.ps1 -NoRestore
+
+      - name: Upload win-x64 package
+        uses: actions/upload-artifact@v4
+        with:
+          name: DeskNote-win-x64
+          path: dist/DeskNote-win-x64.zip
+          if-no-files-found: error

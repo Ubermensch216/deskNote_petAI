@@ -36,8 +36,9 @@
 ## Phase 0 완료 결과
 
 - 전체 테스트 504/504 통과
-- win-x64 Release 단일 파일 publish 성공
+- win-x64 Release 단일 파일 생성 성공(당시 실제 시작 검사는 누락)
 - `DeskNote.exe` 230,941,441 bytes 생성 확인
+- 2026-09-01 실제 시작 실패를 확인해 폴더형 self-contained ZIP과 시작 검사로 보정
 - Windows GitHub Actions workflow 추가
 - 기존 `RevisionPolicy` 서식 오류를 수정하고 CI 서식 검증 추가
 - Python 캐시 추적 제거 및 ignore 규칙 추가

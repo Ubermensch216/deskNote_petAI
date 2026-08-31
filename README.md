@@ -92,8 +92,9 @@ Windows 메모 앱입니다. 계정도, 구독도, 인터넷도 필요 없습니
 
 ### 1. 실행
 
-`DeskNote.exe` 를 실행하면 끝입니다. 설치 과정도, .NET 이나 Windows App SDK 설치도 필요 없습니다
-— 모든 런타임이 실행 파일 안에 들어 있습니다. Windows 10 1809 이상, 64비트.
+`DeskNote-win-x64.zip`을 원하는 폴더에 완전히 푼 뒤, 그 안의 `DeskNote.exe`를 실행하면 끝입니다.
+설치 과정도, .NET이나 Windows App SDK 설치도 필요 없습니다. 필요한 런타임 파일은 같은 폴더에
+들어 있으므로 `DeskNote.exe`만 따로 옮기지 마세요. Windows 10 1809 이상, 64비트.
 
 > 아무 반응이 없다면 [Microsoft Visual C++ 재배포 가능 패키지(x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe)를
 > 설치해 보세요. Windows App SDK가 요구하는 유일한 시스템 구성 요소이고, 대개는 이미 깔려 있습니다.

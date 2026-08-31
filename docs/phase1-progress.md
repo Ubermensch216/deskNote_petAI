@@ -29,7 +29,7 @@
 - `dotnet format --verify-no-changes`: 통과
 - Release App build: 경고 0, 오류 0
 - 전체 테스트: 504/504 통과
-- win-x64 single-file publish: 통과
+- win-x64 single-file 생성: 통과(당시 실제 시작 검사는 누락, 2026-09-01 폴더형 패키지로 보정)
 
 ## 다음 순서
 

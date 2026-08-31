@@ -20,6 +20,13 @@
     <SelfContained>true</SelfContained>
 
     <!--
+      Keep the Windows App SDK native files beside the executable. With .NET 10, bundling these
+      files into a single executable can fail before App is created (WindowsAppSDK issue #6058).
+      The self-contained folder publish still requires no separately installed .NET/WASDK runtime.
+    -->
+    <PublishSingleFile>false</PublishSingleFile>
+
+    <!--
       On by default in the WinUI templates, and `dotnet publish` needs it: without it the publish
       output silently loses DeskNote.pri, and every window then dies with a XamlParseException the
       moment it is constructed. It costs the build nothing here - the app is still unpackaged.

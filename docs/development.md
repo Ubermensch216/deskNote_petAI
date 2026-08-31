@@ -26,36 +26,40 @@ xunit.v3 는 Microsoft.Testing.Platform 러너를 직접 호스팅하고 .NET 10
 
 ## CI
 
-`main` 과 pull request는 Windows에서 복원·서식 검증·Release 빌드·테스트·win-x64 단일 파일 publish를 순서대로
-실행한다. 로컬과 CI가 같은 진입점을 쓰도록 별도 테스트 스크립트를 두지 않는다.
+`main` 과 pull request는 Windows에서 복원·서식 검증·Release 빌드·테스트·win-x64 배포 패키지 생성을
+순서대로 실행한다. 마지막 단계는 배포된 `DeskNote.exe`를 8초 동안 직접 실행해 시작 중 비정상 종료도
+검출한다.
 
 CI가 실패한 변경은 병합하지 않는다. 특히 테스트 성공 뒤 publish까지 실행하는 이유는 WinUI 앱이
 `dotnet run`에서는 정상이어도 publish 출력에서 리소스 인덱스를 잃을 수 있기 때문이다.
 테스트 뒤에는 10,000개 메모 성능 게이트도 실행해 저장·검색·복원 경로의 회귀를 막는다.
 
-## 실행 파일 만들기
+## 배포 패키지 만들기
 
-배포용 실행 파일은 하나짜리 self-contained exe다. .NET 런타임도 Windows App SDK도 그 안에 들어가므로
-받는 쪽은 아무것도 설치하지 않는다.
+배포물은 self-contained 폴더를 담은 ZIP이다. .NET 런타임과 Windows App SDK 파일이 모두 포함되므로
+받는 쪽은 별도 런타임을 설치하지 않는다. 다만 압축을 푼 뒤 **폴더 전체를 함께 보관**해야 하며,
+`DeskNote.exe`만 다른 위치로 옮기면 안 된다.
 
-```bash
-dotnet publish src/DeskNote.App/DeskNote.App.csproj -c Release -r win-x64 -o dist/single -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none
+```powershell
+./scripts/publish-win-x64.ps1
 ```
 
-`dist/single/DeskNote.exe` 하나가 나오고, 크기는 약 220MB다. 첫 실행에서 네이티브 파일을 임시 폴더에
-풀기 때문에 그때만 시작이 몇 초 느리다.
+스크립트는 `dist/DeskNote-win-x64/DeskNote.exe`를 포함한 폴더를 만들고, 실제 시작 검사를 통과한 뒤
+`dist/DeskNote-win-x64.zip`으로 압축한다. CI도 같은 스크립트를 사용한다.
 
 받는 쪽에 필요한 것은 Windows 10 1809 이상(x64)과 Visual C++ 재배포 가능 패키지뿐이다. 후자는
 self-contained Windows App SDK가 요구하는 유일한 시스템 구성 요소이고 publish 출력에 들어가지 않는다.
 
-폴더 형태(파일 440개, 약 226MB)로 내보내려면 단일 파일 옵션만 빼면 된다. 첫 실행이 빠르고,
-디버깅이나 파일 단위 배포에 쓴다.
+### 단일 exe를 사용하지 않는 이유
 
-```bash
-dotnet publish src/DeskNote.App/DeskNote.App.csproj -c Release -r win-x64 -o dist/DeskNote-win-x64
-```
+.NET 10에서 Windows App SDK 네이티브 파일을 하나의 exe에 묶으면, 일부 환경에서 WinUI 활성화가
+시작되기 전에 `0x80040111 (ClassFactory cannot supply requested class)`로 종료된다. Microsoft가 추적
+중인 [WindowsAppSDK #6058](https://github.com/microsoft/WindowsAppSDK/issues/6058)과 같은 증상이다.
+폴더형 self-contained 배포는 같은 바이너리와 런타임을 사용하면서도 이 경로를 거치지 않으며, 실제
+실행 검사를 통과했다. 해당 문제가 해결되고 지원 조합에서 재검증되기 전까지 단일 exe는 만들지 않는다.
 
-ARM64 기기용은 `-r win-arm64` 로 바꿔서 같은 명령을 쓴다.
+ARM64 프로젝트 빌드는 지원하지만 배포 패키지와 시작 검사는 아직 win-x64만 자동화한다. ARM64 배포를
+추가할 때는 별도 하드웨어에서 같은 시작 검사를 통과시킨 뒤 전용 ZIP으로 제공한다.
 
 > **`EnableMsixTooling` 은 켜 두어야 한다.** 이 속성이 꺼져 있으면 publish 출력에서 `DeskNote.pri` 가
 > 조용히 빠지고, 앱은 빌드도 실행도 되다가 **창을 만드는 순간** `XamlParseException` 으로 죽는다.
