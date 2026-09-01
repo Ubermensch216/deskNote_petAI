@@ -81,9 +81,7 @@ public sealed partial class CompanionWindow : Window
         SettingsButton.Content = Strings.Get("Tray_Settings");
         GrowthGuideLabel.Text = Strings.Get("PetGrowthGuide_LinkLabel");
         GrowthGuideButton.Content = Strings.Get("PetGrowthGuide_Open");
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
-            AvatarViewport,
-            Strings.Get("Companion_AccessibleName"));
+        ApplyAccessibleName();
         SuggestionOpen.Content = Strings.Get("Companion_SuggestionOpen");
         SuggestionDismiss.Content = Strings.Get("Companion_SuggestionDismiss");
         UpdateSnapshot(snapshot);
@@ -99,8 +97,14 @@ public sealed partial class CompanionWindow : Window
             presenter.IsAlwaysOnTop = settings.AlwaysVisible;
         }
 
+        ApplyAccessibleName();
         UpdateSnapshot(_snapshot);
     }
+
+    private void ApplyAccessibleName() =>
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+            AvatarViewport,
+            Strings.Format("Companion_AccessibleNameFormat", _settings.PetName));
 
     public void UpdateSnapshot(CompanionSnapshot snapshot)
     {
@@ -172,12 +176,22 @@ public sealed partial class CompanionWindow : Window
     private void ShowGrowth(GrowthState growth)
     {
         ExperienceBar.Value = growth.ExperienceProgress;
+        CareDaysLabel.Visibility = Visibility.Visible;
+
         if (CompanionGrowthLadder.NextRung(growth.Stage) is { } next)
         {
             ExperienceValue.Text = Strings.Format(
                 "Companion_ExperienceFormat",
                 growth.Experience,
                 next.Experience);
+
+            // Reaching stage two costs no care days, and "0/0일" is noise rather than guidance.
+            if (next.CareDays <= 0)
+            {
+                CareDaysLabel.Visibility = Visibility.Collapsed;
+                return;
+            }
+
             CareDaysLabel.Text = growth.CareDaysRemaining > 0
                 ? Strings.Format(
                     "Companion_CareDaysRemainingFormat",

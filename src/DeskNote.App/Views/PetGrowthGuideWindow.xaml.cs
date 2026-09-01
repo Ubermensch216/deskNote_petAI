@@ -192,7 +192,7 @@ public sealed partial class PetGrowthGuideWindow : Window
             Height = 26,
             CornerRadius = new CornerRadius(13),
             VerticalAlignment = VerticalAlignment.Top,
-            Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AccentFillColorSecondaryBrush"],
+            Background = AccentBrush(),
             Child = new TextBlock
             {
                 Text = number.ToString(System.Globalization.CultureInfo.CurrentCulture),
@@ -212,6 +212,16 @@ public sealed partial class PetGrowthGuideWindow : Window
         row.Children.Add(text);
         return row;
     }
+
+    /// <summary>
+    /// The accent brush, or a plain fallback. A missing theme key must not take the guide window
+    /// down: it is a help page, and a grey badge beats a crash on open.
+    /// </summary>
+    private static Microsoft.UI.Xaml.Media.Brush AccentBrush() =>
+        Application.Current.Resources.TryGetValue("AccentFillColorSecondaryBrush", out var resource)
+        && resource is Microsoft.UI.Xaml.Media.Brush accent
+            ? accent
+            : new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.SlateGray);
 
     private static Grid BulletRow(string text)
     {

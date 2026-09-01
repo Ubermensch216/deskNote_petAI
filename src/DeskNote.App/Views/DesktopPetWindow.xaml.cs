@@ -106,9 +106,7 @@ public sealed partial class DesktopPetWindow : Window
         }
 
         MakeBackgroundTransparent();
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
-            SpriteViewport,
-            Strings.Get("Companion_AccessibleName"));
+        ApplyAccessibleName();
 
         _animationTimer = DispatcherQueue.CreateTimer();
         _animationTimer.Interval = TimeSpan.FromMilliseconds(33);
@@ -147,8 +145,19 @@ public sealed partial class DesktopPetWindow : Window
         {
             ApplyPetSize(settings.PetSize);
         }
+        ApplyAccessibleName();
         ApplyMotionPreference();
     }
+
+    /// <summary>
+    /// Names the pet the way its owner named it. A screen reader announcing a stock name while
+    /// the window shows another one leaves the two users of the same app describing different
+    /// pets.
+    /// </summary>
+    private void ApplyAccessibleName() =>
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+            SpriteViewport,
+            Strings.Format("Companion_AccessibleNameFormat", _settings.PetName));
 
     public void UpdateSnapshot(CompanionSnapshot snapshot)
     {
