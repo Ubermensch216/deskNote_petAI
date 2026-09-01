@@ -198,9 +198,23 @@ Try adding a date or a weekday.</value></data>
   <data name="Settings_CompanionHeader" xml:space="preserve"><value>Desktop companion</value></data>
   <data name="Settings_CompanionDescription" xml:space="preserve"><value>A small companion that notices completion and consistency without interrupting your work. It does nothing until you turn it on.</value></data>
   <data name="Settings_CompanionEnabled" xml:space="preserve"><value>Use desktop companion</value></data>
+  <data name="Settings_PetPicker" xml:space="preserve"><value>Choose your pet</value></data>
+  <data name="Settings_PetRabbit" xml:space="preserve"><value>Rabbit</value></data>
+  <data name="Settings_PetCat" xml:space="preserve"><value>Cat</value></data>
+  <data name="Settings_PetDog" xml:space="preserve"><value>Dog</value></data>
+  <data name="Settings_PetFennecFox" xml:space="preserve"><value>Fennec fox</value></data>
+  <data name="Settings_PetOtter" xml:space="preserve"><value>Otter</value></data>
+  <data name="Settings_PetDragon" xml:space="preserve"><value>Dragon</value></data>
+  <data name="Settings_PetMonkey" xml:space="preserve"><value>Monkey</value></data>
+  <data name="Settings_PetLockedFormat" xml:space="preserve"><value>{0} · Locked</value></data>
+  <data name="Settings_PetSize" xml:space="preserve"><value>Pet size</value></data>
+  <data name="Settings_PetSizeSmall" xml:space="preserve"><value>Small · one third</value></data>
+  <data name="Settings_PetSizeMedium" xml:space="preserve"><value>Medium · two thirds</value></data>
+  <data name="Settings_PetSizeLarge" xml:space="preserve"><value>Large · current size</value></data>
+  <data name="Settings_DragonUnlockHint" xml:space="preserve"><value>Raise Rabbit, Cat, Dog, Fennec Fox, Otter, and Monkey to their final stages to unlock Dragon.</value></data>
   <data name="Settings_Proactive" xml:space="preserve"><value>Offer timely suggestions</value></data>
-  <data name="Settings_AlwaysVisible" xml:space="preserve"><value>Keep visible</value></data>
-  <data name="Settings_ReduceMotion" xml:space="preserve"><value>Reduce motion</value></data>
+  <data name="Settings_AlwaysVisible" xml:space="preserve"><value>Keep the detail window on top</value></data>
+  <data name="Settings_ReduceMotion" xml:space="preserve"><value>Move pet</value></data>
   <data name="Settings_QuietHours" xml:space="preserve"><value>Quiet hours</value></data>
   <data name="Settings_QuietStart" xml:space="preserve"><value>Starts</value></data>
   <data name="Settings_QuietEnd" xml:space="preserve"><value>Ends</value></data>

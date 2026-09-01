@@ -21,22 +21,39 @@
 
             <Grid ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="72" />
+                    <ColumnDefinition Width="76" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
                 <Border
-                    Width="68"
-                    Height="68"
-                    CornerRadius="34"
-                    Background="{ThemeResource AccentFillColorSecondaryBrush}">
-                    <TextBlock
-                        x:Name="Face"
+                    Width="72"
+                    Height="72"
+                    CornerRadius="36"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
+                    <!-- The strip is the same asset used by the desktop pet. The viewport
+                         exposes exactly one of its four frames, so no neighbouring face leaks in. -->
+                    <Grid
+                        x:Name="AvatarViewport"
+                        Width="54"
+                        Height="72"
                         HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        FontSize="26"
-                        Text="◕‿◕"
-                        AutomationProperties.Name="Desktop companion" />
+                        VerticalAlignment="Center">
+                        <Grid.Clip>
+                            <RectangleGeometry Rect="0,0,54,72" />
+                        </Grid.Clip>
+                        <Canvas Width="54" Height="72">
+                            <Image
+                                x:Name="AvatarSpriteStrip"
+                                Width="216"
+                                Height="72"
+                                Canvas.Left="0"
+                                Canvas.Top="0"
+                                Stretch="Fill"
+                                Source="ms-appx:///Assets/Companion/rabbit-walk.png" />
+                        </Canvas>
+                    </Grid>
                 </Border>
 
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">

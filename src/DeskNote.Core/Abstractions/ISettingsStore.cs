@@ -78,4 +78,19 @@ public static class SettingKeys
 
     /// <summary>Version of the deterministic reward rules used for new events.</summary>
     public const string CompanionRuleVersion = "companion.ruleVersion";
+
+    /// <summary>The currently active independently-grown desktop pet.</summary>
+    public const string CompanionSelectedPet = "companion.selectedPet";
+
+    /// <summary>Small, Medium, or Large. Large is the original desktop-pet size.</summary>
+    public const string CompanionPetSize = "companion.petSize";
+
+    /// <summary>Last user-positioned desktop-pet X coordinate in screen pixels.</summary>
+    public const string CompanionPetPositionX = "companion.petPosition.x";
+
+    /// <summary>Last user-positioned desktop-pet Y coordinate in screen pixels.</summary>
+    public const string CompanionPetPositionY = "companion.petPosition.y";
+
+    /// <summary>Derived collection achievement; true after every standard pet reaches stage five.</summary>
+    public const string CompanionDragonUnlocked = "companion.dragonUnlocked";
 }

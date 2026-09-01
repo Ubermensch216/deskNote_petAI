@@ -39,6 +39,16 @@ public sealed class CompanionActivityQueue(
 
     public void SetEnabled(bool enabled) => _enabled = enabled;
 
+    public async Task RefreshAsync(CancellationToken cancellationToken = default)
+    {
+        if (!_enabled)
+        {
+            return;
+        }
+
+        SnapshotChanged?.Invoke(await repository.GetOrCreateAsync(cancellationToken).ConfigureAwait(false));
+    }
+
     public bool TryEnqueue(CompanionActivityCandidate candidate) =>
         _enabled && _channel.Writer.TryWrite(candidate);
 

@@ -1,4 +1,5 @@
 using DeskNote.Companion.Core;
+using DeskNote.Core.Abstractions;
 
 namespace DeskNote.Data.Tests;
 
@@ -73,6 +74,77 @@ public class CompanionRepositoryTests
 
         Assert.True(completed.Snapshot.Today.RitualCompleted);
         Assert.Equal(1, completed.Snapshot.Today.ResolveCount);
+    }
+
+    [Fact]
+    public async Task Each_selected_pet_has_independent_growth()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var repository = new SqliteCompanionRepository(database.Factory, new RewardPolicy());
+        await repository.RecordAsync(
+            Activity("rabbit-capture", CompanionActivityType.MeaningfulCapture),
+            TestContext.Current.CancellationToken);
+
+        await SetSettingAsync(database.Factory, SettingKeys.CompanionSelectedPet, "Cat");
+        var newCat = await repository.GetOrCreateAsync(TestContext.Current.CancellationToken);
+        Assert.Equal("cat", newCat.Profile.AppearanceKey);
+        Assert.Equal(0, newCat.Growth.Total);
+
+        await repository.RecordAsync(
+            Activity("cat-capture", CompanionActivityType.MeaningfulCapture),
+            TestContext.Current.CancellationToken);
+        Assert.Equal(1, (await repository.GetOrCreateAsync()).Growth.Curiosity);
+
+        await SetSettingAsync(database.Factory, SettingKeys.CompanionSelectedPet, "Rabbit");
+        Assert.Equal(1, (await repository.GetOrCreateAsync()).Growth.Curiosity);
+    }
+
+    [Fact]
+    public async Task Dragon_unlocks_after_all_standard_pets_reach_final_stage()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var repository = new SqliteCompanionRepository(database.Factory, new RewardPolicy());
+        await repository.GetOrCreateAsync(TestContext.Current.CancellationToken);
+
+        await using (var connection = await database.Factory.OpenAsync())
+        {
+            foreach (var pet in CompanionPetCatalog.RequiredForDragon)
+            {
+                await using var command = connection.CreateCommand();
+                command.CommandText = """
+                    INSERT INTO companion_pet_progress(
+                        companion_id, pet_kind, curiosity, insight, reliability)
+                    VALUES ($companion, $pet, 50, 50, 50);
+                    """;
+                command.Parameters.AddWithValue("$companion", SqliteCompanionRepository.DefaultProfileId.ToString());
+                command.Parameters.AddWithValue("$pet", pet.ToString());
+                await command.ExecuteNonQueryAsync();
+            }
+        }
+
+        await repository.RecordAsync(
+            Activity("unlock-check", CompanionActivityType.MeaningfulCapture),
+            TestContext.Current.CancellationToken);
+        await SetSettingAsync(database.Factory, SettingKeys.CompanionSelectedPet, "Dragon");
+
+        var dragon = await repository.GetOrCreateAsync(TestContext.Current.CancellationToken);
+        Assert.Equal("dragon", dragon.Profile.AppearanceKey);
+    }
+
+    private static async Task SetSettingAsync(
+        SqliteConnectionFactory factory,
+        string key,
+        string value)
+    {
+        await using var connection = await factory.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO settings(key, value) VALUES ($key, $value)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value;
+            """;
+        command.Parameters.AddWithValue("$key", key);
+        command.Parameters.AddWithValue("$value", value);
+        await command.ExecuteNonQueryAsync();
     }
 
     private static CompanionActivity Activity(string id, CompanionActivityType type) => new(

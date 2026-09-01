@@ -5,6 +5,7 @@ using DeskNote.Core.Services;
 using DeskNote.App.Views;
 using DeskNote.Companion.Core;
 using Microsoft.UI.Dispatching;
+using Windows.Graphics;
 
 namespace DeskNote.App.Services;
 
@@ -224,6 +225,8 @@ public sealed class ApplicationRuntime : IAsyncDisposable
             }
             else if (_companionSnapshot is { } snapshot)
             {
+                await _companionQueue.RefreshAsync().ConfigureAwait(true);
+                snapshot = _companionSnapshot ?? snapshot;
                 ShowDesktopPet(snapshot, settings);
                 _companionWindow?.UpdateSettings(settings);
                 _companionWindow?.UpdateSnapshot(snapshot);
@@ -259,6 +262,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
         var window = new DesktopPetWindow(
             snapshot,
             settings,
+            SaveDesktopPetPositionAsync,
             () =>
             {
                 if (_companionSnapshot is { } current)
@@ -269,6 +273,21 @@ public sealed class ApplicationRuntime : IAsyncDisposable
         _desktopPetWindow = window;
         window.Closed += (_, _) => _desktopPetWindow = null;
         window.Activate();
+    }
+
+    private async Task SaveDesktopPetPositionAsync(PointInt32 position)
+    {
+        _companionSettings = _companionSettings with
+        {
+            PetPositionX = position.X,
+            PetPositionY = position.Y,
+        };
+        await _settings.SetAsync(
+            SettingKeys.CompanionPetPositionX,
+            position.X.ToString(System.Globalization.CultureInfo.InvariantCulture)).ConfigureAwait(true);
+        await _settings.SetAsync(
+            SettingKeys.CompanionPetPositionY,
+            position.Y.ToString(System.Globalization.CultureInfo.InvariantCulture)).ConfigureAwait(true);
     }
 
     private void ShowCompanion(CompanionSnapshot snapshot, CompanionSettings settings)

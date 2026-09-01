@@ -16,6 +16,11 @@ public sealed class CompanionSettingsTests
         Assert.True(settings.ProactiveEnabled);
         Assert.False(settings.AlwaysVisible);
         Assert.False(settings.ReduceMotion);
+        Assert.Equal(CompanionPetKind.Rabbit, settings.SelectedPet);
+        Assert.Equal(CompanionPetSize.Large, settings.PetSize);
+        Assert.Null(settings.PetPositionX);
+        Assert.Null(settings.PetPositionY);
+        Assert.False(settings.DragonUnlocked);
         Assert.Equal(new TimeOnly(20, 0), settings.QuietStart);
         Assert.Equal(new TimeOnly(9, 0), settings.QuietEnd);
         Assert.Equal(1, settings.RuleVersion);
@@ -31,6 +36,8 @@ public sealed class CompanionSettingsTests
             [SettingKeys.CompanionQuietHoursStart] = "25:90",
             [SettingKeys.CompanionQuietHoursEnd] = "tomorrow",
             [SettingKeys.CompanionRuleVersion] = "0",
+            [SettingKeys.CompanionPetSize] = "huge",
+            [SettingKeys.CompanionPetPositionX] = "left",
         });
 
         var settings = await CompanionSettings.LoadAsync(store, TestContext.Current.CancellationToken);
@@ -40,6 +47,8 @@ public sealed class CompanionSettingsTests
         Assert.Equal(CompanionSettings.DefaultQuietStart, settings.QuietStart);
         Assert.Equal(CompanionSettings.DefaultQuietEnd, settings.QuietEnd);
         Assert.Equal(CompanionSettings.CurrentRuleVersion, settings.RuleVersion);
+        Assert.Equal(CompanionPetSize.Large, settings.PetSize);
+        Assert.Null(settings.PetPositionX);
     }
 
     [Theory]
@@ -89,6 +98,8 @@ public sealed class CompanionSettingsTests
             ProactiveEnabled = false,
             AlwaysVisible = true,
             ReduceMotion = true,
+            SelectedPet = CompanionPetKind.Otter,
+            PetSize = CompanionPetSize.Small,
             QuietStart = new TimeOnly(21, 30),
             QuietEnd = new TimeOnly(7, 15),
             RuleVersion = 3,
@@ -98,6 +109,20 @@ public sealed class CompanionSettingsTests
         var actual = await CompanionSettings.LoadAsync(store, TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    public async Task Locked_dragon_selection_falls_back_to_rabbit()
+    {
+        var store = new MemorySettingsStore(new Dictionary<string, string>
+        {
+            [SettingKeys.CompanionSelectedPet] = CompanionPetKind.Dragon.ToString(),
+            [SettingKeys.CompanionDragonUnlocked] = "false",
+        });
+
+        var actual = await CompanionSettings.LoadAsync(store, TestContext.Current.CancellationToken);
+
+        Assert.Equal(CompanionPetKind.Rabbit, actual.SelectedPet);
     }
 
     private sealed class MemorySettingsStore : ISettingsStore

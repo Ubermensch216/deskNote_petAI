@@ -20,6 +20,16 @@ public sealed record CompanionSettings
 
     public bool ReduceMotion { get; init; }
 
+    public CompanionPetKind SelectedPet { get; init; } = CompanionPetKind.Rabbit;
+
+    public CompanionPetSize PetSize { get; init; } = CompanionPetSize.Large;
+
+    public int? PetPositionX { get; init; }
+
+    public int? PetPositionY { get; init; }
+
+    public bool DragonUnlocked { get; init; }
+
     public TimeOnly QuietStart { get; init; } = DefaultQuietStart;
 
     public TimeOnly QuietEnd { get; init; } = DefaultQuietEnd;
@@ -34,12 +44,24 @@ public sealed record CompanionSettings
 
         var values = await store.GetAllAsync(cancellationToken).ConfigureAwait(false);
 
+        var dragonUnlocked = Boolean(values, SettingKeys.CompanionDragonUnlocked, fallback: false);
+        var selectedPet = Pet(values, SettingKeys.CompanionSelectedPet);
+        if (selectedPet == CompanionPetKind.Dragon && !dragonUnlocked)
+        {
+            selectedPet = CompanionPetKind.Rabbit;
+        }
+
         return new CompanionSettings
         {
             Enabled = Boolean(values, SettingKeys.CompanionEnabled, fallback: false),
             ProactiveEnabled = Boolean(values, SettingKeys.CompanionProactiveEnabled, fallback: true),
             AlwaysVisible = Boolean(values, SettingKeys.CompanionAlwaysVisible, fallback: false),
             ReduceMotion = Boolean(values, SettingKeys.CompanionReduceMotion, fallback: false),
+            SelectedPet = selectedPet,
+            PetSize = ParsePetSize(values, SettingKeys.CompanionPetSize),
+            PetPositionX = Integer(values, SettingKeys.CompanionPetPositionX),
+            PetPositionY = Integer(values, SettingKeys.CompanionPetPositionY),
+            DragonUnlocked = dragonUnlocked,
             QuietStart = Time(values, SettingKeys.CompanionQuietHoursStart, DefaultQuietStart),
             QuietEnd = Time(values, SettingKeys.CompanionQuietHoursEnd, DefaultQuietEnd),
             RuleVersion = PositiveInteger(
@@ -62,6 +84,13 @@ public sealed record CompanionSettings
         await store.SetAsync(SettingKeys.CompanionAlwaysVisible, Lower(AlwaysVisible), cancellationToken)
             .ConfigureAwait(false);
         await store.SetAsync(SettingKeys.CompanionReduceMotion, Lower(ReduceMotion), cancellationToken)
+            .ConfigureAwait(false);
+        var selectedPet = SelectedPet == CompanionPetKind.Dragon && !DragonUnlocked
+            ? CompanionPetKind.Rabbit
+            : SelectedPet;
+        await store.SetAsync(SettingKeys.CompanionSelectedPet, selectedPet.ToString(), cancellationToken)
+            .ConfigureAwait(false);
+        await store.SetAsync(SettingKeys.CompanionPetSize, PetSize.ToString(), cancellationToken)
             .ConfigureAwait(false);
         await store.SetAsync(
                 SettingKeys.CompanionQuietHoursStart,
@@ -122,6 +151,32 @@ public sealed record CompanionSettings
         && parsed > 0
             ? parsed
             : fallback;
+
+    private static CompanionPetKind Pet(
+        IReadOnlyDictionary<string, string> values,
+        string key) =>
+        values.TryGetValue(key, out var value)
+        && Enum.TryParse<CompanionPetKind>(value, ignoreCase: true, out var parsed)
+        && Enum.IsDefined(parsed)
+            ? parsed
+            : CompanionPetKind.Rabbit;
+
+    private static CompanionPetSize ParsePetSize(
+        IReadOnlyDictionary<string, string> values,
+        string key) =>
+        values.TryGetValue(key, out var value)
+        && Enum.TryParse<CompanionPetSize>(value, ignoreCase: true, out var parsed)
+        && Enum.IsDefined(parsed)
+            ? parsed
+            : CompanionPetSize.Large;
+
+    private static int? Integer(
+        IReadOnlyDictionary<string, string> values,
+        string key) =>
+        values.TryGetValue(key, out var value)
+        && int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : null;
 
     private static string Lower(bool value) => value ? "true" : "false";
 }

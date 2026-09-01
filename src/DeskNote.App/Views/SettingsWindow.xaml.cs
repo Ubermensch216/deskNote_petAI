@@ -3,6 +3,9 @@ using DeskNote.Companion.Core;
 using DeskNote.Core.Abstractions;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Graphics;
 
 namespace DeskNote.App.Views;
@@ -12,6 +15,9 @@ public sealed partial class SettingsWindow : Window
 {
     private readonly ISettingsStore _settings;
     private bool _loaded;
+    private bool _dragonUnlocked;
+    private int? _petPositionX;
+    private int? _petPositionY;
 
     public SettingsWindow(ISettingsStore settings)
     {
@@ -23,7 +29,7 @@ public sealed partial class SettingsWindow : Window
         AppWindow.Title = Strings.Get("Settings_Title");
         AppIcon.Apply(this);
         ApplyStrings();
-        AppWindow.Resize(new SizeInt32(560, 650));
+        AppWindow.Resize(new SizeInt32(560, 760));
 
         if (AppWindow.Presenter is OverlappedPresenter presenter)
         {
@@ -80,24 +86,105 @@ public sealed partial class SettingsWindow : Window
 
     private void Apply(CompanionSettings value)
     {
+        _dragonUnlocked = value.DragonUnlocked;
+        _petPositionX = value.PetPositionX;
+        _petPositionY = value.PetPositionY;
+        PopulatePetChoices(value.SelectedPet);
+        PetSizePicker.SelectedIndex = value.PetSize switch
+        {
+            CompanionPetSize.Small => 0,
+            CompanionPetSize.Medium => 1,
+            _ => 2,
+        };
         CompanionEnabled.IsOn = value.Enabled;
         ProactiveEnabled.IsOn = value.ProactiveEnabled;
         AlwaysVisible.IsOn = value.AlwaysVisible;
-        ReduceMotion.IsOn = value.ReduceMotion;
+        PetMovementEnabled.IsOn = !value.ReduceMotion;
         QuietStart.Time = value.QuietStart.ToTimeSpan();
         QuietEnd.Time = value.QuietEnd.ToTimeSpan();
     }
 
-    private CompanionSettings Read() => new()
+    private CompanionSettings Read()
     {
-        Enabled = CompanionEnabled.IsOn,
-        ProactiveEnabled = ProactiveEnabled.IsOn,
-        AlwaysVisible = AlwaysVisible.IsOn,
-        ReduceMotion = ReduceMotion.IsOn,
-        QuietStart = TimeOnly.FromTimeSpan(QuietStart.Time),
-        QuietEnd = TimeOnly.FromTimeSpan(QuietEnd.Time),
-        RuleVersion = CompanionSettings.CurrentRuleVersion,
-    };
+        var selectedPet = PetPicker.SelectedItem is Microsoft.UI.Xaml.Controls.ComboBoxItem
+            { Tag: CompanionPetKind pet }
+                ? pet
+                : CompanionPetKind.Rabbit;
+
+        return new CompanionSettings
+        {
+            Enabled = CompanionEnabled.IsOn,
+            ProactiveEnabled = ProactiveEnabled.IsOn,
+            AlwaysVisible = AlwaysVisible.IsOn,
+            ReduceMotion = !PetMovementEnabled.IsOn,
+            SelectedPet = selectedPet,
+            PetSize = PetSizePicker.SelectedIndex switch
+            {
+                0 => CompanionPetSize.Small,
+                1 => CompanionPetSize.Medium,
+                _ => CompanionPetSize.Large,
+            },
+            PetPositionX = _petPositionX,
+            PetPositionY = _petPositionY,
+            DragonUnlocked = _dragonUnlocked,
+            QuietStart = TimeOnly.FromTimeSpan(QuietStart.Time),
+            QuietEnd = TimeOnly.FromTimeSpan(QuietEnd.Time),
+            RuleVersion = CompanionSettings.CurrentRuleVersion,
+        };
+    }
+
+    private void PopulatePetChoices(CompanionPetKind selected)
+    {
+        PetPicker.Items.Clear();
+        foreach (var pet in CompanionPetCatalog.All)
+        {
+            var locked = pet == CompanionPetKind.Dragon && !_dragonUnlocked;
+            var item = new ComboBoxItem
+            {
+                Content = BuildPetChoice(pet, locked),
+                Tag = pet,
+                IsEnabled = !locked,
+            };
+            PetPicker.Items.Add(item);
+            if (pet == selected && !locked)
+            {
+                PetPicker.SelectedItem = item;
+            }
+        }
+
+        PetPicker.SelectedIndex = PetPicker.SelectedIndex < 0 ? 0 : PetPicker.SelectedIndex;
+        DragonLockHint.Visibility = _dragonUnlocked ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private static UIElement BuildPetChoice(CompanionPetKind pet, bool locked)
+    {
+        var preview = new Grid
+        {
+            Width = 45,
+            Height = 60,
+            Clip = new RectangleGeometry { Rect = new Windows.Foundation.Rect(0, 0, 45, 60) },
+            Opacity = locked ? 0.45 : 1,
+        };
+        preview.Children.Add(new Image
+        {
+            Width = 180,
+            Height = 60,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Stretch = Stretch.Fill,
+            Source = new BitmapImage(new Uri(
+                $"ms-appx:///Assets/Companion/{pet.AssetKey()}-walk.png")),
+        });
+
+        var name = Strings.Get($"Settings_Pet{pet}");
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        row.Children.Add(preview);
+        row.Children.Add(new TextBlock
+        {
+            Text = locked ? Strings.Format("Settings_PetLockedFormat", name) : name,
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+        return row;
+    }
 
     private void ApplyStrings()
     {
@@ -105,10 +192,16 @@ public sealed partial class SettingsWindow : Window
         LocalOnlyLabel.Text = Strings.Get("Settings_LocalOnly");
         CompanionHeader.Text = Strings.Get("Settings_CompanionHeader");
         CompanionDescription.Text = Strings.Get("Settings_CompanionDescription");
+        PetPicker.Header = Strings.Get("Settings_PetPicker");
+        PetSizePicker.Header = Strings.Get("Settings_PetSize");
+        PetSizeSmallItem.Content = Strings.Get("Settings_PetSizeSmall");
+        PetSizeMediumItem.Content = Strings.Get("Settings_PetSizeMedium");
+        PetSizeLargeItem.Content = Strings.Get("Settings_PetSizeLarge");
+        DragonLockHint.Text = Strings.Get("Settings_DragonUnlockHint");
         CompanionEnabled.Header = Strings.Get("Settings_CompanionEnabled");
         ProactiveEnabled.Header = Strings.Get("Settings_Proactive");
         AlwaysVisible.Header = Strings.Get("Settings_AlwaysVisible");
-        ReduceMotion.Header = Strings.Get("Settings_ReduceMotion");
+        PetMovementEnabled.Header = Strings.Get("Settings_ReduceMotion");
         QuietHoursLabel.Text = Strings.Get("Settings_QuietHours");
         QuietStartLabel.Text = Strings.Get("Settings_QuietStart");
         QuietEndLabel.Text = Strings.Get("Settings_QuietEnd");

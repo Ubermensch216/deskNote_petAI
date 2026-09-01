@@ -1,5 +1,6 @@
 using System.Globalization;
 using DeskNote.Companion.Core;
+using DeskNote.Core.Abstractions;
 using Microsoft.Data.Sqlite;
 
 namespace DeskNote.Data;
@@ -36,6 +37,8 @@ public sealed class SqliteCompanionRepository(
 
         // This harmless write serializes concurrent reward decisions before the daily count read.
         await EnsureProfileAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
+        var selectedPet = await ReadSelectedPetAsync(connection, transaction, cancellationToken)
+            .ConfigureAwait(false);
 
         var existing = await EventExistsAsync(connection, transaction, activity, cancellationToken)
             .ConfigureAwait(false);
@@ -51,8 +54,11 @@ public sealed class SqliteCompanionRepository(
             .ConfigureAwait(false);
         var reward = rewardPolicy.Evaluate(activity, acceptedToday);
 
-        await InsertEventAsync(connection, transaction, activity, reward, cancellationToken)
+        await InsertEventAsync(connection, transaction, activity, selectedPet, reward, cancellationToken)
             .ConfigureAwait(false);
+        await ProjectPetProgressAsync(connection, transaction, selectedPet, reward, cancellationToken)
+            .ConfigureAwait(false);
+        await UpdateDragonUnlockAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
         await ProjectDailyProgressAsync(connection, transaction, activity, cancellationToken)
             .ConfigureAwait(false);
 
@@ -164,6 +170,7 @@ public sealed class SqliteCompanionRepository(
         SqliteConnection connection,
         SqliteTransaction transaction,
         CompanionActivity activity,
+        CompanionPetKind pet,
         RewardDelta reward,
         CancellationToken cancellationToken)
     {
@@ -173,10 +180,10 @@ public sealed class SqliteCompanionRepository(
             INSERT INTO companion_event_ledger(
                 id, companion_id, source_event_id, event_type, note_id, source_entity_id,
                 curiosity_delta, insight_delta, reliability_delta, occurred_at, local_date,
-                rule_version, payload_json)
+                rule_version, payload_json, pet_kind)
             VALUES (
                 $id, $companion, $source, $type, $note, $entity,
-                $curiosity, $insight, $reliability, $occurred, $date, $ruleVersion, NULL);
+                $curiosity, $insight, $reliability, $occurred, $date, $ruleVersion, NULL, $pet);
             """;
         command.Parameters.AddWithValue("$id", Guid.NewGuid().ToString());
         command.Parameters.AddWithValue("$companion", DefaultProfileId.ToString());
@@ -190,7 +197,68 @@ public sealed class SqliteCompanionRepository(
         command.Parameters.AddWithValue("$occurred", SqliteTime.ToDb(activity.OccurredAt.ToUniversalTime()));
         command.Parameters.AddWithValue("$date", activity.LocalDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
         command.Parameters.AddWithValue("$ruleVersion", CompanionBalanceV1.RuleVersion);
+        command.Parameters.AddWithValue("$pet", pet.ToString());
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task ProjectPetProgressAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        CompanionPetKind pet,
+        RewardDelta reward,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT INTO companion_pet_progress(
+                companion_id, pet_kind, curiosity, insight, reliability)
+            VALUES ($companion, $pet, $curiosity, $insight, $reliability)
+            ON CONFLICT(companion_id, pet_kind) DO UPDATE SET
+                curiosity = MIN(100, companion_pet_progress.curiosity + excluded.curiosity),
+                insight = MIN(100, companion_pet_progress.insight + excluded.insight),
+                reliability = MIN(100, companion_pet_progress.reliability + excluded.reliability);
+            """;
+        command.Parameters.AddWithValue("$companion", DefaultProfileId.ToString());
+        command.Parameters.AddWithValue("$pet", pet.ToString());
+        command.Parameters.AddWithValue("$curiosity", reward.Curiosity);
+        command.Parameters.AddWithValue("$insight", reward.Insight);
+        command.Parameters.AddWithValue("$reliability", reward.Reliability);
+        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task UpdateDragonUnlockAsync(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        CancellationToken cancellationToken)
+    {
+        await using var count = connection.CreateCommand();
+        count.Transaction = transaction;
+        count.CommandText = """
+            SELECT COUNT(*)
+            FROM companion_pet_progress
+            WHERE companion_id = $companion
+              AND pet_kind IN ('Rabbit', 'Cat', 'Dog', 'FennecFox', 'Otter', 'Monkey')
+              AND curiosity + insight + reliability >= $required;
+            """;
+        count.Parameters.AddWithValue("$companion", DefaultProfileId.ToString());
+        count.Parameters.AddWithValue("$required", CompanionPetCatalog.FullyRaisedTotal);
+        var raised = Convert.ToInt32(
+            await count.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false),
+            CultureInfo.InvariantCulture);
+        if (raised < CompanionPetCatalog.RequiredForDragon.Count)
+        {
+            return;
+        }
+
+        await using var unlock = connection.CreateCommand();
+        unlock.Transaction = transaction;
+        unlock.CommandText = """
+            INSERT INTO settings(key, value) VALUES ($key, 'true')
+            ON CONFLICT(key) DO UPDATE SET value = 'true';
+            """;
+        unlock.Parameters.AddWithValue("$key", SettingKeys.CompanionDragonUnlocked);
+        await unlock.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task ProjectDailyProgressAsync(
@@ -236,19 +304,23 @@ public sealed class SqliteCompanionRepository(
         DateOnly localDate,
         CancellationToken cancellationToken)
     {
+        var selectedPet = await ReadSelectedPetAsync(connection, transaction, cancellationToken)
+            .ConfigureAwait(false);
+
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
-            SELECT p.name, p.appearance_key, p.created_at, p.rule_version,
-                   COALESCE(SUM(e.curiosity_delta), 0),
-                   COALESCE(SUM(e.insight_delta), 0),
-                   COALESCE(SUM(e.reliability_delta), 0)
+            SELECT p.name, p.created_at, p.rule_version,
+                   COALESCE(g.curiosity, 0),
+                   COALESCE(g.insight, 0),
+                   COALESCE(g.reliability, 0)
             FROM companion_profiles p
-            LEFT JOIN companion_event_ledger e ON e.companion_id = p.id
+            LEFT JOIN companion_pet_progress g
+              ON g.companion_id = p.id AND g.pet_kind = $pet
             WHERE p.id = $id
-            GROUP BY p.id;
             """;
         command.Parameters.AddWithValue("$id", DefaultProfileId.ToString());
+        command.Parameters.AddWithValue("$pet", selectedPet.ToString());
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         if (!await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
@@ -259,10 +331,10 @@ public sealed class SqliteCompanionRepository(
         var profile = new CompanionProfile(
             DefaultProfileId,
             reader.GetString(0),
-            reader.GetString(1),
-            SqliteTime.FromDb(reader.GetString(2)),
-            reader.GetInt32(3));
-        var growth = new GrowthState(reader.GetInt32(4), reader.GetInt32(5), reader.GetInt32(6));
+            selectedPet.AssetKey(),
+            SqliteTime.FromDb(reader.GetString(1)),
+            reader.GetInt32(2));
+        var growth = new GrowthState(reader.GetInt32(3), reader.GetInt32(4), reader.GetInt32(5));
         await reader.DisposeAsync().ConfigureAwait(false);
 
         await using var latest = connection.CreateCommand();
@@ -270,10 +342,11 @@ public sealed class SqliteCompanionRepository(
         latest.CommandText = """
             SELECT event_type, curiosity_delta, insight_delta, reliability_delta, occurred_at
             FROM companion_event_ledger
-            WHERE companion_id = $id
+            WHERE companion_id = $id AND pet_kind = $pet
             ORDER BY rowid DESC LIMIT 1;
             """;
         latest.Parameters.AddWithValue("$id", DefaultProfileId.ToString());
+        latest.Parameters.AddWithValue("$pet", selectedPet.ToString());
         await using var lastReader = await latest.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         if (!await lastReader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
@@ -298,6 +371,36 @@ public sealed class SqliteCompanionRepository(
             lastReward,
             lastType,
             lastAt);
+    }
+
+    private static async Task<CompanionPetKind> ReadSelectedPetAsync(
+        SqliteConnection connection,
+        SqliteTransaction? transaction,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT value FROM settings WHERE key = $key;";
+        command.Parameters.AddWithValue("$key", SettingKeys.CompanionSelectedPet);
+        var raw = (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false))?.ToString();
+        var selected = Enum.TryParse<CompanionPetKind>(raw, ignoreCase: true, out var parsed)
+            && Enum.IsDefined(parsed)
+                ? parsed
+                : CompanionPetKind.Rabbit;
+
+        if (selected != CompanionPetKind.Dragon)
+        {
+            return selected;
+        }
+
+        command.Parameters.Clear();
+        command.CommandText = "SELECT value FROM settings WHERE key = $key;";
+        command.Parameters.AddWithValue("$key", SettingKeys.CompanionDragonUnlocked);
+        var unlocked = string.Equals(
+            (await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false))?.ToString(),
+            "true",
+            StringComparison.OrdinalIgnoreCase);
+        return unlocked ? selected : CompanionPetKind.Rabbit;
     }
 
     private static async Task<DailyProgress> ReadDailyProgressAsync(

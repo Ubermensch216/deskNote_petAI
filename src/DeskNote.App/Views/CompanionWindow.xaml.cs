@@ -2,6 +2,7 @@ using DeskNote.App.Services;
 using DeskNote.Companion.Core;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Graphics;
 
 namespace DeskNote.App.Views;
@@ -15,6 +16,7 @@ public sealed partial class CompanionWindow : Window
     private readonly Func<CompanionSuggestion, Task> _dismissSuggestion;
     private CompanionSettings _settings;
     private CompanionSuggestion? _suggestion;
+    private string? _avatarAssetKey;
 
     public CompanionWindow(
         CompanionSnapshot snapshot,
@@ -58,7 +60,7 @@ public sealed partial class CompanionWindow : Window
         RecallRitual.Content = Strings.Get("Companion_RitualRecall");
         ResolveRitual.Content = Strings.Get("Companion_RitualResolve");
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
-            Face,
+            AvatarViewport,
             Strings.Get("Companion_AccessibleName"));
         SuggestionOpen.Content = Strings.Get("Companion_SuggestionOpen");
         SuggestionDismiss.Content = Strings.Get("Companion_SuggestionDismiss");
@@ -83,7 +85,8 @@ public sealed partial class CompanionWindow : Window
             return;
         }
 
-        CompanionName.Text = snapshot.Profile.Name;
+        CompanionName.Text = $"{PetName(snapshot.Profile.AppearanceKey)} · {snapshot.Profile.Name}";
+        SetAvatar(snapshot.Profile.AppearanceKey);
         CuriosityBar.Value = snapshot.Growth.Curiosity;
         InsightBar.Value = snapshot.Growth.Insight;
         ReliabilityBar.Value = snapshot.Growth.Reliability;
@@ -99,15 +102,25 @@ public sealed partial class CompanionWindow : Window
 
         var grew = snapshot.LastReward.HasGrowth;
         MoodLabel.Text = grew ? Strings.Get("Companion_MoodGrowth") : Strings.Get("Companion_MoodCalm");
-        Face.Text = grew ? "◕ᴗ◕" : "◕‿◕";
         ShowRitual(snapshot.Today);
+    }
 
-        // Motion reduction is respected by using an immediate state change. The beta intentionally
-        // ships no looping animation; future motion must keep this branch as its static fallback.
-        if (_settings.ReduceMotion)
+    private void SetAvatar(string assetKey)
+    {
+        var normalizedAssetKey = assetKey switch
         {
-            Face.Opacity = 1;
+            "rabbit" or "cat" or "dog" or "fennec" or "otter" or "dragon" or "monkey" => assetKey,
+            _ => "rabbit",
+        };
+
+        if (string.Equals(_avatarAssetKey, normalizedAssetKey, StringComparison.Ordinal))
+        {
+            return;
         }
+
+        _avatarAssetKey = normalizedAssetKey;
+        AvatarSpriteStrip.Source = new BitmapImage(
+            new Uri($"ms-appx:///Assets/Companion/{normalizedAssetKey}-walk.png"));
     }
 
     public void ShowSuggestion(CompanionSuggestion suggestion)
@@ -174,6 +187,18 @@ public sealed partial class CompanionWindow : Window
         RecallRitual.IsEnabled = enabled;
         ResolveRitual.IsEnabled = enabled;
     }
+
+    private static string PetName(string assetKey) => Strings.Get(assetKey switch
+    {
+        "rabbit" => "Settings_PetRabbit",
+        "cat" => "Settings_PetCat",
+        "dog" => "Settings_PetDog",
+        "fennec" => "Settings_PetFennecFox",
+        "otter" => "Settings_PetOtter",
+        "dragon" => "Settings_PetDragon",
+        "monkey" => "Settings_PetMonkey",
+        _ => "Settings_PetRabbit",
+    });
 
     private async void OnSuggestionOpened(object sender, RoutedEventArgs e) =>
         await FinishSuggestionAsync(_actOnSuggestion).ConfigureAwait(true);

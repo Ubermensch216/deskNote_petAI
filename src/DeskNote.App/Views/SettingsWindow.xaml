@@ -36,10 +36,23 @@
                             TextWrapping="Wrap" />
                     </StackPanel>
 
+                    <ComboBox x:Name="PetPicker" MinWidth="280" HorizontalAlignment="Left" />
+                    <ComboBox
+                        x:Name="PetSizePicker"
+                        MinWidth="280"
+                        HorizontalAlignment="Left">
+                        <ComboBoxItem x:Name="PetSizeSmallItem" Tag="Small" />
+                        <ComboBoxItem x:Name="PetSizeMediumItem" Tag="Medium" />
+                        <ComboBoxItem x:Name="PetSizeLargeItem" Tag="Large" />
+                    </ComboBox>
+                    <TextBlock
+                        x:Name="DragonLockHint"
+                        Opacity="0.68"
+                        TextWrapping="Wrap" />
                     <ToggleSwitch x:Name="CompanionEnabled" />
                     <ToggleSwitch x:Name="ProactiveEnabled" />
                     <ToggleSwitch x:Name="AlwaysVisible" />
-                    <ToggleSwitch x:Name="ReduceMotion" />
+                    <ToggleSwitch x:Name="PetMovementEnabled" />
 
                     <StackPanel Spacing="8">
                         <TextBlock x:Name="QuietHoursLabel" FontWeight="SemiBold" />
