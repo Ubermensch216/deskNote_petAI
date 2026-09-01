@@ -93,6 +93,58 @@ public sealed class AttachmentStore(IAttachmentRepository attachments, IClock cl
         return await EmbedAsync(noteId, info.Name, bytes, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Everything attached to a note, oldest first.</summary>
+    public Task<IReadOnlyList<Attachment>> ListAsync(
+        Guid noteId,
+        CancellationToken cancellationToken = default) =>
+        attachments.ListForNoteAsync(noteId, cancellationToken);
+
+    /// <summary>
+    /// Detaches one attachment: the record goes, and so do the bytes if this app owns them.
+    /// </summary>
+    /// <remarks>
+    /// Embedded files are named by content hash, so the same screenshot attached to a note twice
+    /// is one file with two records. The bytes are only deleted once nothing else in the note
+    /// points at them; otherwise removing the second copy would blank the first. A linked file is
+    /// the user's own, sitting where they put it, and is never deleted.
+    /// </remarks>
+    public async Task RemoveAsync(Guid noteId, Guid attachmentId, CancellationToken cancellationToken = default)
+    {
+        var attached = await attachments.ListForNoteAsync(noteId, cancellationToken).ConfigureAwait(false);
+
+        if (attached.FirstOrDefault(candidate => candidate.Id == attachmentId) is not { } attachment)
+        {
+            return;
+        }
+
+        await attachments.DeleteAsync(attachmentId, cancellationToken).ConfigureAwait(false);
+
+        if (attachment.Kind != AttachmentKind.Embedded)
+        {
+            return;
+        }
+
+        var sharedWithAnother = attached.Any(other =>
+            other.Id != attachmentId
+            && string.Equals(other.Path, attachment.Path, StringComparison.OrdinalIgnoreCase));
+
+        if (sharedWithAnother)
+        {
+            return;
+        }
+
+        try
+        {
+            File.Delete(attachment.Path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // The record is gone, so the note no longer shows it. A file left behind costs disk,
+            // not correctness, and the note's folder is removed wholesale when the note is deleted.
+            CrashLog.Write($"Could not delete attachment file {attachment.Path}", ex);
+        }
+    }
+
     /// <summary>Deletes a note's embedded files. Linked originals are left alone.</summary>
     public void DeleteEmbeddedFiles(Guid noteId)
     {

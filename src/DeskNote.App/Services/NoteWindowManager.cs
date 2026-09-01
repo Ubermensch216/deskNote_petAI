@@ -275,6 +275,7 @@ public sealed partial class NoteWindowManager(
         window.ReminderAtRequested += async (_, dueAt) => await AddReminderAtAsync(note.Id, dueAt);
         window.AskRequested += (w, _) => ShowChat(((NoteWindow)w!).NoteId);
         window.AttachmentRequested += async (w, request) => await OnAttachmentRequestedAsync(w, request);
+        window.ImageRemoveRequested += async (w, image) => await OnImageRemoveRequestedAsync(w, image);
         window.Activated += (w, args) =>
         {
             if (args.WindowActivationState != Microsoft.UI.Xaml.WindowActivationState.Deactivated)
@@ -283,16 +284,104 @@ public sealed partial class NoteWindowManager(
             }
         };
 
+        _ = ShowAttachedImagesAsync(window, note);
+
         window.Activate();
         return window;
     }
 
     /// <summary>
-    /// Stores dropped files or a pasted image and writes a reference into the note.
+    /// Puts the note's attached images back on it when the window opens.
     /// </summary>
     /// <remarks>
-    /// The Markdown goes in through the editor rather than straight to the database, so the
-    /// insertion lands on the undo stack: attaching the wrong screenshot should be one Ctrl+Z away.
+    /// <para>
+    /// The attachment records have always been there; until now nothing read them back, so a note
+    /// reopened after a restart showed a path where its screenshot had been. The read is not
+    /// awaited by <c>Show</c>: a note appears the moment it is asked for, and the images arrive a
+    /// database round trip later rather than holding the window on a disk read.
+    /// </para>
+    /// <para>
+    /// Notes attached to before the images were drawn still carry the Markdown that stood in for
+    /// them, so those references are taken out of the editor — but only while the text is still
+    /// exactly what was loaded, so a cleanup arriving mid-keystroke can never eat a word. Nothing
+    /// is saved here: the tidied text goes to the database with the user's next edit, and a note
+    /// merely opened and closed is left as it was found.
+    /// </para>
+    /// </remarks>
+    private async Task ShowAttachedImagesAsync(NoteWindow window, Note note)
+    {
+        try
+        {
+            var attached = await attachmentStore.ListAsync(note.Id).ConfigureAwait(true);
+
+            var images = attached
+                .Where(attachment => AttachmentPolicy.IsImage(NameOf(attachment)))
+                .Select(attachment => new NoteImage(attachment.Id, attachment.Path, NameOf(attachment)))
+                .ToList();
+
+            if (images.Count == 0)
+            {
+                return;
+            }
+
+            window.ShowImages(images);
+
+            if (!string.Equals(window.CurrentContent, note.Content, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            var cleaned = images.Aggregate(
+                note.Content,
+                (text, image) => AttachmentPolicy.RemoveImageReference(text, image.Path));
+
+            if (!string.Equals(cleaned, note.Content, StringComparison.Ordinal))
+            {
+                window.ReplaceContent(cleaned);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            CrashLog.Write($"Showing the images attached to note {note.Id} failed", ex);
+        }
+    }
+
+    /// <summary>Takes an image off a note: the record goes, and the note stops showing it.</summary>
+    private async Task OnImageRemoveRequestedAsync(object? sender, NoteImage image)
+    {
+        if (sender is not NoteWindow window)
+        {
+            return;
+        }
+
+        try
+        {
+            await attachmentStore.RemoveAsync(window.NoteId, image.AttachmentId).ConfigureAwait(true);
+            window.RemoveImage(image.AttachmentId);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            CrashLog.Write($"Removing image {image.AttachmentId} from note {window.NoteId} failed", ex);
+        }
+    }
+
+    private static string NameOf(Attachment attachment) =>
+        attachment.DisplayName is { Length: > 0 } name ? name : Path.GetFileName(attachment.Path);
+
+    /// <summary>
+    /// Stores dropped files or a pasted image and puts them on the note.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// An image is shown as an image: what the user pasted was a picture, and a line of
+    /// percent-escaped path is not it. Anything else becomes a Markdown link, which is a
+    /// reasonable way to show a spreadsheet and the only way the note can carry one.
+    /// </para>
+    /// <para>
+    /// That link goes in through the editor rather than straight to the database, so the insertion
+    /// lands on the undo stack: attaching the wrong file should be one Ctrl+Z away. An image has no
+    /// text to undo, so its own remove button on the strip is what takes it back off.
+    /// </para>
     /// </remarks>
     private async Task OnAttachmentRequestedAsync(object? sender, AttachmentRequest request)
     {
@@ -310,13 +399,13 @@ public sealed partial class NoteWindowManager(
                 var stored = await attachmentStore
                     .EmbedAsync(request.NoteId, request.ImageName ?? "image.png", bytes)
                     .ConfigureAwait(true);
-                inserts.Add(stored.Markdown);
+                Present(window, stored, inserts);
             }
 
             foreach (var path in request.FilePaths)
             {
                 var stored = await attachmentStore.AddFileAsync(request.NoteId, path).ConfigureAwait(true);
-                inserts.Add(stored.Markdown);
+                Present(window, stored, inserts);
             }
 
             if (inserts.Count > 0)
@@ -327,6 +416,21 @@ public sealed partial class NoteWindowManager(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             CrashLog.Write($"Attaching to note {request.NoteId} failed", ex);
+        }
+    }
+
+    /// <summary>Shows a stored attachment on the note: images on the strip, everything else as a link.</summary>
+    private static void Present(NoteWindow window, StoredAttachment stored, List<string> inserts)
+    {
+        var name = NameOf(stored.Attachment);
+
+        if (AttachmentPolicy.IsImage(name))
+        {
+            window.AddImage(new NoteImage(stored.Attachment.Id, stored.Attachment.Path, name));
+        }
+        else
+        {
+            inserts.Add(stored.Markdown);
         }
     }
 

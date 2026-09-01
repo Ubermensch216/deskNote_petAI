@@ -98,4 +98,56 @@ public class AttachmentPolicyTests
         Assert.NotEmpty(AttachmentPolicy.ForFile("big.png", AttachmentPolicy.EmbedSizeLimitBytes * 2).Reason);
         Assert.NotEmpty(AttachmentPolicy.ForClipboardImage().Reason);
     }
+
+    /// <summary>
+    /// The note shows the image itself, so the reference that stood in for it is removed rather
+    /// than left in the middle of the user's sentence.
+    /// </summary>
+    [Fact]
+    public void An_images_reference_is_removed_from_the_text()
+    {
+        const string path = @"C:\store\a1b2.png";
+        var content = "위\n" + AttachmentPolicy.ToMarkdown("shot.png", path, isImage: true) + "\n아래";
+
+        Assert.Equal("위\n아래", AttachmentPolicy.RemoveImageReference(content, path));
+    }
+
+    /// <summary>The reference is written with the path escaped, and is removed with it escaped.</summary>
+    [Fact]
+    public void A_reference_to_a_path_with_spaces_is_removed()
+    {
+        const string path = @"C:\My Notes\회의 자료.png";
+        var content = AttachmentPolicy.ToMarkdown("회의 자료.png", path, isImage: true) + "\r\n적어둘 것";
+
+        Assert.Equal("적어둘 것", AttachmentPolicy.RemoveImageReference(content, path));
+    }
+
+    /// <summary>
+    /// Only what this policy wrote for that attachment goes. An image the user linked themselves
+    /// is their text, and removing it would be an edit they did not ask for.
+    /// </summary>
+    [Fact]
+    public void Another_images_reference_is_left_alone()
+    {
+        const string content = "![theirs](C:/elsewhere/photo.png)";
+
+        Assert.Equal(content, AttachmentPolicy.RemoveImageReference(content, @"C:\store\a1b2.png"));
+    }
+
+    /// <summary>A file link to the same path is not an image reference and is not what is shown.</summary>
+    [Fact]
+    public void A_plain_link_to_the_same_file_survives()
+    {
+        const string path = @"C:\store\report.png";
+        var content = AttachmentPolicy.ToMarkdown("report.png", path, isImage: false);
+
+        Assert.Equal(content, AttachmentPolicy.RemoveImageReference(content, path));
+    }
+
+    [Fact]
+    public void Removing_a_reference_from_text_that_has_none_changes_nothing()
+    {
+        Assert.Equal("그냥 메모", AttachmentPolicy.RemoveImageReference("그냥 메모", @"C:\store\a1b2.png"));
+        Assert.Equal(string.Empty, AttachmentPolicy.RemoveImageReference(string.Empty, @"C:\store\a1b2.png"));
+    }
 }

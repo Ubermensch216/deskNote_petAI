@@ -108,6 +108,8 @@
   <data name="Note_BulletList" xml:space="preserve"><value>Bulleted list</value></data>
   <data name="Note_Checklist" xml:space="preserve"><value>Checklist</value></data>
   <data name="Note_InsertImage" xml:space="preserve"><value>Insert image</value></data>
+  <data name="Note_ImageRemove" xml:space="preserve"><value>Remove image</value></data>
+  <data name="Note_ImageMissing" xml:space="preserve"><value>this image could not be found</value></data>
   <data name="Note_ColorYellow" xml:space="preserve"><value>Yellow</value></data>
   <data name="Note_ColorAmber" xml:space="preserve"><value>Amber</value></data>
   <data name="Note_ColorGreen" xml:space="preserve"><value>Green</value></data>

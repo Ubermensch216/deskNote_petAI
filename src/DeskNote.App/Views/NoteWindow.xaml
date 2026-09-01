@@ -14,6 +14,7 @@
         CornerRadius="10"
         BorderThickness="1"
         AllowDrop="True"
+        SizeChanged="OnSurfaceSizeChanged"
         DragOver="OnSurfaceDragOver"
         Drop="OnSurfaceDrop"
         PointerEntered="OnPointerEntered"
@@ -601,42 +602,67 @@
                 </StackPanel>
             </Grid>
 
-            <TextBox
-                x:Name="ContentBox"
-                Grid.Row="1"
-                AcceptsReturn="True"
-                TextWrapping="Wrap"
-                Background="Transparent"
-                BorderThickness="0"
-                Padding="0"
-                ScrollViewer.VerticalScrollBarVisibility="Auto"
-                PreviewKeyDown="OnContentPreviewKeyDown"
-                Paste="OnPasteRequested"
-                GotFocus="OnEditorFocusChanged"
-                LostFocus="OnEditorFocusChanged"
-                SelectionChanged="OnSelectionChanged"
-                TextChanged="OnTextChanged">
+            <Grid Grid.Row="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
 
                 <!--
-                    Every command on the format bar is also an accelerator here. The bar is what
-                    makes the commands discoverable; the accelerators are what make them fast, and
-                    neither is the only way in.
+                    Attached images, shown as images. They sit above the text rather than inline
+                    with it because the body is a plain TextBox: it can hold the note's words or a
+                    path to a picture, but it cannot draw one, and a line of percent-escaped path
+                    is not what the user attached. The strip is capped in
+                    OnSurfaceSizeChanged so a screenshot cannot push the writing off the note.
                 -->
-                <TextBox.KeyboardAccelerators>
-                    <KeyboardAccelerator Modifiers="Control" Key="B" Invoked="OnBoldInvoked" />
-                    <KeyboardAccelerator Modifiers="Control" Key="I" Invoked="OnItalicInvoked" />
-                    <KeyboardAccelerator Modifiers="Control" Key="U" Invoked="OnUnderlineInvoked" />
-                    <KeyboardAccelerator Modifiers="Control,Shift" Key="X" Invoked="OnStrikethroughInvoked" />
-                    <KeyboardAccelerator Modifiers="Control" Key="K" Invoked="OnLinkInvoked" />
-                    <KeyboardAccelerator Modifiers="Control,Shift" Key="K" Invoked="OnCodeInvoked" />
-                    <KeyboardAccelerator Modifiers="Control" Key="Number1" Invoked="OnHeading1Invoked" />
-                    <KeyboardAccelerator Modifiers="Control" Key="Number2" Invoked="OnHeading2Invoked" />
-                    <KeyboardAccelerator Modifiers="Control" Key="Number3" Invoked="OnHeading3Invoked" />
-                    <KeyboardAccelerator Modifiers="Control,Shift" Key="L" Invoked="OnBulletInvoked" />
-                    <KeyboardAccelerator Modifiers="Control,Shift" Key="C" Invoked="OnChecklistInvoked" />
-                    <KeyboardAccelerator Modifiers="Control" Key="Enter" Invoked="OnToggleCheckInvoked" />
-                </TextBox.KeyboardAccelerators>
-            </TextBox>
+                <ScrollViewer
+                    x:Name="ImageStripScroller"
+                    Grid.Row="0"
+                    Margin="0,0,0,6"
+                    Visibility="Collapsed"
+                    HorizontalScrollMode="Disabled"
+                    HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="ImageStrip" Spacing="6" />
+                </ScrollViewer>
+
+                <TextBox
+                    x:Name="ContentBox"
+                    Grid.Row="1"
+                    AcceptsReturn="True"
+                    TextWrapping="Wrap"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Padding="0"
+                    ScrollViewer.VerticalScrollBarVisibility="Auto"
+                    PreviewKeyDown="OnContentPreviewKeyDown"
+                    Paste="OnPasteRequested"
+                    GotFocus="OnEditorFocusChanged"
+                    LostFocus="OnEditorFocusChanged"
+                    SelectionChanged="OnSelectionChanged"
+                    TextChanged="OnTextChanged">
+
+                    <!--
+                        Every command on the format bar is also an accelerator here. The bar is what
+                        makes the commands discoverable; the accelerators are what make them fast, and
+                        neither is the only way in.
+                    -->
+                    <TextBox.KeyboardAccelerators>
+                        <KeyboardAccelerator Modifiers="Control" Key="B" Invoked="OnBoldInvoked" />
+                        <KeyboardAccelerator Modifiers="Control" Key="I" Invoked="OnItalicInvoked" />
+                        <KeyboardAccelerator Modifiers="Control" Key="U" Invoked="OnUnderlineInvoked" />
+                        <KeyboardAccelerator Modifiers="Control,Shift" Key="X" Invoked="OnStrikethroughInvoked" />
+                        <KeyboardAccelerator Modifiers="Control" Key="K" Invoked="OnLinkInvoked" />
+                        <KeyboardAccelerator Modifiers="Control,Shift" Key="K" Invoked="OnCodeInvoked" />
+                        <KeyboardAccelerator Modifiers="Control" Key="Number1" Invoked="OnHeading1Invoked" />
+                        <KeyboardAccelerator Modifiers="Control" Key="Number2" Invoked="OnHeading2Invoked" />
+                        <KeyboardAccelerator Modifiers="Control" Key="Number3" Invoked="OnHeading3Invoked" />
+                        <KeyboardAccelerator Modifiers="Control,Shift" Key="L" Invoked="OnBulletInvoked" />
+                        <KeyboardAccelerator Modifiers="Control,Shift" Key="C" Invoked="OnChecklistInvoked" />
+                        <KeyboardAccelerator Modifiers="Control" Key="Enter" Invoked="OnToggleCheckInvoked" />
+                    </TextBox.KeyboardAccelerators>
+                </TextBox>
+            </Grid>
 
             <!--
                 The format bar keeps its row even while invisible. Letting it collapse would reflow

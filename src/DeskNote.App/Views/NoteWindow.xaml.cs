@@ -940,6 +940,8 @@ public sealed partial class NoteWindow : Window
             element.Opacity = visible ? 1 : 0;
             element.IsHitTestVisible = visible;
         }
+
+        SetImageChromeVisible(visible);
     }
 
     private void OnClosed(object sender, WindowEventArgs args) => CloseRequested?.Invoke(this, EventArgs.Empty);
@@ -1053,6 +1055,10 @@ public sealed partial class NoteWindow : Window
 
         DeleteRowLabel.Foreground = new SolidColorBrush(NotePalette.Danger(IsDarkTheme));
         DeleteRowIcon.Foreground = new SolidColorBrush(NotePalette.Danger(IsDarkTheme));
+
+        // The buttons over the attached images are built in code and are not in the strip that
+        // ApplyPaperBrushes covers, so their plate is repainted here with the rest.
+        ApplyImageChromeBrushes();
     }
 
     private static SolidColorBrush Tint(Windows.UI.Color ink, byte alpha) =>

@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using DeskNote.Core.Models;
 
 namespace DeskNote.Core.Services;
@@ -63,7 +64,48 @@ public static class AttachmentPolicy
     /// </remarks>
     public static string ToMarkdown(string displayName, string path, bool isImage)
     {
-        var target = path.Replace(" ", "%20", StringComparison.Ordinal);
+        var target = EscapeTarget(path);
         return isImage ? $"![{displayName}]({target})" : $"[{displayName}]({target})";
+    }
+
+    /// <summary>The link target this policy writes for a path.</summary>
+    public static string EscapeTarget(string path) =>
+        path.Replace(" ", "%20", StringComparison.Ordinal);
+
+    /// <summary>
+    /// Removes the image reference this policy wrote for an attachment from a note's text.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// An attached image is now shown as an image on the note, so the Markdown that used to stand
+    /// in for it is noise: forty characters of percent-escaped path sitting where the user expected
+    /// their screenshot.
+    /// </para>
+    /// <para>
+    /// Only a reference pointing at the given attachment path is removed. A reference the user
+    /// typed themselves points somewhere else and survives, which is what keeps this from being a
+    /// silent edit of their words. The line break that followed the reference goes with it, or
+    /// removing an image would leave a blank line behind every time.
+    /// </para>
+    /// </remarks>
+    public static string RemoveImageReference(string content, string path)
+    {
+        if (string.IsNullOrEmpty(content) || string.IsNullOrWhiteSpace(path))
+        {
+            return content;
+        }
+
+        var targets = new[] { path, EscapeTarget(path) }
+            .Distinct(StringComparer.Ordinal)
+            .Select(Regex.Escape);
+
+        var pattern = $@"!\[[^\]]*\]\((?:{string.Join('|', targets)})\)[ \t]*(?:\r?\n)?";
+
+        return Regex.Replace(
+            content,
+            pattern,
+            string.Empty,
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+            TimeSpan.FromSeconds(1));
     }
 }

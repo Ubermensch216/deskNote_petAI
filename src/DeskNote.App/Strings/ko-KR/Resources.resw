@@ -108,6 +108,8 @@
   <data name="Note_BulletList" xml:space="preserve"><value>글머리 목록</value></data>
   <data name="Note_Checklist" xml:space="preserve"><value>체크리스트</value></data>
   <data name="Note_InsertImage" xml:space="preserve"><value>이미지 넣기</value></data>
+  <data name="Note_ImageRemove" xml:space="preserve"><value>이미지 제거</value></data>
+  <data name="Note_ImageMissing" xml:space="preserve"><value>이미지를 찾을 수 없음</value></data>
   <data name="Note_ColorYellow" xml:space="preserve"><value>노랑</value></data>
   <data name="Note_ColorAmber" xml:space="preserve"><value>호박</value></data>
   <data name="Note_ColorGreen" xml:space="preserve"><value>초록</value></data>
