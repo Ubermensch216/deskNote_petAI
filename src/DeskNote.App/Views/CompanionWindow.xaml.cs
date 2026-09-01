@@ -1,21 +1,25 @@
+using System.Globalization;
 using DeskNote.App.Services;
 using DeskNote.Companion.Core;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Graphics;
 
 namespace DeskNote.App.Views;
 
-/// <summary>A glanceable, non-modal projection of deterministic companion state.</summary>
+/// <summary>The pet dashboard: what it needs, what today cost, and every care action.</summary>
 public sealed partial class CompanionWindow : Window
 {
     private readonly Action _showSettings;
-    private readonly Func<DailyRitualKind, Task> _chooseRitual;
+    private readonly Func<CareRequest, Task<CompanionCareResult?>> _performCare;
     private readonly Func<CompanionSuggestion, Task> _actOnSuggestion;
     private readonly Func<CompanionSuggestion, Task> _dismissSuggestion;
     private CompanionSettings _settings;
+    private CompanionSnapshot _snapshot;
     private CompanionSuggestion? _suggestion;
+    private PetGrowthGuideWindow? _growthGuideWindow;
     private string? _avatarAssetKey;
     private int _avatarStage = -1;
     private CompanionPetKind? _avatarPet;
@@ -24,43 +28,59 @@ public sealed partial class CompanionWindow : Window
         CompanionSnapshot snapshot,
         CompanionSettings settings,
         Action showSettings,
-        Func<DailyRitualKind, Task> chooseRitual,
+        Func<CareRequest, Task<CompanionCareResult?>> performCare,
         Func<CompanionSuggestion, Task> actOnSuggestion,
         Func<CompanionSuggestion, Task> dismissSuggestion)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(showSettings);
-        ArgumentNullException.ThrowIfNull(chooseRitual);
+        ArgumentNullException.ThrowIfNull(performCare);
         ArgumentNullException.ThrowIfNull(actOnSuggestion);
         ArgumentNullException.ThrowIfNull(dismissSuggestion);
 
         InitializeComponent();
         _settings = settings;
+        _snapshot = snapshot;
         _showSettings = showSettings;
-        _chooseRitual = chooseRitual;
+        _performCare = performCare;
         _actOnSuggestion = actOnSuggestion;
         _dismissSuggestion = dismissSuggestion;
 
         AppWindow.Title = Strings.Get("Companion_Title");
         AppIcon.Apply(this);
-        AppWindow.Resize(new SizeInt32(380, 520));
+        AppWindow.Resize(new SizeInt32(420, 780));
         if (AppWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsAlwaysOnTop = settings.AlwaysVisible;
-            presenter.PreferredMinimumWidth = 320;
-            presenter.PreferredMinimumHeight = 420;
+            presenter.PreferredMinimumWidth = 380;
+            presenter.PreferredMinimumHeight = 480;
             presenter.IsMaximizable = false;
         }
 
-        CuriosityLabel.Text = Strings.Get("Companion_Curiosity");
-        InsightLabel.Text = Strings.Get("Companion_Insight");
-        ReliabilityLabel.Text = Strings.Get("Companion_Reliability");
+        NeedsHeader.Text = Strings.Get("Companion_NeedsHeader");
+        FullnessLabel.Text = Strings.Get("Companion_Fullness");
+        CleanlinessLabel.Text = Strings.Get("Companion_Cleanliness");
+        MoodNeedLabel.Text = Strings.Get("Companion_MoodNeed");
+        BondLabel.Text = Strings.Get("Companion_Bond");
+        ExperienceLabel.Text = Strings.Get("Companion_ExperienceHeader");
+        AppScoreLabel.Text = Strings.Get("Companion_AppScoreLabel");
+        CareScoreLabel.Text = Strings.Get("Companion_CareScoreLabel");
+        CareHeader.Text = Strings.Get("Companion_CareHeader");
+        PlayHeader.Text = Strings.Get("Companion_PlayHeader");
+        FeedButton.Content = Strings.Get("Companion_CareFeed");
+        BasicCareButton.Content = Strings.Get("Companion_CareBasicCare");
+        RestButton.Content = Strings.Get("Companion_CareRest");
+        GreetingButton.Content = Strings.Get("Companion_CareGreeting");
+        ChasePlayButton.Content = Strings.Get("Companion_PlayChase");
+        PuzzlePlayButton.Content = Strings.Get("Companion_PlayPuzzle");
+        TossPlayButton.Content = Strings.Get("Companion_PlayToss");
+        MissionHeader.Text = Strings.Get("Companion_MissionHeader");
+        MissionNote.Text = Strings.Get("Companion_MissionNote");
+        TraitHeader.Text = Strings.Get("Companion_TraitHeader");
         SettingsButton.Content = Strings.Get("Tray_Settings");
-        RitualHeader.Text = Strings.Get("Companion_RitualHeader");
-        CaptureRitual.Content = Strings.Get("Companion_RitualCapture");
-        RecallRitual.Content = Strings.Get("Companion_RitualRecall");
-        ResolveRitual.Content = Strings.Get("Companion_RitualResolve");
+        GrowthGuideLabel.Text = Strings.Get("PetGrowthGuide_LinkLabel");
+        GrowthGuideButton.Content = Strings.Get("PetGrowthGuide_Open");
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
             AvatarViewport,
             Strings.Get("Companion_AccessibleName"));
@@ -68,6 +88,7 @@ public sealed partial class CompanionWindow : Window
         SuggestionDismiss.Content = Strings.Get("Companion_SuggestionDismiss");
         UpdateSnapshot(snapshot);
         Activated += OnFirstActivated;
+        Closed += (_, _) => _growthGuideWindow?.Close();
     }
 
     public void UpdateSettings(CompanionSettings settings)
@@ -78,38 +99,228 @@ public sealed partial class CompanionWindow : Window
             presenter.IsAlwaysOnTop = settings.AlwaysVisible;
         }
 
-        if (_avatarAssetKey is { } assetKey)
-        {
-            CompanionName.Text = $"{PetName(assetKey)} · {_settings.PetName}";
-        }
+        UpdateSnapshot(_snapshot);
     }
 
     public void UpdateSnapshot(CompanionSnapshot snapshot)
     {
+        ArgumentNullException.ThrowIfNull(snapshot);
+
         if (!DispatcherQueue.HasThreadAccess)
         {
             DispatcherQueue.TryEnqueue(() => UpdateSnapshot(snapshot));
             return;
         }
 
+        _snapshot = snapshot;
         CompanionName.Text = $"{PetName(snapshot.Profile.AppearanceKey)} · {_settings.PetName}";
         SetAvatar(snapshot.Profile.AppearanceKey, snapshot.Growth.AppearanceStage);
-        CuriosityBar.Value = snapshot.Growth.Curiosity;
-        InsightBar.Value = snapshot.Growth.Insight;
-        ReliabilityBar.Value = snapshot.Growth.Reliability;
-        CuriosityValue.Text = snapshot.Growth.Curiosity.ToString(System.Globalization.CultureInfo.CurrentCulture);
-        InsightValue.Text = snapshot.Growth.Insight.ToString(System.Globalization.CultureInfo.CurrentCulture);
-        ReliabilityValue.Text = snapshot.Growth.Reliability.ToString(System.Globalization.CultureInfo.CurrentCulture);
-        StageLabel.Text = Strings.Format("Companion_StageFormat", snapshot.Growth.AppearanceStage + 1);
+        StageLabel.Text = Strings.Format(
+            "Companion_StageFormat",
+            snapshot.Growth.Stage,
+            Strings.Get($"Companion_StageName{snapshot.Growth.Stage}"));
+
+        ShowNeeds(snapshot.Needs);
+        ShowGrowth(snapshot.Growth);
+        ShowToday(snapshot.Today);
+        ShowCareButtons(snapshot);
+        ShowMission(snapshot);
+
+        TraitSummary.Text = Strings.Format(
+            "Companion_TraitSummaryFormat",
+            snapshot.Growth.Curiosity,
+            snapshot.Growth.Insight,
+            snapshot.Growth.Reliability);
 
         var activityKey = snapshot.LastActivityType is { } type
             ? $"Companion_Reason{type}"
             : "Companion_ReasonWelcome";
         RecentReason.Text = Strings.Get(activityKey);
+        MoodLabel.Text = Strings.Get(MoodKey(snapshot.Needs));
+    }
 
-        var grew = snapshot.LastReward.HasGrowth;
-        MoodLabel.Text = grew ? Strings.Get("Companion_MoodGrowth") : Strings.Get("Companion_MoodCalm");
-        ShowRitual(snapshot.Today);
+    /// <summary>The line under the name, chosen by whichever need is loudest right now.</summary>
+    private static string MoodKey(CompanionNeeds needs)
+    {
+        if (needs.Fullness <= CompanionCareRules.FeedThreshold)
+        {
+            return "Companion_MoodHungry";
+        }
+
+        if (needs.Cleanliness <= CompanionCareRules.BasicCareThreshold)
+        {
+            return "Companion_MoodUnkempt";
+        }
+
+        return needs.Mood <= CompanionCareRules.PlayThreshold
+            ? "Companion_MoodBored"
+            : "Companion_MoodCalm";
+    }
+
+    private void ShowNeeds(CompanionNeeds needs)
+    {
+        FullnessBar.Value = needs.Fullness;
+        CleanlinessBar.Value = needs.Cleanliness;
+        MoodBar.Value = needs.Mood;
+        BondBar.Value = needs.Bond;
+        FullnessValue.Text = Percent(needs.Fullness);
+        CleanlinessValue.Text = Percent(needs.Cleanliness);
+        MoodValue.Text = Percent(needs.Mood);
+        BondValue.Text = Percent(needs.Bond);
+    }
+
+    private void ShowGrowth(GrowthState growth)
+    {
+        ExperienceBar.Value = growth.ExperienceProgress;
+        if (CompanionGrowthLadder.NextRung(growth.Stage) is { } next)
+        {
+            ExperienceValue.Text = Strings.Format(
+                "Companion_ExperienceFormat",
+                growth.Experience,
+                next.Experience);
+            CareDaysLabel.Text = growth.CareDaysRemaining > 0
+                ? Strings.Format(
+                    "Companion_CareDaysRemainingFormat",
+                    growth.CareDays,
+                    next.CareDays,
+                    growth.CareDaysRemaining)
+                : Strings.Format("Companion_CareDaysMetFormat", growth.CareDays, next.CareDays);
+            return;
+        }
+
+        ExperienceValue.Text = Strings.Format("Companion_ExperienceMaxFormat", growth.Experience);
+        CareDaysLabel.Text = Strings.Format("Companion_CareDaysTotalFormat", growth.CareDays);
+    }
+
+    private void ShowToday(DailyProgress today)
+    {
+        AppScoreValue.Text = Strings.Format(
+            "Companion_ScoreFormat",
+            today.AppScore,
+            CompanionBalanceV2.DailyAppMaximum);
+        CareScoreValue.Text = Strings.Format(
+            "Companion_ScoreFormat",
+            today.CareScore,
+            CompanionBalanceV2.DailyCareMaximum);
+    }
+
+    private void ShowCareButtons(CompanionSnapshot snapshot)
+    {
+        SpecialCareButton.Content = Strings.Get(
+            $"Companion_SpecialCare{CompanionSpecialCareCatalog.For(SelectedPet(snapshot))}");
+
+        FeedButton.IsEnabled = snapshot.CanPerform(CompanionCareAction.Feed);
+        BasicCareButton.IsEnabled = snapshot.CanPerform(CompanionCareAction.BasicCare);
+        SpecialCareButton.IsEnabled = snapshot.CanPerform(CompanionCareAction.SpecialCare);
+        RestButton.IsEnabled = snapshot.CanPerform(CompanionCareAction.Rest);
+        GreetingButton.IsEnabled = snapshot.CanPerform(CompanionCareAction.Greeting);
+
+        // Every play button shares one allowance, and a kind already played today is spent.
+        var canPlay = snapshot.CanPerform(CompanionCareAction.Play);
+        var played = snapshot.Today.PlayKinds;
+        ChasePlayButton.IsEnabled = canPlay && !played.Contains(CompanionPlayKind.Chase);
+        PuzzlePlayButton.IsEnabled = canPlay && !played.Contains(CompanionPlayKind.Puzzle);
+        TossPlayButton.IsEnabled = canPlay && !played.Contains(CompanionPlayKind.Toss);
+    }
+
+    private void ShowMission(CompanionSnapshot snapshot)
+    {
+        var mission = snapshot.Mission;
+        var today = snapshot.Today;
+        MissionAppTask.Text = MissionLine(
+            today.Count(mission.App) > 0,
+            Strings.Get($"Companion_Task{mission.App}"));
+        MissionFirstCare.Text = MissionLine(
+            today.Count(mission.FirstCare) > 0,
+            CareName(mission.FirstCare, snapshot));
+        MissionSecondCare.Text = MissionLine(
+            today.Count(mission.SecondCare) > 0,
+            CareName(mission.SecondCare, snapshot));
+    }
+
+    private static string MissionLine(bool done, string text) => $"{(done ? "✓" : "·")} {text}";
+
+    private static string CareName(CompanionCareAction action, CompanionSnapshot snapshot) =>
+        action == CompanionCareAction.SpecialCare
+            ? Strings.Get($"Companion_SpecialCare{CompanionSpecialCareCatalog.For(SelectedPet(snapshot))}")
+            : Strings.Get($"Companion_Care{action}");
+
+    private static CompanionPetKind SelectedPet(CompanionSnapshot snapshot) =>
+        CompanionPetCatalog.FromAssetKey(snapshot.Profile.AppearanceKey);
+
+    private static string Percent(int value) =>
+        value.ToString(CultureInfo.CurrentCulture);
+
+    private async void OnCareClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: string tag } || !TryParseCare(tag, out var request))
+        {
+            return;
+        }
+
+        SetCareEnabled(false);
+        try
+        {
+            var result = await _performCare(request).ConfigureAwait(true);
+            ShowCareOutcome(result);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            CrashLog.Write($"Care action {request.Action} failed", ex);
+        }
+        finally
+        {
+            // The refreshed snapshot decides which buttons come back, so re-enable from state.
+            ShowCareButtons(_snapshot);
+        }
+    }
+
+    private void ShowCareOutcome(CompanionCareResult? result)
+    {
+        if (result is null)
+        {
+            CareStatus.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        CareStatus.Visibility = Visibility.Visible;
+        CareStatus.Text = result.Refusal switch
+        {
+            CareRefusal.DailyLimitReached => Strings.Get("Companion_CareDone"),
+            CareRefusal.NotNeededYet => Strings.Get("Companion_CareNotNeeded"),
+            _ => Strings.Get("Companion_CareThanks"),
+        };
+    }
+
+    private static bool TryParseCare(string tag, out CareRequest request)
+    {
+        var parts = tag.Split('.');
+        if (!Enum.TryParse<CompanionCareAction>(parts[0], out var action))
+        {
+            request = default;
+            return false;
+        }
+
+        if (parts.Length > 1 && Enum.TryParse<CompanionPlayKind>(parts[1], out var kind))
+        {
+            request = new CareRequest(action, kind);
+            return true;
+        }
+
+        request = new CareRequest(action);
+        return true;
+    }
+
+    private void SetCareEnabled(bool enabled)
+    {
+        foreach (var button in new[]
+                 {
+                     FeedButton, BasicCareButton, SpecialCareButton, RestButton,
+                     GreetingButton, ChasePlayButton, PuzzlePlayButton, TossPlayButton,
+                 })
+        {
+            button.IsEnabled = enabled;
+        }
     }
 
     private void SetAvatar(string assetKey, int appearanceStage)
@@ -160,53 +371,24 @@ public sealed partial class CompanionWindow : Window
         var area = display.WorkArea;
         AppWindow.Move(new PointInt32(
             area.X + area.Width - AppWindow.Size.Width - 20,
-            area.Y + area.Height - AppWindow.Size.Height - 20));
+            Math.Max(area.Y, area.Y + area.Height - AppWindow.Size.Height - 20)));
     }
 
     private void OnSettingsClicked(object sender, RoutedEventArgs e) => _showSettings();
 
-    private async void OnRitualClicked(object sender, RoutedEventArgs e)
+    private void OnGrowthGuideClicked(object sender, RoutedEventArgs e)
     {
-        if (sender is not FrameworkElement { Tag: string tag }
-            || !Enum.TryParse<DailyRitualKind>(tag, out var ritual))
+        if (_growthGuideWindow is not null)
         {
+            _growthGuideWindow.Activate();
             return;
         }
 
-        SetRitualChoicesEnabled(false);
-        try
-        {
-            await _chooseRitual(ritual).ConfigureAwait(true);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            CrashLog.Write("Choosing a companion ritual failed", ex);
-            SetRitualChoicesEnabled(true);
-        }
-    }
-
-    private void ShowRitual(DailyProgress progress)
-    {
-        if (progress.ChosenRitual is not { } ritual)
-        {
-            RitualChoices.Visibility = Visibility.Visible;
-            SetRitualChoicesEnabled(true);
-            RitualStatus.Visibility = Visibility.Collapsed;
-            return;
-        }
-
-        RitualChoices.Visibility = Visibility.Collapsed;
-        RitualStatus.Visibility = Visibility.Visible;
-        RitualStatus.Text = Strings.Format(
-            progress.RitualCompleted ? "Companion_RitualDoneFormat" : "Companion_RitualPendingFormat",
-            Strings.Get($"Companion_Ritual{ritual}"));
-    }
-
-    private void SetRitualChoicesEnabled(bool enabled)
-    {
-        CaptureRitual.IsEnabled = enabled;
-        RecallRitual.IsEnabled = enabled;
-        ResolveRitual.IsEnabled = enabled;
+        var window = new PetGrowthGuideWindow(SelectedPet(_snapshot));
+        _growthGuideWindow = window;
+        window.Closed += (_, _) => _growthGuideWindow = null;
+        window.Activate();
+        window.PlaceNear(AppWindow);
     }
 
     private static string PetName(string assetKey) => Strings.Get(assetKey switch

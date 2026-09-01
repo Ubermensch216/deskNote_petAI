@@ -24,7 +24,7 @@ public sealed class CompanionSettingsTests
         Assert.False(settings.DragonUnlocked);
         Assert.Equal(new TimeOnly(20, 0), settings.QuietStart);
         Assert.Equal(new TimeOnly(9, 0), settings.QuietEnd);
-        Assert.Equal(1, settings.RuleVersion);
+        Assert.Equal(CompanionSettings.CurrentRuleVersion, settings.RuleVersion);
     }
 
     [Fact]

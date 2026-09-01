@@ -52,19 +52,24 @@ public sealed class CompanionActivityQueue(
     public bool TryEnqueue(CompanionActivityCandidate candidate) =>
         _enabled && _channel.Writer.TryWrite(candidate);
 
-    public async Task ChooseRitualAsync(
-        DailyRitualKind ritual,
-        DateOnly localDate,
+    /// <summary>
+    /// Care runs in the foreground, unlike note activity: the user is waiting for the pet to
+    /// react, and a refusal has to come back to the button that asked for it.
+    /// </summary>
+    public async Task<CompanionCareResult?> PerformCareAsync(
+        CareRequest request,
+        DateTimeOffset occurredAt,
         CancellationToken cancellationToken = default)
     {
         if (!_enabled)
         {
-            return;
+            return null;
         }
 
-        var snapshot = await repository.ChooseRitualAsync(localDate, ritual, cancellationToken)
+        var result = await repository.PerformCareAsync(request, occurredAt, cancellationToken)
             .ConfigureAwait(false);
-        SnapshotChanged?.Invoke(snapshot);
+        SnapshotChanged?.Invoke(result.Snapshot);
+        return result;
     }
 
     public async ValueTask DisposeAsync()

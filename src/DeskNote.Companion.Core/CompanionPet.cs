@@ -30,7 +30,13 @@ public static class CompanionPetSizeExtensions
 
 public static class CompanionPetCatalog
 {
-    public const int FullyRaisedTotal = 150;
+    /// <summary>Experience a pet needs before it counts toward unlocking the dragon.</summary>
+    public static int FullyRaisedExperience =>
+        CompanionGrowthLadder.Rung(CompanionGrowthLadder.FinalStage).Experience;
+
+    /// <summary>Care days that go with <see cref="FullyRaisedExperience"/>.</summary>
+    public static int FullyRaisedCareDays =>
+        CompanionGrowthLadder.Rung(CompanionGrowthLadder.FinalStage).CareDays;
 
     public static IReadOnlyList<CompanionPetKind> All { get; } =
     [

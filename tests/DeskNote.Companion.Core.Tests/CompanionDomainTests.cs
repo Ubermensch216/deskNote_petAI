@@ -27,13 +27,16 @@ public class CompanionDomainTests
         }
     }
 
+    /// <summary>
+    /// Creating a note and refining it later are separate budgets in V2, so a long edit to an
+    /// established note must not be paid as a fresh capture.
+    /// </summary>
     [Theory]
     [InlineData(0, 20, true)]
-    [InlineData(20, 59, false)]
-    [InlineData(20, 60, true)]
-    [InlineData(100, 60, true)]
     [InlineData(0, 19, false)]
-    public void Capture_requires_a_meaningful_transition(int before, int after, bool expected)
+    [InlineData(20, 60, false)]
+    [InlineData(100, 200, false)]
+    public void Capture_pays_only_the_first_time_a_note_becomes_real(int before, int after, bool expected)
     {
         var result = new ActivityClassifier().Classify(Candidate(
             CompanionActivityType.MeaningfulCapture,
@@ -41,6 +44,40 @@ public class CompanionDomainTests
             after: after));
 
         Assert.Equal(expected, result is not null);
+    }
+
+    [Theory]
+    [InlineData(100, 141, false, true)]
+    [InlineData(100, 139, false, false)]
+    [InlineData(100, 101, true, true)]
+    [InlineData(10, 200, false, false)]
+    public void Refinement_needs_a_real_edit_or_a_structural_change(
+        int before,
+        int after,
+        bool structural,
+        bool expected)
+    {
+        var result = new ActivityClassifier().Classify(
+            Candidate(CompanionActivityType.NoteRefined, before, after) with
+            {
+                StructuralChange = structural,
+            });
+
+        Assert.Equal(expected, result is not null);
+    }
+
+    [Fact]
+    public void Tidying_only_counts_on_a_note_that_is_more_than_a_day_old()
+    {
+        var classifier = new ActivityClassifier();
+        var fresh = Candidate(CompanionActivityType.NoteOrganized) with
+        {
+            SourceEntityId = "backlog",
+            SourceAge = TimeSpan.FromHours(23),
+        };
+
+        Assert.Null(classifier.Classify(fresh));
+        Assert.NotNull(classifier.Classify(fresh with { SourceAge = TimeSpan.FromHours(25) }));
     }
 
     [Fact]
@@ -75,30 +112,105 @@ public class CompanionDomainTests
         Assert.Equal(first, retoggle);
     }
 
-    [Theory]
-    [InlineData(CompanionActivityType.MeaningfulCapture, 5)]
-    [InlineData(CompanionActivityType.UsefulRecall, 4)]
-    [InlineData(CompanionActivityType.ChecklistCompleted, 5)]
-    [InlineData(CompanionActivityType.ReminderHandled, 3)]
-    [InlineData(CompanionActivityType.AiSuggestionAccepted, 2)]
-    [InlineData(CompanionActivityType.BriefingEvidenceOpened, 1)]
-    public void Daily_cap_rejects_only_the_next_reward(CompanionActivityType type, int cap)
+    [Fact]
+    public void Adding_a_tag_is_structural_but_ticking_a_box_is_not()
     {
-        var activity = new ActivityClassifier().Classify(Candidate(type))!;
+        var tagged = NoteStructureInspector.Compare("Ship the beta", "Ship the beta #release");
+        var ticked = NoteStructureInspector.Compare("- [ ] Ship beta", "- [x] Ship beta");
+        var itemAdded = NoteStructureInspector.Compare("- [ ] Ship beta", "- [ ] Ship beta\n- [ ] Tag it");
+
+        Assert.Equal(new[] { "release" }, tagged.AddedTags);
+        Assert.True(tagged.HasStructuralChange);
+        Assert.False(ticked.HasStructuralChange);
+        Assert.True(itemAdded.ChecklistChanged);
+    }
+
+    [Theory]
+    [InlineData(AppScoreCategory.Capture, 5, 2)]
+    [InlineData(AppScoreCategory.Refine, 3, 2)]
+    [InlineData(AppScoreCategory.Organize, 2, 1)]
+    [InlineData(AppScoreCategory.Resolve, 3, 1)]
+    [InlineData(AppScoreCategory.Reuse, 4, 1)]
+    [InlineData(AppScoreCategory.AiApplied, 5, 1)]
+    public void Daily_cap_rejects_only_the_next_reward(AppScoreCategory category, int points, int limit)
+    {
+        var type = CompanionBalanceV2.TypesIn(category)[0];
+        var candidate = type == CompanionActivityType.NoteRefined
+            ? Candidate(type, before: 100, after: 200)
+            : Candidate(type);
+        var activity = new ActivityClassifier().Classify(candidate)!;
         var policy = new RewardPolicy();
 
-        Assert.True(policy.Evaluate(activity, cap - 1).HasGrowth);
-        Assert.False(policy.Evaluate(activity, cap).HasGrowth);
+        Assert.Equal(points, policy.Evaluate(activity, limit - 1).Experience);
+        Assert.False(policy.Evaluate(activity, limit).HasGrowth);
+    }
+
+    /// <summary>
+    /// The whole point of the split: a day of note work is worth 30 and a day of care is worth 70.
+    /// If either total drifts, the ladder silently changes length.
+    /// </summary>
+    [Fact]
+    public void The_day_is_worth_thirty_from_the_app_and_seventy_from_care()
+    {
+        var app = Enum.GetValues<AppScoreCategory>()
+            .Sum(category => CompanionBalanceV2.AppPoints(category) * CompanionBalanceV2.AppDailyLimit(category));
+        var care = Enum.GetValues<CompanionCareAction>()
+            .Sum(action => CompanionBalanceV2.CarePoints(action) * CompanionBalanceV2.CareDailyLimit(action))
+            + CompanionBalanceV2.DifferentPlayBonus;
+
+        Assert.Equal(CompanionBalanceV2.DailyAppMaximum, app);
+        Assert.Equal(CompanionBalanceV2.DailyCareMaximum, care);
+        Assert.Equal(100, CompanionBalanceV2.DailyMaximum);
     }
 
     [Fact]
-    public void Growth_is_monotonic_capped_and_has_explicit_stages()
+    public void Checklists_and_reminders_share_one_allowance()
     {
-        var growth = GrowthProjector.Apply(new GrowthState(99, 44, 89), new RewardDelta(5, 1, 2));
+        Assert.Equal(
+            CompanionBalanceV2.CategoryOf(CompanionActivityType.ChecklistCompleted),
+            CompanionBalanceV2.CategoryOf(CompanionActivityType.ReminderHandled));
+        Assert.Equal(
+            CompanionBalanceV2.CategoryOf(CompanionActivityType.UsefulRecall),
+            CompanionBalanceV2.CategoryOf(CompanionActivityType.BriefingEvidenceOpened));
+    }
 
-        Assert.Equal(new GrowthState(100, 45, 91), growth);
-        Assert.Equal(4, growth.CuriosityStage);
-        Assert.Equal(4, growth.AppearanceStage);
+    [Fact]
+    public void Experience_accumulates_without_a_ceiling_and_axes_stay_as_counters()
+    {
+        var growth = GrowthProjector.Apply(
+            new GrowthState(Experience: 195, CareDays: 0, Curiosity: 40),
+            new RewardDelta(5, 1, 0, 0));
+
+        Assert.Equal(200, growth.Experience);
+        Assert.Equal(41, growth.Curiosity);
+        Assert.Equal(2, growth.Stage);
+    }
+
+    /// <summary>
+    /// Stage two is reachable on experience alone; every stage above it is not. This is the rule
+    /// that keeps a note-only user from being walled out while still making care mandatory for
+    /// real growth.
+    /// </summary>
+    [Fact]
+    public void Care_days_gate_every_stage_above_the_second()
+    {
+        Assert.Equal(2, CompanionGrowthLadder.StageFor(experience: 5000, careDays: 0));
+        Assert.Equal(3, CompanionGrowthLadder.StageFor(experience: 5000, careDays: 7));
+        Assert.Equal(4, CompanionGrowthLadder.StageFor(experience: 5000, careDays: 14));
+        Assert.Equal(5, CompanionGrowthLadder.StageFor(experience: 5000, careDays: 28));
+
+        // Care days alone buy nothing either.
+        Assert.Equal(1, CompanionGrowthLadder.StageFor(experience: 199, careDays: 28));
+    }
+
+    [Fact]
+    public void A_fully_committed_day_still_takes_four_weeks_to_finish_a_pet()
+    {
+        var final = CompanionGrowthLadder.Rung(CompanionGrowthLadder.FinalStage);
+        var fastestByExperience = Math.Ceiling(final.Experience / (double)CompanionBalanceV2.DailyMaximum);
+
+        Assert.Equal(22, fastestByExperience);
+        Assert.Equal(28, final.CareDays);
     }
 
     [Fact]
@@ -130,10 +242,12 @@ public class CompanionDomainTests
             SourceEntityId = type is CompanionActivityType.ChecklistCompleted
             or CompanionActivityType.ReminderHandled
             or CompanionActivityType.AiSuggestionAccepted
+            or CompanionActivityType.NoteOrganized
             ? Guid.NewGuid().ToString("N")
             : null,
             PreviousContentLength = before,
             CurrentContentLength = after,
+            SourceAge = TimeSpan.FromDays(3),
             DwellTime = type == CompanionActivityType.UsefulRecall ? TimeSpan.FromSeconds(8) : TimeSpan.Zero,
         };
 }

@@ -9,7 +9,7 @@ public class CompanionSuggestionTests
     public async Task Upcoming_reminder_is_offered_once_within_twenty_four_hours()
     {
         await using var database = await TestDatabase.CreateAsync();
-        var profile = new SqliteCompanionRepository(database.Factory, new RewardPolicy());
+        var profile = new SqliteCompanionRepository(database.Factory, new RewardPolicy(), new CarePolicy());
         await profile.GetOrCreateAsync(TestContext.Current.CancellationToken);
 
         var note = new Note

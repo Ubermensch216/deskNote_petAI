@@ -1,4 +1,4 @@
-using DeskNote.Core.Abstractions;
+﻿using DeskNote.Core.Abstractions;
 using DeskNote.Core.Models;
 using DeskNote.Core.Services;
 
@@ -54,7 +54,8 @@ public sealed class NoteSavePipeline(
             contentChanged,
             clock.UtcNow,
             source,
-            actionName);
+            actionName,
+            existing?.CreatedAt ?? clock.UtcNow);
         Saved?.Invoke(result);
         return result;
     }
@@ -96,4 +97,5 @@ public sealed record NoteSaveResult(
     bool ContentChanged,
     DateTimeOffset SavedAt,
     RevisionSource Source,
-    string? ActionName);
+    string? ActionName,
+    DateTimeOffset NoteCreatedAt);

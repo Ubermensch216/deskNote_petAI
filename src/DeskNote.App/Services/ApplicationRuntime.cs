@@ -1,4 +1,4 @@
-using DeskNote.Core.Abstractions;
+﻿using DeskNote.Core.Abstractions;
 using DeskNote.Core.Ai;
 using DeskNote.Core.Models;
 using DeskNote.Core.Services;
@@ -111,11 +111,24 @@ public sealed class ApplicationRuntime : IAsyncDisposable
             {
                 await Windows.CreateAsync(cancellationToken: cancellationToken).ConfigureAwait(true);
             }
+            else
+            {
+                Windows.ShowLibrary();
+            }
         }
 
         if (companionSettings.Enabled && _companionSnapshot is { } snapshot)
         {
-            ShowDesktopPet(snapshot, companionSettings);
+            try
+            {
+                ShowDesktopPet(snapshot, companionSettings);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // A decorative always-on-top projection must never prevent notes, library,
+                // hotkeys, and the tray icon from starting.
+                CrashLog.Write("Showing the desktop pet during startup failed", ex);
+            }
         }
         ConfigureSuggestionTimer(companionSettings);
 
@@ -282,7 +295,8 @@ public sealed class ApplicationRuntime : IAsyncDisposable
                 {
                     ShowCompanion(current, _companionSettings);
                 }
-            });
+            },
+            () => Windows.CreateAsync());
         _desktopPetWindow = window;
         window.Closed += (_, _) => _desktopPetWindow = null;
         window.Activate();
@@ -317,9 +331,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
             snapshot,
             settings,
             ShowSettings,
-            ritual => _companionQueue.ChooseRitualAsync(
-                ritual,
-                DateOnly.FromDateTime(DateTime.Now)),
+            PerformCareAsync,
             ActOnSuggestionAsync,
             DismissSuggestionAsync);
         _companionWindow = window;
@@ -391,6 +403,21 @@ public sealed class ApplicationRuntime : IAsyncDisposable
             }).ConfigureAwait(true);
     }
 
+    /// <summary>Runs one care action and lets the desktop pet act it out when it was paid.</summary>
+    private async Task<CompanionCareResult?> PerformCareAsync(CareRequest request)
+    {
+        var result = await _companionQueue
+            .PerformCareAsync(request, DateTimeOffset.Now)
+            .ConfigureAwait(true);
+
+        if (result is { Accepted: true })
+        {
+            _desktopPetWindow?.PlayCareReaction(request);
+        }
+
+        return result;
+    }
+
     private async Task DismissSuggestionAsync(CompanionSuggestion suggestion) =>
         await _companionSuggestions.SetStatusAsync(
             suggestion.Id,
@@ -405,15 +432,47 @@ public sealed class ApplicationRuntime : IAsyncDisposable
             return;
         }
 
+        var structure = NoteStructureInspector.Compare(result.PreviousContent, result.CurrentContent);
+        var savedAt = result.SavedAt.ToLocalTime();
+        var noteAge = result.SavedAt - result.NoteCreatedAt;
+
+        // Creating a note and refining one later are separate budgets, and the classifier decides
+        // which of the two this save actually was.
         _companionQueue.TryEnqueue(new CompanionActivityCandidate
         {
             SourceEventId = $"capture:{result.NoteId:N}:{result.SavedAt.UtcTicks}",
             Type = CompanionActivityType.MeaningfulCapture,
-            OccurredAt = result.SavedAt.ToLocalTime(),
+            OccurredAt = savedAt,
             NoteId = result.NoteId,
             PreviousContentLength = result.PreviousContent?.Length ?? 0,
             CurrentContentLength = result.CurrentContent.Length,
         });
+
+        _companionQueue.TryEnqueue(new CompanionActivityCandidate
+        {
+            SourceEventId = $"refine:{result.NoteId:N}:{result.SavedAt.UtcTicks}",
+            Type = CompanionActivityType.NoteRefined,
+            OccurredAt = savedAt,
+            NoteId = result.NoteId,
+            PreviousContentLength = result.PreviousContent?.Length ?? 0,
+            CurrentContentLength = result.CurrentContent.Length,
+            StructuralChange = structure.HasStructuralChange,
+        });
+
+        // Tidying is filing an older note, so the event id is per note and per day: tagging the
+        // same note again this afternoon is the same act of tidying.
+        if (structure.AddedTags.Count > 0)
+        {
+            _companionQueue.TryEnqueue(new CompanionActivityCandidate
+            {
+                SourceEventId = $"organize:{result.NoteId:N}:{savedAt:yyyy-MM-dd}",
+                Type = CompanionActivityType.NoteOrganized,
+                OccurredAt = savedAt,
+                NoteId = result.NoteId,
+                SourceEntityId = string.Join(',', structure.AddedTags),
+                SourceAge = noteAge,
+            });
+        }
 
         foreach (var key in ChecklistCompletionDetector.FindCompletedKeys(
                      result.NoteId,
@@ -489,17 +548,31 @@ public sealed class ApplicationRuntime : IAsyncDisposable
         }
     }
 
-    private async void OnReminderNoteRequested(object? sender, Guid noteId)
+    private async void OnReminderNoteRequested(object? sender, ReminderActivation activation)
     {
         try
         {
             await Windows.FocusAsync(
-                noteId,
+                activation.NoteId,
                 new NoteOpenContext { Origin = NoteOpenOrigin.Reminder }).ConfigureAwait(true);
+
+            // Acting on the toast is the moment the reminder was handled. The reminder id keys
+            // the credit, so a repeating reminder pays once per occurrence and never twice.
+            if (activation.ReminderId is { } reminderId)
+            {
+                _companionQueue.TryEnqueue(new CompanionActivityCandidate
+                {
+                    SourceEventId = $"reminder:{reminderId:N}:{DateTimeOffset.Now:yyyy-MM-ddTHH}",
+                    Type = CompanionActivityType.ReminderHandled,
+                    OccurredAt = DateTimeOffset.Now,
+                    NoteId = activation.NoteId,
+                    SourceEntityId = reminderId.ToString(),
+                });
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            CrashLog.Write($"Opening reminder note {noteId} failed", ex);
+            CrashLog.Write($"Opening reminder note {activation.NoteId} failed", ex);
         }
     }
 

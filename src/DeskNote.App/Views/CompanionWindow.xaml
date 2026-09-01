@@ -10,14 +10,7 @@
           BorderThickness="1"
           BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
           Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-        <Grid RowSpacing="14">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
+        <StackPanel Spacing="14">
 
             <Grid ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
@@ -62,6 +55,7 @@
 
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                     <TextBlock x:Name="CompanionName" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock x:Name="StageLabel" Opacity="0.85" />
                     <TextBlock
                         x:Name="MoodLabel"
                         Opacity="0.72"
@@ -69,93 +63,200 @@
                 </StackPanel>
             </Grid>
 
-            <StackPanel Grid.Row="1" Spacing="8">
-                <Border
-                    Padding="12"
-                    CornerRadius="10"
-                    Background="{ThemeResource SubtleFillColorSecondaryBrush}">
-                    <TextBlock x:Name="RecentReason" TextWrapping="Wrap" />
-                </Border>
+            <Border
+                x:Name="SuggestionCard"
+                Padding="12"
+                CornerRadius="10"
+                BorderThickness="1"
+                BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                Visibility="Collapsed">
+                <StackPanel Spacing="8">
+                    <TextBlock x:Name="SuggestionText" TextWrapping="Wrap" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+                        <Button x:Name="SuggestionDismiss" Click="OnSuggestionDismissed" />
+                        <Button
+                            x:Name="SuggestionOpen"
+                            Style="{ThemeResource AccentButtonStyle}"
+                            Click="OnSuggestionOpened" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
 
+            <!-- Needs -->
+            <StackPanel Spacing="9">
+                <TextBlock x:Name="NeedsHeader" FontWeight="SemiBold" />
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="66" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="34" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="FullnessLabel" VerticalAlignment="Center" />
+                    <ProgressBar x:Name="FullnessBar" Grid.Column="1" Maximum="100" />
+                    <TextBlock x:Name="FullnessValue" Grid.Column="2" TextAlignment="Right" />
+                </Grid>
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="66" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="34" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="CleanlinessLabel" VerticalAlignment="Center" />
+                    <ProgressBar x:Name="CleanlinessBar" Grid.Column="1" Maximum="100" />
+                    <TextBlock x:Name="CleanlinessValue" Grid.Column="2" TextAlignment="Right" />
+                </Grid>
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="66" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="34" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="MoodNeedLabel" VerticalAlignment="Center" />
+                    <ProgressBar x:Name="MoodBar" Grid.Column="1" Maximum="100" />
+                    <TextBlock x:Name="MoodValue" Grid.Column="2" TextAlignment="Right" />
+                </Grid>
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="66" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="34" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="BondLabel" VerticalAlignment="Center" />
+                    <ProgressBar x:Name="BondBar" Grid.Column="1" Maximum="100" />
+                    <TextBlock x:Name="BondValue" Grid.Column="2" TextAlignment="Right" />
+                </Grid>
+            </StackPanel>
+
+            <!-- Growth -->
+            <Border
+                Padding="12"
+                CornerRadius="10"
+                Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                <StackPanel Spacing="6">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="ExperienceLabel" FontWeight="SemiBold" />
+                        <TextBlock x:Name="ExperienceValue" Grid.Column="1" Opacity="0.75" />
+                    </Grid>
+                    <ProgressBar x:Name="ExperienceBar" Maximum="1" />
+                    <TextBlock x:Name="CareDaysLabel" Opacity="0.75" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <!-- Today's two budgets -->
+            <Grid ColumnSpacing="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
                 <Border
-                    x:Name="SuggestionCard"
-                    Padding="12"
+                    Padding="10"
                     CornerRadius="10"
-                    BorderThickness="1"
-                    BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                    Visibility="Collapsed">
-                    <StackPanel Spacing="8">
-                        <TextBlock x:Name="SuggestionText" TextWrapping="Wrap" />
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
-                            <Button x:Name="SuggestionDismiss" Click="OnSuggestionDismissed" />
-                            <Button
-                                x:Name="SuggestionOpen"
-                                Style="{ThemeResource AccentButtonStyle}"
-                                Click="OnSuggestionOpened" />
-                        </StackPanel>
+                    Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
+                    <StackPanel Spacing="3">
+                        <TextBlock x:Name="AppScoreLabel" Opacity="0.75" />
+                        <TextBlock x:Name="AppScoreValue" FontSize="17" FontWeight="SemiBold" />
                     </StackPanel>
                 </Border>
-            </StackPanel>
+                <Border
+                    Grid.Column="1"
+                    Padding="10"
+                    CornerRadius="10"
+                    Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
+                    <StackPanel Spacing="3">
+                        <TextBlock x:Name="CareScoreLabel" Opacity="0.75" />
+                        <TextBlock x:Name="CareScoreValue" FontSize="17" FontWeight="SemiBold" />
+                    </StackPanel>
+                </Border>
+            </Grid>
 
-            <StackPanel Grid.Row="2" Spacing="9">
-                <Grid ColumnSpacing="8">
+            <!-- Care -->
+            <StackPanel Spacing="8">
+                <TextBlock x:Name="CareHeader" FontWeight="SemiBold" />
+                <Grid ColumnSpacing="6" RowSpacing="6">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="76" />
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="32" />
+                        <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="CuriosityLabel" VerticalAlignment="Center" />
-                    <ProgressBar x:Name="CuriosityBar" Grid.Column="1" Maximum="100" />
-                    <TextBlock x:Name="CuriosityValue" Grid.Column="2" TextAlignment="Right" />
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Button x:Name="FeedButton" Tag="Feed" HorizontalAlignment="Stretch" Click="OnCareClicked" />
+                    <Button x:Name="BasicCareButton" Tag="BasicCare" Grid.Column="1" HorizontalAlignment="Stretch" Click="OnCareClicked" />
+                    <Button x:Name="SpecialCareButton" Tag="SpecialCare" Grid.Row="1" HorizontalAlignment="Stretch" Click="OnCareClicked" />
+                    <Button x:Name="RestButton" Tag="Rest" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" Click="OnCareClicked" />
                 </Grid>
-                <Grid ColumnSpacing="8">
+                <TextBlock x:Name="PlayHeader" Opacity="0.75" />
+                <Grid ColumnSpacing="6">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="76" />
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="32" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="InsightLabel" VerticalAlignment="Center" />
-                    <ProgressBar x:Name="InsightBar" Grid.Column="1" Maximum="100" />
-                    <TextBlock x:Name="InsightValue" Grid.Column="2" TextAlignment="Right" />
-                </Grid>
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="76" />
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="32" />
+                        <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="ReliabilityLabel" VerticalAlignment="Center" />
-                    <ProgressBar x:Name="ReliabilityBar" Grid.Column="1" Maximum="100" />
-                    <TextBlock x:Name="ReliabilityValue" Grid.Column="2" TextAlignment="Right" />
+                    <Button x:Name="ChasePlayButton" Tag="Play.Chase" HorizontalAlignment="Stretch" Click="OnCareClicked" />
+                    <Button x:Name="PuzzlePlayButton" Tag="Play.Puzzle" Grid.Column="1" HorizontalAlignment="Stretch" Click="OnCareClicked" />
+                    <Button x:Name="TossPlayButton" Tag="Play.Toss" Grid.Column="2" HorizontalAlignment="Stretch" Click="OnCareClicked" />
                 </Grid>
-            </StackPanel>
-
-            <StackPanel Grid.Row="3" Spacing="8">
-                <TextBlock x:Name="RitualHeader" FontWeight="SemiBold" />
-                <StackPanel x:Name="RitualChoices" Orientation="Horizontal" Spacing="6">
-                    <Button x:Name="CaptureRitual" Tag="Capture" Click="OnRitualClicked" />
-                    <Button x:Name="RecallRitual" Tag="Recall" Click="OnRitualClicked" />
-                    <Button x:Name="ResolveRitual" Tag="Resolve" Click="OnRitualClicked" />
-                </StackPanel>
+                <Button
+                    x:Name="GreetingButton"
+                    Tag="Greeting"
+                    HorizontalAlignment="Stretch"
+                    Style="{ThemeResource AccentButtonStyle}"
+                    Click="OnCareClicked" />
                 <TextBlock
-                    x:Name="RitualStatus"
+                    x:Name="CareStatus"
+                    Opacity="0.75"
                     TextWrapping="Wrap"
                     Visibility="Collapsed" />
             </StackPanel>
 
-            <Grid Grid.Row="4" ColumnSpacing="8">
+            <!-- Mission -->
+            <Border
+                Padding="12"
+                CornerRadius="10"
+                Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                <StackPanel Spacing="5">
+                    <TextBlock x:Name="MissionHeader" FontWeight="SemiBold" />
+                    <TextBlock x:Name="MissionAppTask" TextWrapping="Wrap" />
+                    <TextBlock x:Name="MissionFirstCare" TextWrapping="Wrap" />
+                    <TextBlock x:Name="MissionSecondCare" TextWrapping="Wrap" />
+                    <TextBlock x:Name="MissionNote" Opacity="0.65" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <!-- Lifetime flavour counters -->
+            <Border
+                Padding="12"
+                CornerRadius="10"
+                Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
+                <StackPanel Spacing="4">
+                    <TextBlock x:Name="TraitHeader" FontWeight="SemiBold" />
+                    <TextBlock x:Name="TraitSummary" TextWrapping="Wrap" />
+                    <TextBlock x:Name="RecentReason" Opacity="0.72" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <Grid ColumnSpacing="8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock
-                    x:Name="StageLabel"
+                    x:Name="GrowthGuideLabel"
                     VerticalAlignment="Center"
-                    Style="{ThemeResource CaptionTextBlockStyle}"
-                    Opacity="0.7" />
-                <Button x:Name="SettingsButton" Grid.Column="1" Click="OnSettingsClicked" />
+                    FontWeight="SemiBold" />
+                <Button
+                    x:Name="GrowthGuideButton"
+                    Grid.Column="1"
+                    Click="OnGrowthGuideClicked" />
             </Grid>
-        </Grid>
+
+            <Button x:Name="SettingsButton" HorizontalAlignment="Right" Click="OnSettingsClicked" />
+        </StackPanel>
       </Border>
     </ScrollViewer>
 </Window>

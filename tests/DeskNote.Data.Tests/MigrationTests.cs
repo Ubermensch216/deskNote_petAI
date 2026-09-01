@@ -1,11 +1,12 @@
 using Dapper;
+using DeskNote.Companion.Core;
 
 namespace DeskNote.Data.Tests;
 
 public class MigrationTests
 {
     /// <summary>Highest migration in <c>Migrations/</c>; bump when one is added.</summary>
-    private const int LatestVersion = 4;
+    private const int LatestVersion = 5;
 
     private static string NewDirectory()
     {
@@ -38,11 +39,46 @@ public class MigrationTests
         Assert.Contains("note_embeddings", tables);
         Assert.Contains("companion_profiles", tables);
         Assert.Contains("companion_event_ledger", tables);
-        Assert.Contains("companion_daily_progress", tables);
+        Assert.Contains("companion_care_ledger", tables);
         Assert.Contains("companion_suggestions", tables);
         Assert.Contains("companion_preferences", tables);
         Assert.Contains("companion_pet_progress", tables);
         Assert.Contains("schema_version", tables);
+    }
+
+    /// <summary>
+    /// The V1 to V2 conversion has to keep the stage a user already reached. Demoting a pet on
+    /// upgrade is the one outcome that would make the rule change feel like a punishment.
+    /// </summary>
+    [Fact]
+    public async Task Growth_v2_conversion_preserves_the_stage_a_pet_had_reached()
+    {
+        var factory = new SqliteConnectionFactory(Path.Combine(NewDirectory(), "notes.db"));
+        await new MigrationRunner(factory).MigrateAsync();
+
+        foreach (var (total, expectedStage) in new[]
+                 {
+                     (0, 1), (14, 1), (15, 2), (44, 2), (45, 3),
+                     (89, 3), (90, 4), (149, 4), (150, 5), (300, 5),
+                 })
+        {
+            var experience = CompanionGrowthConversionV1.ExperienceFor(total);
+            var careDays = CompanionGrowthConversionV1.CareDaysFor(total);
+
+            Assert.Equal(expectedStage, CompanionGrowthLadder.StageFor(experience, careDays));
+        }
+
+        // Migration 005 repeats this arithmetic in SQL, so the band floors are pinned here too.
+        Assert.Equal(200, CompanionGrowthConversionV1.ExperienceFor(15));
+        Assert.Equal(600, CompanionGrowthConversionV1.ExperienceFor(45));
+        Assert.Equal(1200, CompanionGrowthConversionV1.ExperienceFor(90));
+        Assert.Equal(2200, CompanionGrowthConversionV1.ExperienceFor(150));
+
+        await using var connection = await factory.OpenAsync();
+        var columns = (await connection.QueryAsync<string>(
+            "SELECT name FROM pragma_table_info('companion_pet_progress');")).ToList();
+        Assert.Contains("experience", columns);
+        Assert.Contains("care_days", columns);
     }
 
     [Fact]

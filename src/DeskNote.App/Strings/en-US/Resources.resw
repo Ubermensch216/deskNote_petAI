@@ -220,9 +220,9 @@ Try adding a date or a weekday.</value></data>
   <data name="Settings_PetMonkey" xml:space="preserve"><value>Monkey</value></data>
   <data name="Settings_PetLockedFormat" xml:space="preserve"><value>{0} · Locked</value></data>
   <data name="Settings_PetSize" xml:space="preserve"><value>Pet size</value></data>
-  <data name="Settings_PetSizeSmall" xml:space="preserve"><value>Small · one third</value></data>
-  <data name="Settings_PetSizeMedium" xml:space="preserve"><value>Medium · two thirds</value></data>
-  <data name="Settings_PetSizeLarge" xml:space="preserve"><value>Large · current size</value></data>
+  <data name="Settings_PetSizeSmall" xml:space="preserve"><value>Small</value></data>
+  <data name="Settings_PetSizeMedium" xml:space="preserve"><value>Medium</value></data>
+  <data name="Settings_PetSizeLarge" xml:space="preserve"><value>Large</value></data>
   <data name="Settings_DragonUnlockHint" xml:space="preserve"><value>Raise Rabbit, Cat, Dog, Fennec Fox, Otter, and Monkey to their final stages to unlock Dragon.</value></data>
   <data name="Settings_Proactive" xml:space="preserve"><value>Offer timely suggestions</value></data>
   <data name="Settings_AlwaysVisible" xml:space="preserve"><value>Keep the detail window on top</value></data>
@@ -232,11 +232,15 @@ Try adding a date or a weekday.</value></data>
   <data name="Settings_QuietEnd" xml:space="preserve"><value>Ends</value></data>
   <data name="Settings_Save" xml:space="preserve"><value>Save</value></data>
   <data name="Settings_Saved" xml:space="preserve"><value>Saved.</value></data>
-  <data name="Companion_Title" xml:space="preserve"><value>DeskNote companion</value></data>
-  <data name="Companion_Curiosity" xml:space="preserve"><value>Curiosity</value></data>
-  <data name="Companion_Insight" xml:space="preserve"><value>Insight</value></data>
-  <data name="Companion_Reliability" xml:space="preserve"><value>Reliability</value></data>
-  <data name="Companion_StageFormat" xml:space="preserve"><value>Growth stage {0}/5</value></data>
+  <data name="Companion_Title" xml:space="preserve"><value>DeskNote PetAI</value></data>
+  <data name="PetGrowthGuide_LinkLabel" xml:space="preserve"><value>How to raise your pet</value></data>
+  <data name="PetGrowthGuide_Open" xml:space="preserve"><value>Open guide</value></data>
+  <data name="PetGrowthGuide_WindowTitle" xml:space="preserve"><value>DeskNote PetAI — How to raise your pet</value></data>
+  <data name="PetGrowthGuide_Title" xml:space="preserve"><value>How to raise your pet</value></data>
+  <data name="PetGrowthGuide_Introduction" xml:space="preserve"><value>A day is worth 100 growth points: up to 30 from working with notes and up to 70 from hands-on care. Notes alone raise a young pet, but every stage after that also needs days you actually cared for it.</value></data>
+  <data name="PetGrowthGuide_StagesHeader" xml:space="preserve"><value>Growth stages</value></data>
+  <data name="PetGrowthGuide_TipsHeader" xml:space="preserve"><value>Worth knowing</value></data>
+  <data name="Companion_StageFormat" xml:space="preserve"><value>Stage {0} · {1}</value></data>
   <data name="Companion_MoodGrowth" xml:space="preserve"><value>I noticed a good flow</value></data>
   <data name="Companion_MoodCalm" xml:space="preserve"><value>Quietly here when needed</value></data>
   <data name="Companion_ReasonWelcome" xml:space="preserve"><value>Let's begin today's notes together.</value></data>
@@ -246,15 +250,96 @@ Try adding a date or a weekday.</value></data>
   <data name="Companion_ReasonReminderHandled" xml:space="preserve"><value>Handling a reminder grew reliability.</value></data>
   <data name="Companion_ReasonAiSuggestionAccepted" xml:space="preserve"><value>Choosing a suggestion grew insight and reliability.</value></data>
   <data name="Companion_ReasonBriefingEvidenceOpened" xml:space="preserve"><value>Opening briefing evidence grew insight.</value></data>
-  <data name="Companion_RitualHeader" xml:space="preserve"><value>Choose one for today</value></data>
-  <data name="Companion_RitualCapture" xml:space="preserve"><value>Capture</value></data>
-  <data name="Companion_RitualRecall" xml:space="preserve"><value>Recall</value></data>
-  <data name="Companion_RitualResolve" xml:space="preserve"><value>Resolve</value></data>
-  <data name="Companion_RitualPendingFormat" xml:space="preserve"><value>Try a little “{0}” today. It is fine if you don't.</value></data>
-  <data name="Companion_RitualDoneFormat" xml:space="preserve"><value>You did “{0}”. That is enough for today.</value></data>
   <data name="Companion_SuggestionUpcomingReminder" xml:space="preserve"><value>A reminder is due within 30 minutes. Review its note?</value></data>
   <data name="Companion_SuggestionStaleChecklist" xml:space="preserve"><value>An unfinished item has been sitting for a while. Tidy it now?</value></data>
   <data name="Companion_SuggestionOpen" xml:space="preserve"><value>Open</value></data>
   <data name="Companion_SuggestionDismiss" xml:space="preserve"><value>Not now</value></data>
   <data name="Companion_AccessibleName" xml:space="preserve"><value>Mori desktop companion</value></data>
+  <data name="Companion_StageName1" xml:space="preserve"><value>Newborn</value></data>
+  <data name="Companion_StageName2" xml:space="preserve"><value>Young</value></data>
+  <data name="Companion_StageName3" xml:space="preserve"><value>Growing</value></data>
+  <data name="Companion_StageName4" xml:space="preserve"><value>Mature</value></data>
+  <data name="Companion_StageName5" xml:space="preserve"><value>Fully grown</value></data>
+  <data name="Companion_NeedsHeader" xml:space="preserve"><value>How your pet is doing</value></data>
+  <data name="Companion_Fullness" xml:space="preserve"><value>Fullness</value></data>
+  <data name="Companion_Cleanliness" xml:space="preserve"><value>Cleanliness</value></data>
+  <data name="Companion_MoodNeed" xml:space="preserve"><value>Mood</value></data>
+  <data name="Companion_Bond" xml:space="preserve"><value>Bond</value></data>
+  <data name="Companion_ExperienceHeader" xml:space="preserve"><value>Growth experience</value></data>
+  <data name="Companion_ExperienceFormat" xml:space="preserve"><value>{0} / {1}</value></data>
+  <data name="Companion_ExperienceMaxFormat" xml:space="preserve"><value>{0} · maxed</value></data>
+  <data name="Companion_CareDaysRemainingFormat" xml:space="preserve"><value>Care days {0}/{1} · {2} more before the next stage.</value></data>
+  <data name="Companion_CareDaysMetFormat" xml:space="preserve"><value>Care days {0}/{1} · only experience left to earn.</value></data>
+  <data name="Companion_CareDaysTotalFormat" xml:space="preserve"><value>{0} days cared for</value></data>
+  <data name="Companion_AppScoreLabel" xml:space="preserve"><value>Today's app score</value></data>
+  <data name="Companion_CareScoreLabel" xml:space="preserve"><value>Today's care score</value></data>
+  <data name="Companion_ScoreFormat" xml:space="preserve"><value>{0} / {1}</value></data>
+  <data name="Companion_CareHeader" xml:space="preserve"><value>Care</value></data>
+  <data name="Companion_PlayHeader" xml:space="preserve"><value>Play · two different games earn a bonus</value></data>
+  <data name="Companion_CareFeed" xml:space="preserve"><value>Feed</value></data>
+  <data name="Companion_CareBasicCare" xml:space="preserve"><value>Clean up</value></data>
+  <data name="Companion_CareSpecialCare" xml:space="preserve"><value>Special care</value></data>
+  <data name="Companion_CarePlay" xml:space="preserve"><value>Play</value></data>
+  <data name="Companion_CareGreeting" xml:space="preserve"><value>Say hello</value></data>
+  <data name="Companion_CareRest" xml:space="preserve"><value>Settle down</value></data>
+  <data name="Companion_PlayChase" xml:space="preserve"><value>Chase</value></data>
+  <data name="Companion_PlayPuzzle" xml:space="preserve"><value>Puzzle</value></data>
+  <data name="Companion_PlayToss" xml:space="preserve"><value>Toss</value></data>
+  <data name="Companion_SpecialCareBrushing" xml:space="preserve"><value>Brushing</value></data>
+  <data name="Companion_SpecialCareGrooming" xml:space="preserve"><value>Grooming help</value></data>
+  <data name="Companion_SpecialCareWalk" xml:space="preserve"><value>Walk</value></data>
+  <data name="Companion_SpecialCareSandBath" xml:space="preserve"><value>Sand bath</value></data>
+  <data name="Companion_SpecialCareWaterPlay" xml:space="preserve"><value>Water play</value></data>
+  <data name="Companion_SpecialCarePreening" xml:space="preserve"><value>Preening</value></data>
+  <data name="Companion_SpecialCareScalePolish" xml:space="preserve"><value>Scale polish</value></data>
+  <data name="Companion_CareThanks" xml:space="preserve"><value>Thank you!</value></data>
+  <data name="Companion_CareDone" xml:space="preserve"><value>That is already done for today.</value></data>
+  <data name="Companion_CareNotNeeded" xml:space="preserve"><value>Not needed right now — try again a little later.</value></data>
+  <data name="Companion_CareReactionFeed" xml:space="preserve"><value>That hit the spot!</value></data>
+  <data name="Companion_CareReactionBasicCare" xml:space="preserve"><value>So fresh.</value></data>
+  <data name="Companion_CareReactionSpecialCare" xml:space="preserve"><value>This is my favourite.</value></data>
+  <data name="Companion_CareReactionPlay" xml:space="preserve"><value>Again, again!</value></data>
+  <data name="Companion_CareReactionGreeting" xml:space="preserve"><value>Good to see you today.</value></data>
+  <data name="Companion_CareReactionRest" xml:space="preserve"><value>I will rest a while.</value></data>
+  <data name="Companion_MoodHungry" xml:space="preserve"><value>I am hungry.</value></data>
+  <data name="Companion_MoodUnkempt" xml:space="preserve"><value>I could use a wash.</value></data>
+  <data name="Companion_MoodBored" xml:space="preserve"><value>I am bored — play with me?</value></data>
+  <data name="Companion_MissionHeader" xml:space="preserve"><value>Today's mission</value></data>
+  <data name="Companion_MissionNote" xml:space="preserve"><value>Missions are a checklist only. Growth points come from the activities above.</value></data>
+  <data name="Companion_TaskCapture" xml:space="preserve"><value>Write a meaningful note</value></data>
+  <data name="Companion_TaskRefine" xml:space="preserve"><value>Refine an existing note</value></data>
+  <data name="Companion_TaskOrganize" xml:space="preserve"><value>Tidy an older note</value></data>
+  <data name="Companion_TaskResolve" xml:space="preserve"><value>Close a checklist item or reminder</value></data>
+  <data name="Companion_TaskReuse" xml:space="preserve"><value>Reuse an earlier note</value></data>
+  <data name="Companion_TaskAiApplied" xml:space="preserve"><value>Apply an AI result to a note</value></data>
+  <data name="Companion_TraitHeader" xml:space="preserve"><value>Lifetime traits</value></data>
+  <data name="Companion_TraitSummaryFormat" xml:space="preserve"><value>Curiosity {0} · Insight {1} · Reliability {2}</value></data>
+  <data name="Companion_ReasonNoteRefined" xml:space="preserve"><value>You refined a note into something more useful.</value></data>
+  <data name="Companion_ReasonNoteOrganized" xml:space="preserve"><value>You tidied an older note.</value></data>
+  <data name="PetGrowthGuide_PointsPerDayFormat" xml:space="preserve"><value>{0} points a day</value></data>
+  <data name="PetGrowthGuide_AppHeader" xml:space="preserve"><value>Points from using the app</value></data>
+  <data name="PetGrowthGuide_CareHeader" xml:space="preserve"><value>Points from caring for your pet</value></data>
+  <data name="PetGrowthGuide_StageStart" xml:space="preserve"><value>Where every pet starts</value></data>
+  <data name="PetGrowthGuide_StageRequirementFormat" xml:space="preserve"><value>{0} experience · {1} care days</value></data>
+  <data name="PetGrowthGuide_StageExperienceOnlyFormat" xml:space="preserve"><value>{0} experience</value></data>
+  <data name="PetGrowthGuide_ScoreLimitFormat" xml:space="preserve"><value>{0} points · {1}x a day</value></data>
+  <data name="PetGrowthGuide_PlayBonusFormat" xml:space="preserve"><value> · {0} bonus points for a second, different game</value></data>
+  <data name="PetGrowthGuide_CareDayNoteFormat" xml:space="preserve"><value>A day counts as a care day once it earns {0} care points. The daily care maximum is {1}, care days do not have to be consecutive, and they are never taken away.</value></data>
+  <data name="PetGrowthGuide_TaskCaptureDescription" xml:space="preserve"><value>Counted the first time a note reaches 20 characters.</value></data>
+  <data name="PetGrowthGuide_TaskRefineDescription" xml:space="preserve"><value>Counted when you change an existing note by 40 characters or more, or change its checklist or tags.</value></data>
+  <data name="PetGrowthGuide_TaskOrganizeDescription" xml:space="preserve"><value>Counted when you tag a note that is more than a day old. Deleting a note earns nothing.</value></data>
+  <data name="PetGrowthGuide_TaskResolveDescription" xml:space="preserve"><value>Counted when you tick a checklist item or act on a reminder. The two share one allowance.</value></data>
+  <data name="PetGrowthGuide_TaskReuseDescription" xml:space="preserve"><value>Counted when you open an earlier note from search, related notes, or the daily briefing and stay at least 8 seconds.</value></data>
+  <data name="PetGrowthGuide_TaskAiAppliedDescription" xml:space="preserve"><value>Counted only when an AI result is actually applied to the note. Running the model alone earns nothing.</value></data>
+  <data name="PetGrowthGuide_CareFeedDescription" xml:space="preserve"><value>Available once fullness has dropped below half.</value></data>
+  <data name="PetGrowthGuide_CareBasicCareDescription" xml:space="preserve"><value>Available once cleanliness has dropped.</value></data>
+  <data name="PetGrowthGuide_CareSpecialCareDescription" xml:space="preserve"><value>A moment that differs by species. Every species is worth the same points.</value></data>
+  <data name="PetGrowthGuide_CarePlayDescription" xml:space="preserve"><value>Available when mood drops, and two different games in one day earn a bonus.</value></data>
+  <data name="PetGrowthGuide_CareGreetingDescription" xml:space="preserve"><value>Once a day, when you first say hello.</value></data>
+  <data name="PetGrowthGuide_CareRestDescription" xml:space="preserve"><value>Once a day, letting your pet settle down.</value></data>
+  <data name="PetGrowthGuide_TipSelectedPet" xml:space="preserve"><value>Only the pet selected at the time grows, and each pet keeps its own experience and care days.</value></data>
+  <data name="PetGrowthGuide_TipNeedState" xml:space="preserve"><value>Care only pays when your pet actually needs it. Feeding a full pet again earns nothing.</value></data>
+  <data name="PetGrowthGuide_TipPassive" xml:space="preserve"><value>Launching the app, clicking or dragging the pet, and its own walking earn nothing.</value></data>
+  <data name="PetGrowthGuide_TipNoPenalty" xml:space="preserve"><value>Days away never reduce experience or drop a stage. Only fullness, cleanliness, and mood fall with time.</value></data>
+  <data name="PetGrowthGuide_TipDragon" xml:space="preserve"><value>The dragon unlocks once the rabbit, cat, dog, fennec fox, otter, and monkey are all fully grown.</value></data>
 </root>

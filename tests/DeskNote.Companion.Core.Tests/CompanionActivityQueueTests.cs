@@ -42,9 +42,10 @@ public class CompanionActivityQueueTests
     private sealed class RecordingRepository : ICompanionRepository
     {
         private static readonly CompanionSnapshot Empty = new(
-            new CompanionProfile(Guid.NewGuid(), "Mori", "seed-v1", DateTimeOffset.UtcNow, 1),
+            new CompanionProfile(Guid.NewGuid(), "Mori", "seed-v1", DateTimeOffset.UtcNow, 2),
             new GrowthState(),
-            new DailyProgress(new DateOnly(2026, 8, 31)),
+            new CompanionNeeds(70, 70, 70, 0),
+            new DailyProgress { LocalDate = new DateOnly(2026, 8, 31) },
             RewardDelta.None,
             null,
             null);
@@ -62,9 +63,10 @@ public class CompanionActivityQueueTests
             return Task.FromResult(new CompanionRecordResult(true, Empty));
         }
 
-        public Task<CompanionSnapshot> ChooseRitualAsync(
-            DateOnly localDate,
-            DailyRitualKind ritual,
-            CancellationToken cancellationToken = default) => Task.FromResult(Empty);
+        public Task<CompanionCareResult> PerformCareAsync(
+            CareRequest request,
+            DateTimeOffset occurredAt,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new CompanionCareResult(true, CareRefusal.None, Empty));
     }
 }

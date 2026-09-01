@@ -1,4 +1,4 @@
-using DeskNote.Core.Abstractions;
+﻿using DeskNote.Core.Abstractions;
 using DeskNote.Core.Models;
 using DeskNote.Core.Services;
 using Microsoft.UI.Dispatching;
@@ -30,13 +30,16 @@ public sealed class ReminderService(
     /// <summary>Tag used on every DeskNote toast, so the note id can be recovered on activation.</summary>
     public const string NoteIdArgument = "noteId";
 
+    /// <summary>Carried on the toast so acting on a reminder can be credited exactly once.</summary>
+    public const string ReminderIdArgument = "reminderId";
+
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(30);
 
     private readonly DispatcherQueueTimer _timer = dispatcher.CreateTimer();
     private bool _running;
 
     /// <summary>Raised when the user clicks a reminder toast, with the note it belongs to.</summary>
-    public event EventHandler<Guid>? NoteRequested;
+    public event EventHandler<ReminderActivation>? NoteRequested;
 
     public void Start()
     {
@@ -71,7 +74,11 @@ public sealed class ReminderService(
             return;
         }
 
-        dispatcher.TryEnqueue(() => NoteRequested?.Invoke(this, noteId));
+        var reminderId = args.Arguments.TryGetValue(ReminderIdArgument, out var rawReminder)
+            && Guid.TryParse(rawReminder, out var parsed)
+                ? parsed
+                : (Guid?)null;
+        dispatcher.TryEnqueue(() => NoteRequested?.Invoke(this, new ReminderActivation(noteId, reminderId)));
     }
 
     public void Dispose()
@@ -135,6 +142,7 @@ public sealed class ReminderService(
 
         var toast = new AppNotificationBuilder()
             .AddArgument(NoteIdArgument, note.Id.ToString())
+            .AddArgument(ReminderIdArgument, reminder.Id.ToString())
             .AddText(string.IsNullOrWhiteSpace(heading) ? "DeskNote" : heading)
             .AddText(body)
             .BuildNotification();
@@ -152,3 +160,6 @@ public sealed class ReminderService(
         return flattened.Length <= MaxLength ? flattened : flattened[..MaxLength] + "…";
     }
 }
+
+/// <summary>A reminder toast the user acted on, and the reminder that produced it.</summary>
+public readonly record struct ReminderActivation(Guid NoteId, Guid? ReminderId);

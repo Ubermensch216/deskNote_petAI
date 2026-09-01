@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
 using DeskNote.App.Services;
 using DeskNote.Companion.Core;
@@ -23,6 +23,7 @@ public sealed partial class DesktopPetWindow : Window
     private const double BaseFrameHeight = 200;
     private const int FrameCount = 4;
     private const double WalkSpeed = 58;
+    private const double CarePropSeconds = 2.6;
     private const int GwlExStyle = -20;
     private const long WsExLayered = 0x0008_0000;
     private const long WsExToolWindow = 0x0000_0080;
@@ -33,10 +34,16 @@ public sealed partial class DesktopPetWindow : Window
     private const uint SwpRefreshFrame = 0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020;
 
     private readonly Action _showDetails;
+    private readonly Func<Task> _createNote;
     private readonly Func<PointInt32, Task> _savePosition;
     private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _animationTimer;
     private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _bubbleTimer;
+    private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _clickTimer;
+    private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _carePropTimer;
     private readonly Stopwatch _clock = Stopwatch.StartNew();
+    [ThreadStatic]
+    private static object? _systemDispatcherQueueController;
+
     private Windows.UI.Composition.Compositor? _backdropCompositor;
     private Windows.UI.Composition.CompositionColorBrush? _transparentBackdrop;
     private CompanionSettings _settings;
@@ -56,6 +63,8 @@ public sealed partial class DesktopPetWindow : Window
     private string? _assetKey;
     private int _appearanceStage = -1;
     private CompanionPetKind? _appearancePet;
+    private CompanionNeeds _needs = new(100, 100, 100, 0);
+    private double _carePropElapsed;
     private PetAnimation _animation = PetAnimation.Walk;
     private PetMotionState _motionState = PetMotionState.Walking;
     private TimeSpan _restUntil;
@@ -66,12 +75,14 @@ public sealed partial class DesktopPetWindow : Window
         CompanionSnapshot snapshot,
         CompanionSettings settings,
         Func<PointInt32, Task> savePosition,
-        Action showDetails)
+        Action showDetails,
+        Func<Task> createNote)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(savePosition);
         ArgumentNullException.ThrowIfNull(showDetails);
+        ArgumentNullException.ThrowIfNull(createNote);
 
         InitializeComponent();
         _settings = settings;
@@ -79,6 +90,7 @@ public sealed partial class DesktopPetWindow : Window
         ApplyPetSize(settings.PetSize);
         SetPetAsset(settings.SelectedPet.AssetKey());
         _showDetails = showDetails;
+        _createNote = createNote;
 
         AppWindow.Title = Strings.Get("Companion_Title");
         AppWindow.Resize(new SizeInt32(WindowWidth, WindowHeight));
@@ -106,6 +118,15 @@ public sealed partial class DesktopPetWindow : Window
         _bubbleTimer.Interval = TimeSpan.FromSeconds(4);
         _bubbleTimer.IsRepeating = false;
         _bubbleTimer.Tick += (_, _) => SpeechBubble.Visibility = Visibility.Collapsed;
+
+        _clickTimer = DispatcherQueue.CreateTimer();
+        _clickTimer.Interval = TimeSpan.FromMilliseconds(GetDoubleClickTime());
+        _clickTimer.IsRepeating = false;
+        _clickTimer.Tick += OnSingleClickElapsed;
+
+        _carePropTimer = DispatcherQueue.CreateTimer();
+        _carePropTimer.Interval = TimeSpan.FromMilliseconds(33);
+        _carePropTimer.Tick += OnCarePropTick;
 
         UpdateSnapshot(snapshot);
         ApplyMotionPreference();
@@ -141,16 +162,100 @@ public sealed partial class DesktopPetWindow : Window
         ApplyGrowthAppearance(
             CompanionPetCatalog.FromAssetKey(snapshot.Profile.AppearanceKey),
             snapshot.Growth.AppearanceStage);
-        if (!snapshot.LastReward.HasGrowth)
+        _needs = snapshot.Needs;
+
+        // Growth is the news worth interrupting for; an unmet need only speaks up when there is
+        // nothing better to say, so the pet never nags over its own good news.
+        if (snapshot.LastReward.HasGrowth)
         {
+            Say("Companion_MoodGrowth");
             return;
         }
 
-        SpeechText.Text = Strings.Get("Companion_MoodGrowth");
+        if (NeedKey(snapshot.Needs) is { } key)
+        {
+            Say(key);
+        }
+    }
+
+    private static string? NeedKey(CompanionNeeds needs)
+    {
+        if (needs.Fullness <= CompanionCareRules.FeedThreshold)
+        {
+            return "Companion_MoodHungry";
+        }
+
+        if (needs.Cleanliness <= CompanionCareRules.BasicCareThreshold)
+        {
+            return "Companion_MoodUnkempt";
+        }
+
+        return needs.Mood <= CompanionCareRules.PlayThreshold ? "Companion_MoodBored" : null;
+    }
+
+    private void Say(string key)
+    {
+        SpeechText.Text = Strings.Get(key);
         SpeechBubble.Visibility = Visibility.Visible;
         _bubbleTimer.Stop();
         _bubbleTimer.Start();
     }
+
+    /// <summary>Acts out one paid care action beside the pet.</summary>
+    public void PlayCareReaction(CareRequest request)
+    {
+        if (!DispatcherQueue.HasThreadAccess)
+        {
+            DispatcherQueue.TryEnqueue(() => PlayCareReaction(request));
+            return;
+        }
+
+        FeedProp.Visibility = Collapsed(request.Action == CompanionCareAction.Feed);
+        CleanProp.Visibility = Collapsed(request.Action == CompanionCareAction.BasicCare);
+        SpecialProp.Visibility = Collapsed(request.Action == CompanionCareAction.SpecialCare);
+        PlayProp.Visibility = Collapsed(request.Action == CompanionCareAction.Play);
+        GreetProp.Visibility = Collapsed(request.Action == CompanionCareAction.Greeting);
+        RestProp.Visibility = Collapsed(request.Action == CompanionCareAction.Rest);
+
+        Say($"Companion_CareReaction{request.Action}");
+        BeginRest(_clock.Elapsed, seconds: CarePropSeconds);
+
+        _carePropElapsed = 0;
+        CareProp.Opacity = 1;
+        if (_settings.ReduceMotion)
+        {
+            CarePropLift.Y = 0;
+            _carePropTimer.Stop();
+            _bubbleTimer.Stop();
+            _bubbleTimer.Start();
+            return;
+        }
+
+        _carePropTimer.Start();
+    }
+
+    private void OnCarePropTick(
+        Microsoft.UI.Dispatching.DispatcherQueueTimer sender,
+        object args)
+    {
+        _carePropElapsed += sender.Interval.TotalSeconds;
+        if (_carePropElapsed >= CarePropSeconds)
+        {
+            sender.Stop();
+            CareProp.Opacity = 0;
+            CarePropLift.Y = 0;
+            return;
+        }
+
+        CarePropLift.Y = -6 * Math.Abs(Math.Sin(_carePropElapsed * 4));
+        var fadeFrom = CarePropSeconds - 0.5;
+        CareProp.Opacity = _carePropElapsed <= fadeFrom
+            ? 1
+            : 1 - ((_carePropElapsed - fadeFrom) / 0.5);
+    }
+
+    private static Visibility Collapsed(bool visible) =>
+        visible ? Visibility.Visible : Visibility.Collapsed;
 
     private void OnFirstActivated(object sender, WindowActivatedEventArgs args)
     {
@@ -205,7 +310,7 @@ public sealed partial class DesktopPetWindow : Window
         var horizontalInset = (WindowWidth - visibleFrameWidth) / 2;
         var left = area.X - horizontalInset;
         var right = area.X + area.Width - WindowWidth + horizontalInset;
-        _x += _direction * WalkSpeed * elapsed;
+        _x += _direction * WalkSpeed * MoodSpeedFactor() * elapsed;
 
         if (_x <= left)
         {
@@ -297,6 +402,10 @@ public sealed partial class DesktopPetWindow : Window
         FacingTransform.ScaleY = _growthScaleY;
     }
 
+    /// <summary>A hungry, bored pet plods; a happy one trots. Never fully stops, which would
+    /// read as the app having frozen.</summary>
+    private double MoodSpeedFactor() => 0.6 + (0.4 * (_needs.Mood / 100d));
+
     private double RestDurationSeconds() => _settings.SelectedPet switch
     {
         CompanionPetKind.Cat => 5.8,
@@ -369,14 +478,51 @@ public sealed partial class DesktopPetWindow : Window
 
     private void OnPetPointerReleased(object sender, PointerRoutedEventArgs e)
     {
-        var shouldOpenDetails = _pointerDown && !_dragMoved;
+        var clicked = _pointerDown && !_dragMoved;
         SpriteViewport.ReleasePointerCapture(e.Pointer);
         FinishDrag();
-        if (shouldOpenDetails)
+        if (clicked)
         {
-            _showDetails();
+            RegisterClick();
         }
         e.Handled = true;
+    }
+
+    /// <summary>
+    /// A single click has to wait out the system double-click interval before it acts, because
+    /// the first release of a double click looks exactly like a single one. Acting immediately
+    /// would leave a stray empty note behind every time someone asked for the dashboard.
+    /// </summary>
+    private void RegisterClick()
+    {
+        if (_clickTimer.IsRunning)
+        {
+            _clickTimer.Stop();
+            _showDetails();
+            return;
+        }
+
+        _clickTimer.Start();
+    }
+
+    private void OnSingleClickElapsed(
+        Microsoft.UI.Dispatching.DispatcherQueueTimer sender,
+        object args)
+    {
+        sender.Stop();
+        _ = CreateNoteSafelyAsync();
+    }
+
+    private async Task CreateNoteSafelyAsync()
+    {
+        try
+        {
+            await _createNote().ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            CrashLog.Write("Creating a note from the desktop pet failed", ex);
+        }
     }
 
     private void OnPetPointerCaptureLost(object sender, PointerRoutedEventArgs e) => FinishDrag();
@@ -395,6 +541,9 @@ public sealed partial class DesktopPetWindow : Window
             return;
         }
 
+        // A drag that started while a click was still pending reads as neither request, so the
+        // pending click is dropped rather than opening a note the user never asked for.
+        _clickTimer.Stop();
         BeginRest(_lastTick, seconds: 2.5);
         _ = SavePositionSafelyAsync(new PointInt32(
             (int)Math.Round(_x),
@@ -446,6 +595,8 @@ public sealed partial class DesktopPetWindow : Window
     {
         _animationTimer.Stop();
         _bubbleTimer.Stop();
+        _clickTimer.Stop();
+        _carePropTimer.Stop();
         _transparentBackdrop?.Dispose();
         _transparentBackdrop = null;
         _backdropCompositor?.Dispose();
@@ -488,10 +639,29 @@ public sealed partial class DesktopPetWindow : Window
             _ = DeleteObject(blurRegion);
         }
 
+        EnsureSystemDispatcherQueue();
         _backdropCompositor = new Windows.UI.Composition.Compositor();
         _transparentBackdrop = _backdropCompositor.CreateColorBrush(
             Windows.UI.Color.FromArgb(0, 0, 0, 0));
         this.As<ICompositionSupportsSystemBackdrop>().SystemBackdrop = _transparentBackdrop;
+    }
+
+    private static void EnsureSystemDispatcherQueue()
+    {
+        if (Windows.System.DispatcherQueue.GetForCurrentThread() is not null)
+        {
+            return;
+        }
+
+        var options = new DispatcherQueueOptions
+        {
+            Size = Marshal.SizeOf<DispatcherQueueOptions>(),
+            ThreadType = 2, // DQTYPE_THREAD_CURRENT
+            ApartmentType = 2, // DQTAT_COM_STA
+        };
+        Marshal.ThrowExceptionForHR(CreateDispatcherQueueController(
+            options,
+            out _systemDispatcherQueueController));
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -524,6 +694,14 @@ public sealed partial class DesktopPetWindow : Window
         public int Y;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct DispatcherQueueOptions
+    {
+        public int Size;
+        public int ThreadType;
+        public int ApartmentType;
+    }
+
     private enum PetMotionState
     {
         Walking,
@@ -539,12 +717,20 @@ public sealed partial class DesktopPetWindow : Window
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
     private static extern nint GetWindowLongPtr(nint window, int index);
 
+    [DllImport("CoreMessaging.dll")]
+    private static extern int CreateDispatcherQueueController(
+        DispatcherQueueOptions options,
+        [MarshalAs(UnmanagedType.IUnknown)] out object? dispatcherQueueController);
+
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
     private static extern nint SetWindowLongPtr(nint window, int index, nint newStyle);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetCursorPos(out NativePoint point);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetDoubleClickTime();
 
     [DllImport("gdi32.dll")]
     private static extern nint CreateRectRgn(int left, int top, int right, int bottom);

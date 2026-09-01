@@ -6,7 +6,7 @@ namespace DeskNote.Companion.Core;
 /// <summary>Typed, validated settings that gate every companion subsystem.</summary>
 public sealed record CompanionSettings
 {
-    public const int CurrentRuleVersion = 1;
+    public const int CurrentRuleVersion = CompanionBalanceV2.RuleVersion;
     public const int MaximumPetNameLength = 20;
     public const string DefaultPetName = "Mori";
 

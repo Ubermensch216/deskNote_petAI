@@ -25,6 +25,86 @@
                 TextWrapping="Wrap" />
         </Border>
 
+        <!-- Care props are drawn as vector shapes rather than shipped as sprite sheets. Seven
+             species times six care moments would be forty new strips to draw and ship; a bowl,
+             some bubbles and a ball beside the existing rest pose read as the same moment at a
+             fraction of the cost, and they stay sharp at every pet size. -->
+        <Canvas
+            x:Name="CareProp"
+            Width="44"
+            Height="44"
+            Margin="0,0,18,26"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Bottom"
+            Opacity="0"
+            IsHitTestVisible="False">
+            <Canvas.RenderTransform>
+                <TranslateTransform x:Name="CarePropLift" />
+            </Canvas.RenderTransform>
+
+            <Grid x:Name="FeedProp" Width="44" Height="44" Visibility="Collapsed">
+                <Ellipse
+                    Width="26"
+                    Height="12"
+                    Margin="9,12,0,0"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    Fill="#FFCE93" />
+                <Path
+                    Data="M 6,18 L 38,18 L 32,34 L 12,34 Z"
+                    Fill="#E8EAED"
+                    Stroke="#9AA0A6"
+                    StrokeThickness="1.5" />
+            </Grid>
+
+            <Grid x:Name="CleanProp" Width="44" Height="44" Visibility="Collapsed">
+                <Ellipse Width="14" Height="14" Margin="4,20,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Fill="#AED9FF" Opacity="0.85" />
+                <Ellipse Width="18" Height="18" Margin="16,8,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Fill="#CDE7FF" Opacity="0.9" />
+                <Ellipse Width="10" Height="10" Margin="28,24,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Fill="#AED9FF" Opacity="0.8" />
+            </Grid>
+
+            <Grid x:Name="SpecialProp" Width="44" Height="44" Visibility="Collapsed">
+                <Path
+                    Data="M 22,4 L 26,18 L 40,22 L 26,26 L 22,40 L 18,26 L 4,22 L 18,18 Z"
+                    Fill="#FFE082"
+                    Stroke="#F6C445"
+                    StrokeThickness="1.5" />
+            </Grid>
+
+            <Grid x:Name="PlayProp" Width="44" Height="44" Visibility="Collapsed">
+                <Ellipse
+                    Width="26"
+                    Height="26"
+                    Margin="9,9,0,0"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    Fill="#FF8A80"
+                    Stroke="#E0554A"
+                    StrokeThickness="1.5" />
+                <Path
+                    Data="M 9,22 L 35,22"
+                    Stroke="#FFFFFF"
+                    StrokeThickness="2"
+                    Opacity="0.85" />
+            </Grid>
+
+            <Grid x:Name="GreetProp" Width="44" Height="44" Visibility="Collapsed">
+                <Path
+                    Data="M 22,36 C 6,24 8,10 22,16 C 36,10 38,24 22,36 Z"
+                    Fill="#FF7BA0"
+                    Stroke="#E0557F"
+                    StrokeThickness="1.5" />
+            </Grid>
+
+            <Grid x:Name="RestProp" Width="44" Height="44" Visibility="Collapsed">
+                <Path
+                    Data="M 26,6 A 15,15 0 1 0 26,36 A 11,11 0 1 1 26,6 Z"
+                    Fill="#FFF3B0"
+                    Stroke="#E5D07A"
+                    StrokeThickness="1.5" />
+            </Grid>
+        </Canvas>
+
         <Grid
             x:Name="SpriteViewport"
             Width="150"

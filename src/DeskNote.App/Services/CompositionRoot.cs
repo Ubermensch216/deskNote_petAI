@@ -1,4 +1,4 @@
-using DeskNote.Core.Abstractions;
+﻿using DeskNote.Core.Abstractions;
 using DeskNote.Core.Services;
 using DeskNote.Data;
 using DeskNote.Companion.Core;
@@ -70,7 +70,10 @@ public static class CompositionRoot
 
         var journal = new CrashJournal(AppPaths.JournalDirectory);
         var pipeline = new NoteSavePipeline(notes, revisions, new RevisionPolicy(), clock);
-        var companionRepository = new SqliteCompanionRepository(connections, new RewardPolicy());
+        var companionRepository = new SqliteCompanionRepository(
+            connections,
+            new RewardPolicy(),
+            new CarePolicy());
         var companionQueue = new CompanionActivityQueue(companionRepository, new ActivityClassifier());
         ICompanionSuggestionService companionSuggestions = new SqliteCompanionSuggestionService(connections);
         companionQueue.Failed += ex => CrashLog.Write("Companion activity persistence failed", ex);

@@ -6,7 +6,9 @@ namespace DeskNote.App;
 
 public partial class App : Application
 {
+    private const string SingleInstanceMutexName = @"Local\DeskNote.Desktop.SingleInstance";
     private ApplicationRuntime? _runtime;
+    private Mutex? _singleInstanceMutex;
 
     public App()
     {
@@ -30,6 +32,15 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        var mutex = new Mutex(initiallyOwned: true, SingleInstanceMutexName, out var isFirstInstance);
+        if (!isFirstInstance)
+        {
+            mutex.Dispose();
+            Exit();
+            return;
+        }
+
+        _singleInstanceMutex = mutex;
         _ = StartAsync();
     }
 
