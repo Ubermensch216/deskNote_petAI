@@ -45,6 +45,8 @@ public sealed partial class DesktopPetWindow : Window
     private double _y;
     private double _frameWidth = BaseFrameWidth;
     private double _frameHeight = BaseFrameHeight;
+    private double _growthScaleX = 1;
+    private double _growthScaleY = 1;
     private double _frameTime;
     private int _frame;
     private int _direction = -1;
@@ -52,6 +54,8 @@ public sealed partial class DesktopPetWindow : Window
     private bool _pointerDown;
     private bool _dragMoved;
     private string? _assetKey;
+    private int _appearanceStage = -1;
+    private CompanionPetKind? _appearancePet;
     private PetAnimation _animation = PetAnimation.Walk;
     private PetMotionState _motionState = PetMotionState.Walking;
     private TimeSpan _restUntil;
@@ -134,6 +138,9 @@ public sealed partial class DesktopPetWindow : Window
         }
 
         SetPetAsset(snapshot.Profile.AppearanceKey);
+        ApplyGrowthAppearance(
+            CompanionPetCatalog.FromAssetKey(snapshot.Profile.AppearanceKey),
+            snapshot.Growth.AppearanceStage);
         if (!snapshot.LastReward.HasGrowth)
         {
             return;
@@ -194,7 +201,8 @@ public sealed partial class DesktopPetWindow : Window
         }
 
         var area = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
-        var horizontalInset = (WindowWidth - _frameWidth) / 2;
+        var visibleFrameWidth = _frameWidth * _growthScaleX;
+        var horizontalInset = (WindowWidth - visibleFrameWidth) / 2;
         var left = area.X - horizontalInset;
         var right = area.X + area.Width - WindowWidth + horizontalInset;
         _x += _direction * WalkSpeed * elapsed;
@@ -213,7 +221,7 @@ public sealed partial class DesktopPetWindow : Window
         }
 
         AdvanceFrame(elapsed, 0.13);
-        FacingTransform.ScaleX = _direction;
+        ApplyFacingTransform();
         AppWindow.Move(new PointInt32((int)Math.Round(_x), (int)Math.Round(_y)));
     }
 
@@ -226,7 +234,7 @@ public sealed partial class DesktopPetWindow : Window
             SetAnimation(PetAnimation.Walk);
             _frame = 0;
             Canvas.SetLeft(SpriteStrip, 0);
-            FacingTransform.ScaleX = 1;
+            ApplyFacingTransform(forceRight: true);
             return;
         }
 
@@ -254,7 +262,7 @@ public sealed partial class DesktopPetWindow : Window
         _motionState = PetMotionState.Resting;
         _restUntil = now + TimeSpan.FromSeconds(seconds ?? RestDurationSeconds());
         SetAnimation(PetAnimation.Rest);
-        FacingTransform.ScaleX = _direction;
+        ApplyFacingTransform();
     }
 
     private void BeginWalking()
@@ -262,6 +270,31 @@ public sealed partial class DesktopPetWindow : Window
         _motionState = PetMotionState.Walking;
         SetAnimation(PetAnimation.Walk);
         _lastTick = _clock.Elapsed;
+    }
+
+    private void ApplyGrowthAppearance(CompanionPetKind pet, int appearanceStage)
+    {
+        var normalizedStage = Math.Clamp(
+            appearanceStage,
+            0,
+            CompanionGrowthAppearanceCatalog.FinalStage);
+        if (_appearancePet == pet && _appearanceStage == normalizedStage)
+        {
+            return;
+        }
+
+        _appearancePet = pet;
+        _appearanceStage = normalizedStage;
+        var appearance = CompanionGrowthAppearanceCatalog.For(pet, normalizedStage);
+        _growthScaleX = appearance.WidthScale;
+        _growthScaleY = appearance.HeightScale;
+        ApplyFacingTransform(_settings.ReduceMotion);
+    }
+
+    private void ApplyFacingTransform(bool forceRight = false)
+    {
+        FacingTransform.ScaleX = (forceRight ? 1 : _direction) * _growthScaleX;
+        FacingTransform.ScaleY = _growthScaleY;
     }
 
     private double RestDurationSeconds() => _settings.SelectedPet switch

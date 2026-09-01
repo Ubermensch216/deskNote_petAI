@@ -28,6 +28,7 @@ public sealed partial class NotesExplorerWindow : Window
     private readonly INoteRepository _notes;
     private readonly HybridLibrarySearch? _hybrid;
     private readonly Func<Guid, NoteOpenOrigin, Task> _openNote;
+    private readonly Func<IReadOnlyList<Guid>, Task> _deleteNotes;
     private readonly DispatcherTimer _searchTimer = new() { Interval = SearchDebounce };
 
     private NoteQuery _query = NoteQuery.Default;
@@ -47,6 +48,7 @@ public sealed partial class NotesExplorerWindow : Window
         INoteLibrary library,
         INoteRepository notes,
         Func<Guid, NoteOpenOrigin, Task> openNote,
+        Func<IReadOnlyList<Guid>, Task> deleteNotes,
         HybridLibrarySearch? hybrid = null)
     {
         InitializeComponent();
@@ -55,6 +57,7 @@ public sealed partial class NotesExplorerWindow : Window
         _notes = notes;
         _hybrid = hybrid;
         _openNote = openNote;
+        _deleteNotes = deleteNotes;
 
         AppWindow.Title = Strings.Get("Explorer_Title");
         AppIcon.Apply(this);
@@ -65,6 +68,9 @@ public sealed partial class NotesExplorerWindow : Window
         SearchBox.PlaceholderText = Strings.Get("Explorer_SearchPlaceholder");
         NewNotebookButton.Content = Strings.Get("Explorer_NewNotebook");
         RestoreButton.Content = Strings.Get("Explorer_Restore");
+        SelectAllButton.Content = Strings.Get("Explorer_SelectAll");
+        ClearSelectionButton.Content = Strings.Get("Explorer_ClearSelection");
+        DeleteSelectedButton.Content = Strings.Get("Explorer_DeleteSelected");
         AppWindow.Resize(new SizeInt32(920, 620));
 
         if (AppWindow.Presenter is OverlappedPresenter presenter)
@@ -102,17 +108,29 @@ public sealed partial class NotesExplorerWindow : Window
 
         _suppressFilterEvents = true;
 
-        NotebookList.ItemsSource = new List<NotebookChoice> { new(null, Strings.Get("Explorer_All")) }
+        var notebookChoices = new List<NotebookChoice> { new(null, Strings.Get("Explorer_All")) }
             .Concat(notebooks.Select(n => new NotebookChoice(n.Id, n.Name)))
             .ToList();
-        NotebookList.SelectedIndex = 0;
+        NotebookList.ItemsSource = notebookChoices;
+        var notebookIndex = notebookChoices.FindIndex(n => n.Id == _query.NotebookId);
+        NotebookList.SelectedIndex = notebookIndex >= 0 ? notebookIndex : 0;
+        if (notebookIndex < 0)
+        {
+            _query = _query with { NotebookId = null };
+        }
 
-        TagList.ItemsSource = new List<TagChoice> { new(null, Strings.Get("Explorer_All")) }
+        var tagChoices = new List<TagChoice> { new(null, Strings.Get("Explorer_All")) }
             .Concat(tags.Select(t => new TagChoice(
                 t.Tag.NormalizedName,
                 Strings.Format("Explorer_TagCountFormat", t.Tag.Name, t.NoteCount))))
             .ToList();
-        TagList.SelectedIndex = 0;
+        TagList.ItemsSource = tagChoices;
+        var tagIndex = tagChoices.FindIndex(t => t.NormalizedName == _query.TagNormalizedName);
+        TagList.SelectedIndex = tagIndex >= 0 ? tagIndex : 0;
+        if (tagIndex < 0)
+        {
+            _query = _query with { TagNormalizedName = null };
+        }
 
         _suppressFilterEvents = false;
     }
@@ -172,7 +190,7 @@ public sealed partial class NotesExplorerWindow : Window
     private void Show(IReadOnlyList<NoteSummary> rows, string text)
     {
         Results.ItemsSource = rows;
-        RestoreButton.Visibility = _query.OnlyDeleted ? Visibility.Visible : Visibility.Collapsed;
+        UpdateSelectionState();
 
         StatusText.Text = rows.Count switch
         {
@@ -249,16 +267,98 @@ public sealed partial class NotesExplorerWindow : Window
         await _openNote(summary.Id, origin);
     }
 
+    private void OnResultSelectionChanged(object sender, SelectionChangedEventArgs e) =>
+        UpdateSelectionState();
+
+    private void OnSelectAllClicked(object sender, RoutedEventArgs e) => Results.SelectAll();
+
+    private void OnClearSelectionClicked(object sender, RoutedEventArgs e) =>
+        Results.SelectedItems.Clear();
+
+    private void UpdateSelectionState()
+    {
+        var selectedCount = Results.SelectedItems.Count;
+        SelectionText.Text = selectedCount == 0
+            ? Strings.Get("Explorer_SelectNotes")
+            : Strings.Format("Explorer_SelectedFormat", selectedCount);
+        SelectAllButton.IsEnabled = Results.Items.Count > 0 && selectedCount < Results.Items.Count;
+        ClearSelectionButton.IsEnabled = selectedCount > 0;
+        DeleteSelectedButton.Visibility = _query.OnlyDeleted
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        DeleteSelectedButton.IsEnabled = selectedCount > 0 && !_query.OnlyDeleted;
+        RestoreButton.Visibility = _query.OnlyDeleted ? Visibility.Visible : Visibility.Collapsed;
+        RestoreButton.IsEnabled = selectedCount > 0;
+    }
+
+    private async void OnDeleteSelectedClicked(object sender, RoutedEventArgs e)
+    {
+        var selected = Results.SelectedItems
+            .OfType<NoteSummary>()
+            .Where(note => !note.IsDeleted)
+            .Select(note => note.Id)
+            .Distinct()
+            .ToList();
+        if (selected.Count == 0)
+        {
+            StatusText.Text = Strings.Get("Explorer_SelectToDelete");
+            return;
+        }
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = Root.XamlRoot,
+            Title = Strings.Get("Explorer_DeleteConfirmTitle"),
+            Content = Strings.Format("Explorer_DeleteConfirmFormat", selected.Count),
+            PrimaryButtonText = Strings.Get("Explorer_DeleteSelected"),
+            CloseButtonText = Strings.Get("Explorer_Cancel"),
+            DefaultButton = ContentDialogButton.Close,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        DeleteSelectedButton.IsEnabled = false;
+        try
+        {
+            await _deleteNotes(selected);
+            await RefreshFiltersAsync();
+            await RefreshResultsAsync();
+            StatusText.Text = Strings.Format("Explorer_DeletedFormat", selected.Count);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            CrashLog.Write("Bulk note deletion failed", ex);
+            StatusText.Text = ex.Message;
+            UpdateSelectionState();
+        }
+    }
+
     private async void OnRestoreClicked(object sender, RoutedEventArgs e)
     {
-        if (Results.SelectedItem is not NoteSummary summary)
+        var selected = Results.SelectedItems
+            .OfType<NoteSummary>()
+            .Where(note => note.IsDeleted)
+            .Select(note => note.Id)
+            .Distinct()
+            .ToList();
+        if (selected.Count == 0)
         {
             StatusText.Text = Strings.Get("Explorer_SelectToRestore");
             return;
         }
 
-        await _notes.RestoreAsync(summary.Id);
+        RestoreButton.IsEnabled = false;
+        foreach (var noteId in selected)
+        {
+            await _notes.RestoreAsync(noteId);
+        }
+
+        await RefreshFiltersAsync();
         await RefreshResultsAsync();
+        StatusText.Text = Strings.Format("Explorer_RestoredFormat", selected.Count);
     }
 
     private async void OnNewNotebookClicked(object sender, RoutedEventArgs e)

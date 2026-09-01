@@ -99,7 +99,18 @@ public sealed class ApplicationRuntime : IAsyncDisposable
 
         if (Windows.OpenWindowCount == 0)
         {
-            await Windows.CreateAsync(cancellationToken: cancellationToken).ConfigureAwait(true);
+            var liveNoteCount = await _notes.CountAsync(NoteQuery.Default, cancellationToken)
+                .ConfigureAwait(true);
+            var deletedNoteCount = await _notes.CountAsync(
+                    NoteQuery.Default with { OnlyDeleted = true },
+                    cancellationToken)
+                .ConfigureAwait(true);
+            if (StartupNotePolicy.ShouldCreateFirstNote(
+                    Windows.OpenWindowCount,
+                    liveNoteCount + deletedNoteCount))
+            {
+                await Windows.CreateAsync(cancellationToken: cancellationToken).ConfigureAwait(true);
+            }
         }
 
         if (companionSettings.Enabled && _companionSnapshot is { } snapshot)
@@ -108,7 +119,9 @@ public sealed class ApplicationRuntime : IAsyncDisposable
         }
         ConfigureSuggestionTimer(companionSettings);
 
-        // Background integrations begin only after a note is visible.
+        // Background integrations begin after the initial desktop state is ready. When the user
+        // has closed every existing note, DeskNote stays available from the tray without creating
+        // another empty note on every launch.
         _reminders.NoteRequested += OnReminderNoteRequested;
         _reminders.Start();
 

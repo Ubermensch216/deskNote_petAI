@@ -89,6 +89,7 @@ public sealed partial class SettingsWindow : Window
         _dragonUnlocked = value.DragonUnlocked;
         _petPositionX = value.PetPositionX;
         _petPositionY = value.PetPositionY;
+        PetNameInput.Text = value.PetName;
         PopulatePetChoices(value.SelectedPet);
         PetSizePicker.SelectedIndex = value.PetSize switch
         {
@@ -118,6 +119,7 @@ public sealed partial class SettingsWindow : Window
             AlwaysVisible = AlwaysVisible.IsOn,
             ReduceMotion = !PetMovementEnabled.IsOn,
             SelectedPet = selectedPet,
+            PetName = CompanionSettings.NormalizePetName(PetNameInput.Text),
             PetSize = PetSizePicker.SelectedIndex switch
             {
                 0 => CompanionPetSize.Small,
@@ -192,6 +194,8 @@ public sealed partial class SettingsWindow : Window
         LocalOnlyLabel.Text = Strings.Get("Settings_LocalOnly");
         CompanionHeader.Text = Strings.Get("Settings_CompanionHeader");
         CompanionDescription.Text = Strings.Get("Settings_CompanionDescription");
+        PetNameInput.Header = Strings.Get("Settings_PetName");
+        PetNameInput.PlaceholderText = Strings.Get("Settings_PetNamePlaceholder");
         PetPicker.Header = Strings.Get("Settings_PetPicker");
         PetSizePicker.Header = Strings.Get("Settings_PetSize");
         PetSizeSmallItem.Content = Strings.Get("Settings_PetSizeSmall");

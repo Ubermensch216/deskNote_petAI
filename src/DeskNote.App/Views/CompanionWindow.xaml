@@ -39,7 +39,11 @@
                         Width="54"
                         Height="72"
                         HorizontalAlignment="Center"
-                        VerticalAlignment="Center">
+                        VerticalAlignment="Center"
+                        RenderTransformOrigin="0.5,1">
+                        <Grid.RenderTransform>
+                            <ScaleTransform x:Name="AvatarGrowthTransform" />
+                        </Grid.RenderTransform>
                         <Grid.Clip>
                             <RectangleGeometry Rect="0,0,54,72" />
                         </Grid.Clip>

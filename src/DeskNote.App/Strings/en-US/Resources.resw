@@ -63,6 +63,16 @@
   <data name="Explorer_Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="Explorer_Restore" xml:space="preserve"><value>Restore</value></data>
   <data name="Explorer_SelectToRestore" xml:space="preserve"><value>Select a note to restore</value></data>
+  <data name="Explorer_SelectNotes" xml:space="preserve"><value>Select notes</value></data>
+  <data name="Explorer_SelectedFormat" xml:space="preserve"><value>{0} selected</value></data>
+  <data name="Explorer_SelectAll" xml:space="preserve"><value>Select all</value></data>
+  <data name="Explorer_ClearSelection" xml:space="preserve"><value>Clear selection</value></data>
+  <data name="Explorer_DeleteSelected" xml:space="preserve"><value>Delete selected</value></data>
+  <data name="Explorer_SelectToDelete" xml:space="preserve"><value>Select notes to delete</value></data>
+  <data name="Explorer_DeleteConfirmTitle" xml:space="preserve"><value>Delete selected notes</value></data>
+  <data name="Explorer_DeleteConfirmFormat" xml:space="preserve"><value>Move {0} selected notes to Deleted? You can restore them later.</value></data>
+  <data name="Explorer_DeletedFormat" xml:space="preserve"><value>Moved {0} notes to Deleted.</value></data>
+  <data name="Explorer_RestoredFormat" xml:space="preserve"><value>Restored {0} notes.</value></data>
   <data name="Explorer_NoNotes" xml:space="preserve"><value>No notes</value></data>
   <data name="Explorer_NoMatchesFormat" xml:space="preserve"><value>No notes match “{0}”</value></data>
   <data name="Explorer_CountFormat" xml:space="preserve"><value>{0} notes</value></data>
@@ -198,6 +208,8 @@ Try adding a date or a weekday.</value></data>
   <data name="Settings_CompanionHeader" xml:space="preserve"><value>Desktop companion</value></data>
   <data name="Settings_CompanionDescription" xml:space="preserve"><value>A small companion that notices completion and consistency without interrupting your work. It does nothing until you turn it on.</value></data>
   <data name="Settings_CompanionEnabled" xml:space="preserve"><value>Use desktop companion</value></data>
+  <data name="Settings_PetName" xml:space="preserve"><value>Pet name</value></data>
+  <data name="Settings_PetNamePlaceholder" xml:space="preserve"><value>Enter a name</value></data>
   <data name="Settings_PetPicker" xml:space="preserve"><value>Choose your pet</value></data>
   <data name="Settings_PetRabbit" xml:space="preserve"><value>Rabbit</value></data>
   <data name="Settings_PetCat" xml:space="preserve"><value>Cat</value></data>

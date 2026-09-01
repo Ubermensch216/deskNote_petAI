@@ -6,6 +6,27 @@ public class CompanionDomainTests
 {
     private static readonly DateTimeOffset Morning = new(2026, 8, 31, 10, 0, 0, TimeSpan.FromHours(9));
 
+    [Fact]
+    public void Every_pet_grows_from_a_distinct_juvenile_silhouette_to_full_size()
+    {
+        foreach (var pet in CompanionPetCatalog.All)
+        {
+            var previous = CompanionGrowthAppearanceCatalog.For(pet, 0);
+            Assert.True(previous.WidthScale < 1);
+            Assert.True(previous.HeightScale < 1);
+
+            for (var stage = 1; stage <= CompanionGrowthAppearanceCatalog.FinalStage; stage++)
+            {
+                var current = CompanionGrowthAppearanceCatalog.For(pet, stage);
+                Assert.True(current.WidthScale > previous.WidthScale);
+                Assert.True(current.HeightScale > previous.HeightScale);
+                previous = current;
+            }
+
+            Assert.Equal(new CompanionGrowthAppearance(1, 1), previous);
+        }
+    }
+
     [Theory]
     [InlineData(0, 20, true)]
     [InlineData(20, 59, false)]

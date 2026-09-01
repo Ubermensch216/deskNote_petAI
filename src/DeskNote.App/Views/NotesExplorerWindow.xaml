@@ -70,6 +70,7 @@
         <Grid Grid.Column="1" Padding="12,16,16,12" RowSpacing="10">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
@@ -80,12 +81,41 @@
                 QueryIcon="Find"
                 TextChanged="OnSearchTextChanged" />
 
+            <Grid Grid.Row="1" ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock
+                    x:Name="SelectionText"
+                    VerticalAlignment="Center"
+                    Opacity="0.72"
+                    Style="{ThemeResource CaptionTextBlockStyle}" />
+                <Button
+                    x:Name="SelectAllButton"
+                    Grid.Column="1"
+                    Click="OnSelectAllClicked" />
+                <Button
+                    x:Name="ClearSelectionButton"
+                    Grid.Column="2"
+                    Click="OnClearSelectionClicked" />
+                <Button
+                    x:Name="DeleteSelectedButton"
+                    Grid.Column="3"
+                    Click="OnDeleteSelectedClicked" />
+            </Grid>
+
             <ListView
                 x:Name="Results"
-                Grid.Row="1"
-                SelectionMode="Single"
+                Grid.Row="2"
+                SelectionMode="Multiple"
+                IsMultiSelectCheckBoxEnabled="True"
                 IsItemClickEnabled="True"
-                ItemClick="OnResultClicked">
+                ItemClick="OnResultClicked"
+                SelectionChanged="OnResultSelectionChanged">
                 <ListView.ItemTemplate>
                     <DataTemplate x:DataType="abstractions:NoteSummary">
                         <Grid Padding="4,8" ColumnSpacing="10">
@@ -126,7 +156,7 @@
                 </ListView.ItemTemplate>
             </ListView>
 
-            <Grid Grid.Row="2" ColumnSpacing="8">
+            <Grid Grid.Row="3" ColumnSpacing="8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />

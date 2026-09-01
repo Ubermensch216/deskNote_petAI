@@ -26,6 +26,7 @@ public sealed partial class NoteWindowManager
             library,
             notes,
             (noteId, origin) => FocusAsync(noteId, new NoteOpenContext { Origin = origin }),
+            DeleteNotesAsync,
             hybridSearch);
         _explorer.Closed += (_, _) => _explorer = null;
         _explorer.Activate();

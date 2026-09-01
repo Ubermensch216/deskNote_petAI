@@ -33,7 +33,7 @@
             HorizontalAlignment="Center"
             VerticalAlignment="Bottom"
             Background="Transparent"
-            RenderTransformOrigin="0.5,0.5"
+            RenderTransformOrigin="0.5,1"
             PointerPressed="OnPetPointerPressed"
             PointerMoved="OnPetPointerMoved"
             PointerReleased="OnPetPointerReleased"

@@ -7,6 +7,8 @@ namespace DeskNote.Companion.Core;
 public sealed record CompanionSettings
 {
     public const int CurrentRuleVersion = 1;
+    public const int MaximumPetNameLength = 20;
+    public const string DefaultPetName = "Mori";
 
     public static readonly TimeOnly DefaultQuietStart = new(20, 0);
     public static readonly TimeOnly DefaultQuietEnd = new(9, 0);
@@ -21,6 +23,8 @@ public sealed record CompanionSettings
     public bool ReduceMotion { get; init; }
 
     public CompanionPetKind SelectedPet { get; init; } = CompanionPetKind.Rabbit;
+
+    public string PetName { get; init; } = DefaultPetName;
 
     public CompanionPetSize PetSize { get; init; } = CompanionPetSize.Large;
 
@@ -58,6 +62,7 @@ public sealed record CompanionSettings
             AlwaysVisible = Boolean(values, SettingKeys.CompanionAlwaysVisible, fallback: false),
             ReduceMotion = Boolean(values, SettingKeys.CompanionReduceMotion, fallback: false),
             SelectedPet = selectedPet,
+            PetName = NormalizePetName(values.GetValueOrDefault(SettingKeys.CompanionPetName)),
             PetSize = ParsePetSize(values, SettingKeys.CompanionPetSize),
             PetPositionX = Integer(values, SettingKeys.CompanionPetPositionX),
             PetPositionY = Integer(values, SettingKeys.CompanionPetPositionY),
@@ -89,6 +94,11 @@ public sealed record CompanionSettings
             ? CompanionPetKind.Rabbit
             : SelectedPet;
         await store.SetAsync(SettingKeys.CompanionSelectedPet, selectedPet.ToString(), cancellationToken)
+            .ConfigureAwait(false);
+        await store.SetAsync(
+                SettingKeys.CompanionPetName,
+                NormalizePetName(PetName),
+                cancellationToken)
             .ConfigureAwait(false);
         await store.SetAsync(SettingKeys.CompanionPetSize, PetSize.ToString(), cancellationToken)
             .ConfigureAwait(false);
@@ -123,6 +133,19 @@ public sealed record CompanionSettings
         return QuietStart < QuietEnd
             ? localTime >= QuietStart && localTime < QuietEnd
             : localTime >= QuietStart || localTime < QuietEnd;
+    }
+
+    public static string NormalizePetName(string? value)
+    {
+        var normalized = value?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return DefaultPetName;
+        }
+
+        return normalized.Length <= MaximumPetNameLength
+            ? normalized
+            : normalized[..MaximumPetNameLength];
     }
 
     private static bool Boolean(

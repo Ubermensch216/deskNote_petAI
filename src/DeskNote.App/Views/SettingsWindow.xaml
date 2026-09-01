@@ -36,6 +36,11 @@
                             TextWrapping="Wrap" />
                     </StackPanel>
 
+                    <TextBox
+                        x:Name="PetNameInput"
+                        MinWidth="280"
+                        MaxLength="20"
+                        HorizontalAlignment="Left" />
                     <ComboBox x:Name="PetPicker" MinWidth="280" HorizontalAlignment="Left" />
                     <ComboBox
                         x:Name="PetSizePicker"

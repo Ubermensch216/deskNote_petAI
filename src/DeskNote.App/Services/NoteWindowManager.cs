@@ -418,14 +418,25 @@ public sealed partial class NoteWindowManager(
         savePipeline.Forget(noteId);
     }
 
-    private async Task OnDeleteRequestedAsync(Guid noteId)
-    {
-        if (_windows.Remove(noteId, out var window))
-        {
-            window.Close();
-        }
+    private Task OnDeleteRequestedAsync(Guid noteId) => DeleteNotesAsync([noteId]);
 
-        await autosave.FlushAsync(noteId).ConfigureAwait(true);
-        await notes.SoftDeleteAsync(noteId).ConfigureAwait(true);
+    private async Task DeleteNotesAsync(IReadOnlyList<Guid> noteIds)
+    {
+        foreach (var noteId in noteIds.Distinct())
+        {
+            if (ActiveNote?.NoteId == noteId)
+            {
+                ActiveNote = null;
+            }
+
+            if (_windows.Remove(noteId, out var window))
+            {
+                window.Close();
+            }
+
+            await autosave.FlushAsync(noteId).ConfigureAwait(true);
+            await notes.SoftDeleteAsync(noteId).ConfigureAwait(true);
+            savePipeline.Forget(noteId);
+        }
     }
 }

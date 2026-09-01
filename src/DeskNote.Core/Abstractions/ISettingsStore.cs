@@ -82,6 +82,9 @@ public static class SettingKeys
     /// <summary>The currently active independently-grown desktop pet.</summary>
     public const string CompanionSelectedPet = "companion.selectedPet";
 
+    /// <summary>User-chosen display name for the desktop pet.</summary>
+    public const string CompanionPetName = "companion.petName";
+
     /// <summary>Small, Medium, or Large. Large is the original desktop-pet size.</summary>
     public const string CompanionPetSize = "companion.petSize";
 

@@ -17,6 +17,8 @@ public sealed partial class CompanionWindow : Window
     private CompanionSettings _settings;
     private CompanionSuggestion? _suggestion;
     private string? _avatarAssetKey;
+    private int _avatarStage = -1;
+    private CompanionPetKind? _avatarPet;
 
     public CompanionWindow(
         CompanionSnapshot snapshot,
@@ -75,6 +77,11 @@ public sealed partial class CompanionWindow : Window
         {
             presenter.IsAlwaysOnTop = settings.AlwaysVisible;
         }
+
+        if (_avatarAssetKey is { } assetKey)
+        {
+            CompanionName.Text = $"{PetName(assetKey)} · {_settings.PetName}";
+        }
     }
 
     public void UpdateSnapshot(CompanionSnapshot snapshot)
@@ -85,8 +92,8 @@ public sealed partial class CompanionWindow : Window
             return;
         }
 
-        CompanionName.Text = $"{PetName(snapshot.Profile.AppearanceKey)} · {snapshot.Profile.Name}";
-        SetAvatar(snapshot.Profile.AppearanceKey);
+        CompanionName.Text = $"{PetName(snapshot.Profile.AppearanceKey)} · {_settings.PetName}";
+        SetAvatar(snapshot.Profile.AppearanceKey, snapshot.Growth.AppearanceStage);
         CuriosityBar.Value = snapshot.Growth.Curiosity;
         InsightBar.Value = snapshot.Growth.Insight;
         ReliabilityBar.Value = snapshot.Growth.Reliability;
@@ -105,7 +112,7 @@ public sealed partial class CompanionWindow : Window
         ShowRitual(snapshot.Today);
     }
 
-    private void SetAvatar(string assetKey)
+    private void SetAvatar(string assetKey, int appearanceStage)
     {
         var normalizedAssetKey = assetKey switch
         {
@@ -113,14 +120,28 @@ public sealed partial class CompanionWindow : Window
             _ => "rabbit",
         };
 
-        if (string.Equals(_avatarAssetKey, normalizedAssetKey, StringComparison.Ordinal))
+        if (!string.Equals(_avatarAssetKey, normalizedAssetKey, StringComparison.Ordinal))
+        {
+            _avatarAssetKey = normalizedAssetKey;
+            AvatarSpriteStrip.Source = new BitmapImage(
+                new Uri($"ms-appx:///Assets/Companion/{normalizedAssetKey}-walk.png"));
+        }
+
+        var pet = CompanionPetCatalog.FromAssetKey(normalizedAssetKey);
+        var normalizedStage = Math.Clamp(
+            appearanceStage,
+            0,
+            CompanionGrowthAppearanceCatalog.FinalStage);
+        if (_avatarPet == pet && _avatarStage == normalizedStage)
         {
             return;
         }
 
-        _avatarAssetKey = normalizedAssetKey;
-        AvatarSpriteStrip.Source = new BitmapImage(
-            new Uri($"ms-appx:///Assets/Companion/{normalizedAssetKey}-walk.png"));
+        _avatarPet = pet;
+        _avatarStage = normalizedStage;
+        var appearance = CompanionGrowthAppearanceCatalog.For(pet, normalizedStage);
+        AvatarGrowthTransform.ScaleX = appearance.WidthScale;
+        AvatarGrowthTransform.ScaleY = appearance.HeightScale;
     }
 
     public void ShowSuggestion(CompanionSuggestion suggestion)

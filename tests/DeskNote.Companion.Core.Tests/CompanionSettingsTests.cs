@@ -17,6 +17,7 @@ public sealed class CompanionSettingsTests
         Assert.False(settings.AlwaysVisible);
         Assert.False(settings.ReduceMotion);
         Assert.Equal(CompanionPetKind.Rabbit, settings.SelectedPet);
+        Assert.Equal(CompanionSettings.DefaultPetName, settings.PetName);
         Assert.Equal(CompanionPetSize.Large, settings.PetSize);
         Assert.Null(settings.PetPositionX);
         Assert.Null(settings.PetPositionY);
@@ -99,6 +100,7 @@ public sealed class CompanionSettingsTests
             AlwaysVisible = true,
             ReduceMotion = true,
             SelectedPet = CompanionPetKind.Otter,
+            PetName = "  Dori  ",
             PetSize = CompanionPetSize.Small,
             QuietStart = new TimeOnly(21, 30),
             QuietEnd = new TimeOnly(7, 15),
@@ -108,7 +110,17 @@ public sealed class CompanionSettingsTests
         await expected.SaveAsync(store, TestContext.Current.CancellationToken);
         var actual = await CompanionSettings.LoadAsync(store, TestContext.Current.CancellationToken);
 
-        Assert.Equal(expected, actual);
+        Assert.Equal(expected with { PetName = "Dori" }, actual);
+    }
+
+    [Theory]
+    [InlineData(null, "Mori")]
+    [InlineData("   ", "Mori")]
+    [InlineData("  보리  ", "보리")]
+    [InlineData("1234567890123456789012345", "12345678901234567890")]
+    public void Pet_name_is_normalized(string? value, string expected)
+    {
+        Assert.Equal(expected, CompanionSettings.NormalizePetName(value));
     }
 
     [Fact]
