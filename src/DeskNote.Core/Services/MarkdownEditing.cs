@@ -232,6 +232,21 @@ public static partial class MarkdownEditing
         return new NoteTextState(text, lineStart + offset, 0);
     }
 
+    /// <summary>
+    /// The indent and list, checklist or heading marker a line opens with.
+    /// </summary>
+    /// <remarks>
+    /// Exposed because the editor's Markdown renderer has to leave this prefix alone. A bullet
+    /// written as <c>* item</c> opens with the italic marker, so a renderer that scanned the whole
+    /// line for emphasis would read the bullet and the next asterisk on the line as a matched pair
+    /// and swallow both.
+    /// </remarks>
+    public static string LineMarkerPrefix(string line)
+    {
+        ArgumentNullException.ThrowIfNull(line);
+        return line[..LinePrefix.Match(line).Length];
+    }
+
     /// <summary>The line style currently on a line.</summary>
     public static LineStyle StyleOf(string line)
     {

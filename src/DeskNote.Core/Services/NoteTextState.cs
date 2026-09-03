@@ -17,6 +17,26 @@ public readonly record struct NoteTextState(string Text, int SelectionStart, int
 
     public string SelectedText => Text.Substring(SelectionStart, SelectionLength);
 
+    /// <summary>
+    /// The state after typing <paramref name="text"/> over the selection.
+    /// </summary>
+    /// <remarks>
+    /// What an ordinary keystroke does, expressed as a transformation so that the paths which have
+    /// to do it deliberately — pasting, inserting an attachment link — go through the editor as one
+    /// undoable edit rather than assigning the whole body.
+    /// </remarks>
+    public NoteTextState ReplacingSelection(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        var clamped = Clamped();
+        var replaced = clamped.Text
+            .Remove(clamped.SelectionStart, clamped.SelectionLength)
+            .Insert(clamped.SelectionStart, text);
+
+        return new NoteTextState(replaced, clamped.SelectionStart + text.Length, 0);
+    }
+
     /// <summary>Clamps the selection into the text, so a transformation can never return an invalid state.</summary>
     public NoteTextState Clamped()
     {

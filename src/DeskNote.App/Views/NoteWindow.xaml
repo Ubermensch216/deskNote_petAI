@@ -630,10 +630,10 @@
 
                 <!--
                     Attached images, shown as images. They sit above the text rather than inline
-                    with it because the body is a plain TextBox: it can hold the note's words or a
-                    path to a picture, but it cannot draw one, and a line of percent-escaped path
-                    is not what the user attached. The strip is capped in
-                    OnSurfaceSizeChanged so a screenshot cannot push the writing off the note.
+                    with it: the body draws emphasis, but it is not a page layout — it can hold the
+                    note's words or a path to a picture, and a line of percent-escaped path is not
+                    what the user attached. The strip is capped in OnSurfaceSizeChanged so a
+                    screenshot cannot push the writing off the note.
                 -->
                 <ScrollViewer
                     x:Name="ImageStripScroller"
@@ -646,14 +646,24 @@
                     <StackPanel x:Name="ImageStrip" Spacing="6" />
                 </ScrollViewer>
 
-                <TextBox
+                <!--
+                    A RichEditBox, so emphasis is drawn rather than spelled out: the note stores
+                    ~~취소선~~ and shows it struck through. NoteEditor is the only thing that knows
+                    the difference — see its remarks for why line markers stay visible.
+
+                    DisabledFormattingAccelerators turns off the control's own Ctrl+B/I/U. They do
+                    very nearly the right thing, which is worse than doing nothing: the note would
+                    have two bold commands, one of which does not tell the format bar it ran.
+                -->
+                <RichEditBox
                     x:Name="ContentBox"
                     Grid.Row="1"
-                    AcceptsReturn="True"
                     TextWrapping="Wrap"
                     Background="Transparent"
                     BorderThickness="0"
                     Padding="0"
+                    ClipboardCopyFormat="PlainText"
+                    DisabledFormattingAccelerators="All"
                     ScrollViewer.VerticalScrollBarVisibility="Auto"
                     PreviewKeyDown="OnContentPreviewKeyDown"
                     Paste="OnPasteRequested"
@@ -672,7 +682,7 @@
                         TextBox claims them as Cut and Copy before accelerators are looked at, so
                         they are handled in OnContentPreviewKeyDown instead.
                     -->
-                    <TextBox.KeyboardAccelerators>
+                    <RichEditBox.KeyboardAccelerators>
                         <KeyboardAccelerator Modifiers="Control" Key="B" Invoked="OnBoldInvoked" />
                         <KeyboardAccelerator Modifiers="Control" Key="I" Invoked="OnItalicInvoked" />
                         <KeyboardAccelerator Modifiers="Control" Key="U" Invoked="OnUnderlineInvoked" />
@@ -683,8 +693,8 @@
                         <KeyboardAccelerator Modifiers="Control" Key="Number3" Invoked="OnHeading3Invoked" />
                         <KeyboardAccelerator Modifiers="Control,Shift" Key="L" Invoked="OnBulletInvoked" />
                         <KeyboardAccelerator Modifiers="Control" Key="Enter" Invoked="OnToggleCheckInvoked" />
-                    </TextBox.KeyboardAccelerators>
-                </TextBox>
+                    </RichEditBox.KeyboardAccelerators>
+                </RichEditBox>
             </Grid>
 
             <!--

@@ -40,6 +40,7 @@ namespace DeskNote.App.Views;
 public sealed partial class NoteWindow : Window
 {
     private readonly OverlappedPresenter _presenter;
+    private readonly NoteEditor _editor;
     private NoteGeometry _geometry;
     private string _colorKey;
     private double _opacity;
@@ -63,6 +64,11 @@ public sealed partial class NoteWindow : Window
     public NoteWindow(Note note, LocalAiHost? ai = null, NoteNeighbourhood? neighbourhood = null)
     {
         InitializeComponent();
+
+        // Built before anything else, because the body's own events are already attached: the
+        // editor raises TextChanged and SelectionChanged while it is being set up, and every
+        // handler for those goes through this.
+        _editor = new NoteEditor(ContentBox);
 
         // Fill the non-client title-bar band with the note surface. Without this, WinUI keeps a
         // caption-height strip above the XAML content; the acrylic backdrop showing through that
@@ -105,7 +111,7 @@ public sealed partial class NoteWindow : Window
         WindowCorners.Round(this);
 
         _suppressChangeEvents = true;
-        ContentBox.Text = note.Content;
+        _editor.Load(note.Content);
 
         // Range is set here rather than in XAML: the parser assigns attributes in declaration
         // order and rejects a Minimum written before the Maximum it has to fit inside. Deriving
@@ -189,9 +195,9 @@ public sealed partial class NoteWindow : Window
     public event EventHandler<AttachmentRequest>? AttachmentRequested;
 
     /// <summary>The note's title, taken from its first line — there is no separate title field.</summary>
-    public string CurrentTitle => NoteContent.DeriveTitle(ContentBox.Text);
+    public string CurrentTitle => NoteContent.DeriveTitle(_editor.Markdown);
 
-    public string CurrentContent => ContentBox.Text;
+    public string CurrentContent => _editor.Markdown;
 
     /// <summary>Flips always-on-top, keeping the menu in step. Used by the global hotkey.</summary>
     public void ToggleAlwaysOnTop()
@@ -234,8 +240,8 @@ public sealed partial class NoteWindow : Window
     public void ReplaceContent(string content)
     {
         _suppressChangeEvents = true;
-        ContentBox.Text = content;
-        ContentBox.SelectionStart = content.Length;
+        _editor.Load(content);
+        _editor.Select(_editor.Text.Length, 0);
         _suppressChangeEvents = false;
         ShowTitle();
     }
@@ -243,12 +249,7 @@ public sealed partial class NoteWindow : Window
     /// <summary>Inserts text at the caret, as an ordinary undoable edit.</summary>
     public void InsertAtCaret(string text)
     {
-        var state = EditorState();
-        var updated = state.Text
-            .Remove(state.SelectionStart, state.SelectionLength)
-            .Insert(state.SelectionStart, text);
-
-        ApplyEditorState(new NoteTextState(updated, state.SelectionStart + text.Length, 0));
+        ApplyEditorState(EditorState().ReplacingSelection(text));
         RaiseTextChanged();
     }
 
@@ -433,7 +434,7 @@ public sealed partial class NoteWindow : Window
     private void RaiseTextChanged()
     {
         ShowTitle();
-        TextChanged?.Invoke(this, new NoteText(CurrentTitle, ContentBox.Text));
+        TextChanged?.Invoke(this, new NoteText(CurrentTitle, _editor.Markdown));
     }
 
     /// <summary>
@@ -459,8 +460,10 @@ public sealed partial class NoteWindow : Window
         }
     }
 
-    private void OnTextChanged(object sender, TextChangedEventArgs e)
+    private void OnTextChanged(object sender, RoutedEventArgs e)
     {
+        _editor.Invalidate();
+
         if (_suppressChangeEvents)
         {
             return;
@@ -469,30 +472,18 @@ public sealed partial class NoteWindow : Window
         RaiseTextChanged();
     }
 
-    private NoteTextState EditorState() =>
-        new(ContentBox.Text, ContentBox.SelectionStart, ContentBox.SelectionLength);
+    private NoteTextState EditorState() => _editor.State;
 
     /// <summary>
     /// Applies a transformed state to the editor as a selection replacement.
     /// </summary>
     /// <remarks>
-    /// Assigning <c>Text</c> directly would clear the TextBox's undo history, so Ctrl+Z after
-    /// bolding a word would do nothing. Replacing only the span that actually changed keeps the
-    /// edit on the editor's own undo stack, which is what report p5 asks for when it pairs
-    /// Undo/Redo with revisions.
+    /// Replacing the whole body would clear the editor's undo history, so Ctrl+Z after bolding a
+    /// word would do nothing, and it would repaint every run on the note. Replacing only the span
+    /// that actually changed keeps the edit on the editor's own undo stack — which is what report
+    /// p5 asks for when it pairs Undo/Redo with revisions — and leaves emphasis elsewhere alone.
     /// </remarks>
-    private void ApplyEditorState(NoteTextState next)
-    {
-        var edit = TextDiff.Minimal(ContentBox.Text, next.Text);
-
-        if (!edit.IsEmpty)
-        {
-            ContentBox.Select(edit.Start, edit.Length);
-            ContentBox.SelectedText = edit.Insert;
-        }
-
-        ContentBox.Select(next.SelectionStart, next.SelectionLength);
-    }
+    private void ApplyEditorState(NoteTextState next) => _editor.Apply(next);
 
     /// <summary>
     /// Runs a formatting command against the editor and leaves the caret there.
@@ -516,14 +507,37 @@ public sealed partial class NoteWindow : Window
         RunEditorCommand(command);
     }
 
+    /// <summary>
+    /// Turns one emphasis on or off across the selection.
+    /// </summary>
+    /// <remarks>
+    /// Emphasis no longer goes through <see cref="MarkdownEditing"/>: the editor draws it, so the
+    /// command is the editor's own character formatting and the <c>~~</c> only reappears on the way
+    /// to storage. Focus still moves first for the same reason as any other command from the format
+    /// bar — clicking the button took focus off the body, and a format applied to an unfocused
+    /// selection lands nowhere.
+    /// </remarks>
+    private void RunInlineCommand(InlineStyle style)
+    {
+        _ = ContentBox.Focus(FocusState.Programmatic);
+        _editor.ToggleInline(style);
+        RaiseTextChanged();
+    }
+
+    private void RunInlineCommand(InlineStyle style, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        RunInlineCommand(style);
+    }
+
     private void OnBoldInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) =>
-        RunEditorCommand(MarkdownEditing.ToggleBold, args);
+        RunInlineCommand(InlineStyle.Bold, args);
 
     private void OnItalicInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) =>
-        RunEditorCommand(MarkdownEditing.ToggleItalic, args);
+        RunInlineCommand(InlineStyle.Italic, args);
 
     private void OnUnderlineInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) =>
-        RunEditorCommand(MarkdownEditing.ToggleUnderline, args);
+        RunInlineCommand(InlineStyle.Underline, args);
 
     private void OnCodeInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) =>
         RunEditorCommand(MarkdownEditing.ToggleInlineCode, args);
@@ -554,16 +568,16 @@ public sealed partial class NoteWindow : Window
     }
 
     private void OnBoldClicked(object sender, RoutedEventArgs e) =>
-        RunEditorCommand(MarkdownEditing.ToggleBold);
+        RunInlineCommand(InlineStyle.Bold);
 
     private void OnItalicClicked(object sender, RoutedEventArgs e) =>
-        RunEditorCommand(MarkdownEditing.ToggleItalic);
+        RunInlineCommand(InlineStyle.Italic);
 
     private void OnUnderlineClicked(object sender, RoutedEventArgs e) =>
-        RunEditorCommand(MarkdownEditing.ToggleUnderline);
+        RunInlineCommand(InlineStyle.Underline);
 
     private void OnStrikethroughClicked(object sender, RoutedEventArgs e) =>
-        RunEditorCommand(MarkdownEditing.ToggleStrikethrough);
+        RunInlineCommand(InlineStyle.Strikethrough);
 
     private void OnBulletClicked(object sender, RoutedEventArgs e) =>
         RunEditorCommand(state => MarkdownEditing.ApplyLineStyle(state, LineStyle.Bullet));
@@ -622,21 +636,21 @@ public sealed partial class NoteWindow : Window
             return false;
         }
 
-        Func<NoteTextState, NoteTextState>? command = e.Key switch
+        switch (e.Key)
         {
-            VirtualKey.X => MarkdownEditing.ToggleStrikethrough,
-            VirtualKey.C => static state => MarkdownEditing.ApplyLineStyle(state, LineStyle.Checklist),
-            _ => null,
-        };
+            case VirtualKey.X:
+                e.Handled = true;
+                RunInlineCommand(InlineStyle.Strikethrough);
+                return true;
 
-        if (command is null)
-        {
-            return false;
+            case VirtualKey.C:
+                e.Handled = true;
+                RunEditorCommand(state => MarkdownEditing.ApplyLineStyle(state, LineStyle.Checklist));
+                return true;
+
+            default:
+                return false;
         }
-
-        e.Handled = true;
-        RunEditorCommand(command);
-        return true;
     }
 
     private static bool IsModifierDown() =>
@@ -682,17 +696,27 @@ public sealed partial class NoteWindow : Window
     }
 
     /// <summary>
-    /// Attaches an image pasted from the clipboard.
+    /// Attaches a pasted image, and strips the formatting off pasted text.
     /// </summary>
     /// <remarks>
-    /// Handled before the TextBox sees the paste only when the clipboard actually holds a bitmap;
-    /// otherwise the ordinary text paste is left completely alone, including its undo entry.
+    /// A rich edit control pastes what it is given, so text copied out of a browser would arrive
+    /// carrying that page's font, size and colour and land on the note as a foreign object. The
+    /// note's emphasis is its own — bold, italic, underline, strikethrough, in the note's ink — so
+    /// a paste is taken as characters and nothing else. It still goes in through the document, so
+    /// Ctrl+Z takes it back in one press.
     /// </remarks>
     private async void OnPasteRequested(object sender, TextControlPasteEventArgs args)
     {
         var clipboard = Clipboard.GetContent();
+
         if (!clipboard.Contains(StandardDataFormats.Bitmap))
         {
+            if (clipboard.Contains(StandardDataFormats.Text))
+            {
+                args.Handled = true;
+                await PastePlainTextAsync(clipboard).ConfigureAwait(true);
+            }
+
             return;
         }
 
@@ -712,6 +736,23 @@ public sealed partial class NoteWindow : Window
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Services.CrashLog.Write("Pasting an image failed", ex);
+        }
+    }
+
+    private async Task PastePlainTextAsync(Windows.ApplicationModel.DataTransfer.DataPackageView clipboard)
+    {
+        try
+        {
+            var text = await clipboard.GetTextAsync();
+            if (text.Length > 0)
+            {
+                ApplyEditorState(EditorState().ReplacingSelection(text));
+                RaiseTextChanged();
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Services.CrashLog.Write("Pasting text failed", ex);
         }
     }
 
@@ -956,7 +997,25 @@ public sealed partial class NoteWindow : Window
         UpdateChrome();
     }
 
-    private void OnEditorFocusChanged(object sender, RoutedEventArgs e) => UpdateChrome();
+    /// <summary>
+    /// Follows focus on and off the body, and makes sure a formatting-only edit is stored.
+    /// </summary>
+    /// <remarks>
+    /// Emphasis can change without the text changing — undoing a strikethrough puts every
+    /// character back exactly where it was — and the editor does not report that as a text change,
+    /// so the debounced save is never scheduled. Leaving the body is the natural moment to settle
+    /// it: the note is no longer being typed into, and what is on screen becomes what is stored.
+    /// </remarks>
+    private void OnEditorFocusChanged(object sender, RoutedEventArgs e)
+    {
+        UpdateChrome();
+
+        if (ContentBox.FocusState == FocusState.Unfocused && !_suppressChangeEvents)
+        {
+            _editor.Invalidate();
+            RaiseTextChanged();
+        }
+    }
 
     private void OnMoreFlyoutOpened(object? sender, object e)
     {
@@ -1126,7 +1185,11 @@ public sealed partial class NoteWindow : Window
         Surface.Resources["ButtonBackgroundPointerOver"] = Tint(ink, 0x18);
         Surface.Resources["ButtonBackgroundPressed"] = Tint(ink, 0x2A);
 
+        // A rich edit control keeps a colour on every character, so a note that changes colour
+        // has to have its ink written onto the text as well as onto the control — otherwise the
+        // words stay in the old note's ink on the new note's paper.
         ContentBox.Foreground = inkBrush;
+        _editor.SetInk(ink);
         TitleLabel.Foreground = Tint(ink, 0x99);
         FormatSeparator.Background = Tint(ink, 0x33);
 

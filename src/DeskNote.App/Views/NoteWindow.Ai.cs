@@ -112,12 +112,12 @@ public sealed partial class NoteWindow
     /// </remarks>
     private async void RunAiTitle()
     {
-        if (_ai is null || !_aiCapability.IsAvailable || string.IsNullOrWhiteSpace(ContentBox.Text))
+        if (_ai is null || !_aiCapability.IsAvailable || string.IsNullOrWhiteSpace(_editor.Text))
         {
             return;
         }
 
-        var original = ContentBox.Text;
+        var original = _editor.Text;
 
         var preview = new AiPreviewWindow(Strings.Get("Note_AiSuggestTitle"));
         preview.Applied += (_, proposed) =>
@@ -211,7 +211,7 @@ public sealed partial class NoteWindow
     /// </remarks>
     private void UpdateSelectionActions()
     {
-        var offered = ContentBox.SelectionLength > 0
+        var offered = _editor.SelectionLength > 0
             && _ai is not null
             && _aiCapability.IsAvailable;
 
@@ -222,7 +222,16 @@ public sealed partial class NoteWindow
         SelectionConcise.Visibility = visibility;
     }
 
-    private void OnSelectionChanged(object sender, RoutedEventArgs e) => UpdateSelectionActions();
+    /// <remarks>
+    /// The cached reads are dropped here as well as on a text change, because moving the caret is
+    /// what an undo of a formatting command looks like from the outside: the text is untouched, so
+    /// nothing else would tell the editor that what it last read is now wrong.
+    /// </remarks>
+    private void OnSelectionChanged(object sender, RoutedEventArgs e)
+    {
+        _editor.Invalidate();
+        UpdateSelectionActions();
+    }
 
     private void OnSelectionSummarizeClicked(object sender, RoutedEventArgs e) =>
         RunAi(AiTextAction.Summarize, RewriteStyle.Concise);
@@ -248,7 +257,7 @@ public sealed partial class NoteWindow
     /// </remarks>
     private async void RunAiList(AiListAction action)
     {
-        if (_ai is null || !_aiCapability.IsAvailable || string.IsNullOrWhiteSpace(ContentBox.Text))
+        if (_ai is null || !_aiCapability.IsAvailable || string.IsNullOrWhiteSpace(_editor.Text))
         {
             return;
         }
@@ -256,7 +265,7 @@ public sealed partial class NoteWindow
         var context = new NoteContext
         {
             NoteId = NoteId,
-            Content = ContentBox.Text,
+            Content = _editor.Text,
             Title = CurrentTitle,
             LanguageTag = Strings.OverrideLocale ?? "ko-KR",
         };
@@ -286,7 +295,7 @@ public sealed partial class NoteWindow
             }
             else
             {
-                var carried = TagParser.Parse(ContentBox.Text);
+                var carried = TagParser.Parse(_editor.Text);
 
                 // Asked of the vectors before the model. A note about the same thing as three
                 // tagged notes almost always wants one of their tags, and finding that out is a
@@ -417,7 +426,7 @@ public sealed partial class NoteWindow
     /// </remarks>
     private void AppendLines(IEnumerable<string> lines, string? actionName = null)
     {
-        var current = ContentBox.Text;
+        var current = _editor.Text;
         var separator = current.Length == 0 || current.EndsWith('\n') ? string.Empty : "\n";
         var block = string.Join("\n", lines);
 
@@ -459,9 +468,9 @@ public sealed partial class NoteWindow
             return;
         }
 
-        var text = ContentBox.Text;
-        var start = ContentBox.SelectionLength > 0 ? ContentBox.SelectionStart : 0;
-        var length = ContentBox.SelectionLength > 0 ? ContentBox.SelectionLength : text.Length;
+        var text = _editor.Text;
+        var start = _editor.SelectionLength > 0 ? _editor.SelectionStart : 0;
+        var length = _editor.SelectionLength > 0 ? _editor.SelectionLength : text.Length;
         var target = text.Substring(start, length);
 
         if (string.IsNullOrWhiteSpace(target))
@@ -493,7 +502,7 @@ public sealed partial class NoteWindow
         {
             NoteId = NoteId,
             Content = text,
-            SelectedText = ContentBox.SelectionLength > 0 ? target : null,
+            SelectedText = _editor.SelectionLength > 0 ? target : null,
             Title = CurrentTitle,
             LanguageTag = Strings.OverrideLocale ?? "ko-KR",
         };
@@ -535,7 +544,7 @@ public sealed partial class NoteWindow
     /// </remarks>
     private bool TryApplyAiText(int start, int length, string original, string proposed, string actionName)
     {
-        var current = ContentBox.Text;
+        var current = _editor.Text;
 
         if (start + length > current.Length
             || !string.Equals(current.Substring(start, length), original, StringComparison.Ordinal))
@@ -558,5 +567,5 @@ public sealed partial class NoteWindow
     }
 
     private void RaiseAiApplied(string actionName) =>
-        AiApplied?.Invoke(this, new AiEdit(CurrentTitle, ContentBox.Text, actionName));
+        AiApplied?.Invoke(this, new AiEdit(CurrentTitle, _editor.Markdown, actionName));
 }
