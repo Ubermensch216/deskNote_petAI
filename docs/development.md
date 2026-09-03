@@ -110,23 +110,30 @@ python assets/icon/build_icon.py
 나타나므로 커서를 창 밖으로 뺐다가 넣어야 하고, 캡처는 `GetWindowRect` 크기로 찍은 뒤 DWM 프레임
 경계만큼 잘라내야 창의 오른쪽·아래 테두리가 살아난다.
 
-데모용 데이터베이스는 사진에 실제 사용자의 메모가 들어가지 않게 하려는 것이다. 다만 **지금은 그것을
-지정할 방법이 없다.** `AppPaths.Root` 는 `Environment.GetFolderPath(LocalApplicationData)` 를 쓰고, 이
-API는 `LOCALAPPDATA` 환경 변수가 아니라 셸의 known folder를 읽는다 — 환경 변수를 바꿔 띄우는 방법은
-동작하지 않는다(확인함). 그래서 데모 데이터를 쓰려면 `%LOCALAPPDATA%\DeskNote` 를 통째로 옮겼다가
-되돌리는 수밖에 없고, 이것은 사용자의 실제 메모를 걸고 하는 작업이다.
+데모용 데이터베이스는 사진에 실제 사용자의 메모가 들어가지 않게 하려는 것이다. 앱이 `--data <경로>`
+(또는 `DESKNOTE_DATA`)를 받으므로 실제 설치본 옆에서 별도의 데이터로 인스턴스를 하나 더 띄울 수 있고,
+단일 인스턴스 뮤텍스도 데이터 폴더별로 잡히므로 평소 쓰던 앱을 끄지 않아도 된다.
 
-`AppPaths` 에 `--data <경로>` 나 `DESKNOTE_DATA` 를 받는 재정의를 두면 이 절차가 안전하고 반복
-가능해진다. 문서 이미지를 자동으로 다시 만들 수 있게 되는 것도 그때부터다.
+`LOCALAPPDATA` 환경 변수를 바꾸는 방법은 동작하지 않는다.
+`Environment.GetFolderPath(LocalApplicationData)` 는 그 변수가 아니라 셸의 known folder를 읽는다.
+
+```powershell
+$demo = "$env:TEMP\desknote-docs"
+dotnet run --project tools/DemoSeeder -- $demo
+Start-Process .\dist\DeskNote-win-x64\DeskNote.exe -ArgumentList "--data", $demo
+```
+
+`tools/DemoSeeder` 는 지어낸 메모 일곱 개와 노트북 둘을 넣고 펫을 켜 둔다. 펫은 `움직이기` 를 끈
+상태로 시작하는데, **걷는 펫은 창 위치를 읽고 포인터가 도착하는 사이에 자리를 옮겨** 클릭이 빗나가기
+때문이다.
+
+창은 `tools/capture-window.ps1` 로 찍고(창 단위 `PrintWindow` + DWM 프레임 기준 자르기),
+`tools/point-window.ps1` 로 포인터를 넣거나 누른다. 포인터는 대상 창의 rect 안으로만 이동하며 끝나면
+원래 자리로 돌아간다. 메모의 조작 요소는 `SetCursorPos` 로 커서를 순간이동시키면 나타나지 않는다 —
+WinUI는 커서의 위치가 아니라 **입력 큐**를 보므로 실제 입력 이벤트로 움직여야 한다.
 
 **UI를 바꾸면 그 화면의 이미지도 함께 다시 찍는다.** `docs/images/` 는 추적되는 파일이고, 낡은 사진은
 없는 사진보다 나쁘다 — README를 읽는 사람은 사진 쪽을 믿는다.
 
-현재 낡았거나 없는 이미지는 다음과 같다.
-
-| 이미지 | 상태 |
-|---|---|
-| `library-search.png` | 사이드바에서 `삭제된 메모` 가 빠지고 노트북 명령·새로고침·이동이 생기기 전 |
-| `note-chrome.png` | 위쪽 띠에 제목이 나타나기 전 |
-| 펫 대시보드 · `펫 키우는 방법` | 없음 (두 화면 모두 새로 그려짐) |
-| 메모 위의 이미지 첨부 | 없음 |
+아직 없는 것은 **메모 위에 그려진 이미지 첨부** 한 장이다. 시더가 첨부 레코드까지 넣도록 하면
+클릭 없이 찍을 수 있다.

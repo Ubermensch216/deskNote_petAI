@@ -44,3 +44,7 @@ TestResults/
 *.trx
 .coverage
 coverage/
+
+# Documentation tooling build output (the scripts themselves are tracked)
+tools/**/bin/
+tools/**/obj/
