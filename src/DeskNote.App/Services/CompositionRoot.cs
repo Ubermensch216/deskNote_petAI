@@ -24,7 +24,9 @@ public static class CompositionRoot
         ArgumentNullException.ThrowIfNull(dispatcher);
         ArgumentNullException.ThrowIfNull(exitApplication);
 
-        var connections = new SqliteConnectionFactory(SqliteConnectionFactory.DefaultDatabasePath);
+        // AppPaths, not SqliteConnectionFactory.DefaultDatabasePath: the data directory can be
+        // overridden, and the database has to move with the attachments, journal and log.
+        var connections = new SqliteConnectionFactory(AppPaths.DatabasePath);
 
         var migration = await new MigrationRunner(connections)
             .MigrateAsync(cancellationToken)

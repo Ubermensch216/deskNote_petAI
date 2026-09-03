@@ -20,11 +20,7 @@ internal static class CrashLog
 {
     private static readonly Lock Gate = new();
 
-    public static string LogPath { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "DeskNote",
-        "logs",
-        "desknote.log");
+    public static string LogPath { get; } = Path.Combine(AppPaths.LogDirectory, "desknote.log");
 
     public static void Write(string message, Exception? exception = null)
     {

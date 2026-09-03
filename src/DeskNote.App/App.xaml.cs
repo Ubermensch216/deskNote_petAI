@@ -6,9 +6,23 @@ namespace DeskNote.App;
 
 public partial class App : Application
 {
-    private const string SingleInstanceMutexName = @"Local\DeskNote.Desktop.SingleInstance";
     private ApplicationRuntime? _runtime;
     private Mutex? _singleInstanceMutex;
+
+    /// <summary>
+    /// One instance per data directory, not one per machine.
+    /// </summary>
+    /// <remarks>
+    /// Two copies sharing a database would fight over the same notes, so the guard stays. It is
+    /// keyed by the data directory because an instance pointed at a demo folder shares nothing
+    /// with the real one, and refusing to start it would make <c>--data</c> useless — which is the
+    /// whole point of being able to take screen photographs without touching real notes.
+    /// </remarks>
+    private static string SingleInstanceMutexName =>
+        @"Local\DeskNote.Desktop.SingleInstance." +
+        Convert.ToHexStringLower(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(AppPaths.Root.ToUpperInvariant())))[..16];
 
     public App()
     {
