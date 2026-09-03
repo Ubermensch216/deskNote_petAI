@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" width="120" height="120" alt="DeskNote Logo" />
+</p>
+
 # DeskNote
 
 **바탕화면에 붙는 스티키 메모. 요약도 검색도 전부 내 PC 안에서.**
