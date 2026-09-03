@@ -5,20 +5,30 @@
 
     <!--
         The dashboard is read top to bottom as three questions: who is this (hero), what should I
-        do now (today), and how is it doing (state). Everything that is reference rather than
-        action — traits, the guide, settings — sits under all three. Colour is applied from
-        CompanionPalette in code rather than through theme resources, because most of it depends on
-        runtime state: a gauge band, whether a tile is today's mission, whether it has been spent.
+        do now (today), and how is it doing (state). The three chrome commands — the guide,
+        settings, refresh — sit together in the hero's top corner, out of that reading line
+        entirely. Colour is applied from CompanionPalette in code rather than through theme
+        resources, because most of it depends on runtime state: a gauge band, whether a tile is
+        today's mission, whether it has been spent.
     -->
     <Grid x:Name="Board">
+        <Grid.Resources>
+            <Style x:Key="HeroIconButtonStyle" TargetType="Button">
+                <Setter Property="Width" Value="30" />
+                <Setter Property="Height" Value="30" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="BorderThickness" Value="0" />
+            </Style>
+        </Grid.Resources>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="14,14,14,18">
             <StackPanel Spacing="12">
 
                 <!--
                     Hero. One saturated band at the top so the window reads as a pet, not a form:
                     the animal, who it is, what it is saying, and the single bar that says how far
-                    it has come. Nothing here is actionable, which is why it is also the only part
-                    that is allowed to be purely lovely.
+                    it has come. The only controls it carries are the three chrome icons in its
+                    corner; everything else here is allowed to be purely lovely.
                 -->
                 <Border x:Name="HeroCard" CornerRadius="18" Padding="16,14,16,15">
                     <StackPanel Spacing="12">
@@ -31,23 +41,40 @@
                             </Grid.ColumnDefinitions>
 
                             <!--
-                                The gauges fall with the clock, so a dashboard left open all
-                                afternoon is showing this morning's pet. It re-reads itself on a
-                                timer; this is for the user who wants to know that what they are
-                                looking at is true right now.
+                                Guide, settings and refresh, as three icons in the corner. They
+                                used to be a row of worded buttons at the very bottom, past the
+                                whole dashboard: the two that open another window were the last
+                                thing a user found, and refresh — which they reach for after
+                                caring for the pet — was nowhere near them. Read as chrome rather
+                                than as content, they belong in the corner, together.
+
+                                Refresh earns its place because the gauges fall with the clock, so
+                                a dashboard left open all afternoon is showing this morning's pet.
                             -->
-                            <Button
-                                x:Name="RefreshButton"
+                            <StackPanel
                                 Grid.Column="2"
-                                Width="30"
-                                Height="30"
-                                Padding="0"
-                                CornerRadius="8"
-                                BorderThickness="0"
-                                VerticalAlignment="Top"
-                                Click="OnRefreshClicked">
-                                <FontIcon Glyph="&#xE72C;" FontSize="13" />
-                            </Button>
+                                Orientation="Horizontal"
+                                Spacing="2"
+                                VerticalAlignment="Top">
+                                <Button
+                                    x:Name="GrowthGuideButton"
+                                    Style="{StaticResource HeroIconButtonStyle}"
+                                    Click="OnGrowthGuideClicked">
+                                    <FontIcon Glyph="&#xE897;" FontSize="13" />
+                                </Button>
+                                <Button
+                                    x:Name="SettingsButton"
+                                    Style="{StaticResource HeroIconButtonStyle}"
+                                    Click="OnSettingsClicked">
+                                    <FontIcon Glyph="&#xE713;" FontSize="13" />
+                                </Button>
+                                <Button
+                                    x:Name="RefreshButton"
+                                    Style="{StaticResource HeroIconButtonStyle}"
+                                    Click="OnRefreshClicked">
+                                    <FontIcon Glyph="&#xE72C;" FontSize="13" />
+                                </Button>
+                            </StackPanel>
 
                             <Border
                                 x:Name="AvatarWell"
@@ -458,18 +485,6 @@
                         </Grid>
                     </StackPanel>
                 </Border>
-
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <Button
-                        x:Name="GrowthGuideButton"
-                        HorizontalAlignment="Stretch"
-                        Click="OnGrowthGuideClicked" />
-                    <Button x:Name="SettingsButton" Grid.Column="1" Click="OnSettingsClicked" />
-                </Grid>
             </StackPanel>
         </ScrollViewer>
     </Grid>

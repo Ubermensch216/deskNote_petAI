@@ -667,18 +667,21 @@
                         makes the commands discoverable; the accelerators are what make them fast, and
                         neither is the only way in.
                     -->
+                    <!--
+                        Ctrl+Shift+X and Ctrl+Shift+C are missing from this list on purpose: the
+                        TextBox claims them as Cut and Copy before accelerators are looked at, so
+                        they are handled in OnContentPreviewKeyDown instead.
+                    -->
                     <TextBox.KeyboardAccelerators>
                         <KeyboardAccelerator Modifiers="Control" Key="B" Invoked="OnBoldInvoked" />
                         <KeyboardAccelerator Modifiers="Control" Key="I" Invoked="OnItalicInvoked" />
                         <KeyboardAccelerator Modifiers="Control" Key="U" Invoked="OnUnderlineInvoked" />
-                        <KeyboardAccelerator Modifiers="Control,Shift" Key="X" Invoked="OnStrikethroughInvoked" />
                         <KeyboardAccelerator Modifiers="Control" Key="K" Invoked="OnLinkInvoked" />
                         <KeyboardAccelerator Modifiers="Control,Shift" Key="K" Invoked="OnCodeInvoked" />
                         <KeyboardAccelerator Modifiers="Control" Key="Number1" Invoked="OnHeading1Invoked" />
                         <KeyboardAccelerator Modifiers="Control" Key="Number2" Invoked="OnHeading2Invoked" />
                         <KeyboardAccelerator Modifiers="Control" Key="Number3" Invoked="OnHeading3Invoked" />
                         <KeyboardAccelerator Modifiers="Control,Shift" Key="L" Invoked="OnBulletInvoked" />
-                        <KeyboardAccelerator Modifiers="Control,Shift" Key="C" Invoked="OnChecklistInvoked" />
                         <KeyboardAccelerator Modifiers="Control" Key="Enter" Invoked="OnToggleCheckInvoked" />
                     </TextBox.KeyboardAccelerators>
                 </TextBox>

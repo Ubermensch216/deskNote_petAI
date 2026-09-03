@@ -525,9 +525,6 @@ public sealed partial class NoteWindow : Window
     private void OnUnderlineInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) =>
         RunEditorCommand(MarkdownEditing.ToggleUnderline, args);
 
-    private void OnStrikethroughInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) =>
-        RunEditorCommand(MarkdownEditing.ToggleStrikethrough, args);
-
     private void OnCodeInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) =>
         RunEditorCommand(MarkdownEditing.ToggleInlineCode, args);
 
@@ -545,9 +542,6 @@ public sealed partial class NoteWindow : Window
 
     private void OnBulletInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) =>
         RunEditorCommand(state => MarkdownEditing.ApplyLineStyle(state, LineStyle.Bullet), args);
-
-    private void OnChecklistInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args) =>
-        RunEditorCommand(state => MarkdownEditing.ApplyLineStyle(state, LineStyle.Checklist), args);
 
     private void OnToggleCheckInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
@@ -592,6 +586,11 @@ public sealed partial class NoteWindow : Window
     /// </remarks>
     private void OnContentPreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
+        if (TryRunSwallowedShortcut(e))
+        {
+            return;
+        }
+
         if (e.Key != VirtualKey.Enter || IsModifierDown())
         {
             return;
@@ -606,14 +605,47 @@ public sealed partial class NoteWindow : Window
         ApplyEditorState(continued);
     }
 
-    private static bool IsModifierDown()
+    /// <summary>
+    /// Runs the two format commands whose chord never reaches its accelerator.
+    /// </summary>
+    /// <remarks>
+    /// The edit control inside the TextBox reads Ctrl+X and Ctrl+C without looking at Shift, so it
+    /// claimed Ctrl+Shift+X and Ctrl+Shift+C as Cut and Copy and marked the key handled before
+    /// accelerator processing ran: pressing the documented strikethrough chord cut the selection
+    /// instead of striking it through. PreviewKeyDown tunnels ahead of that — the same reason Enter
+    /// is handled here — so the command runs and the edit control never sees the key.
+    /// </remarks>
+    private bool TryRunSwallowedShortcut(KeyRoutedEventArgs e)
     {
-        var states = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
-            | InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
-            | InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Menu);
+        if (!IsDown(VirtualKey.Control) || !IsDown(VirtualKey.Shift) || IsDown(VirtualKey.Menu))
+        {
+            return false;
+        }
 
-        return states.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        Func<NoteTextState, NoteTextState>? command = e.Key switch
+        {
+            VirtualKey.X => MarkdownEditing.ToggleStrikethrough,
+            VirtualKey.C => static state => MarkdownEditing.ApplyLineStyle(state, LineStyle.Checklist),
+            _ => null,
+        };
+
+        if (command is null)
+        {
+            return false;
+        }
+
+        e.Handled = true;
+        RunEditorCommand(command);
+        return true;
     }
+
+    private static bool IsModifierDown() =>
+        IsDown(VirtualKey.Control) || IsDown(VirtualKey.Shift) || IsDown(VirtualKey.Menu);
+
+    private static bool IsDown(VirtualKey key) =>
+        InputKeyboardSource
+            .GetKeyStateForCurrentThread(key)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
 
     private void OnSurfaceDragOver(object sender, DragEventArgs e)
     {

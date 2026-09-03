@@ -1,5 +1,7 @@
 # Phase 1 진행 기록
 
+> 이 문서는 2026-08-31 시점의 **기록**이다. 수치와 파일 크기는 그날의 것이며, 현재 구조는 [architecture.md](architecture.md)를 본다.
+
 기준 브랜치: `feature/phase0-foundation`  
 기록일: 2026-08-31
 

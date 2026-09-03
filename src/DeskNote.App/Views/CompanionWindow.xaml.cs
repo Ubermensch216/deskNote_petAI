@@ -187,14 +187,22 @@ public sealed partial class CompanionWindow : Window
         InsightLabel.Text = Strings.Get("Companion_TraitInsight");
         ReliabilityLabel.Text = Strings.Get("Companion_TraitReliability");
 
-        var refreshLabel = Strings.Get("Companion_Refresh");
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(RefreshButton, refreshLabel);
-        ToolTipService.SetToolTip(RefreshButton, refreshLabel);
-
-        GrowthGuideButton.Content = Strings.Get("PetGrowthGuide_LinkLabel");
-        SettingsButton.Content = Strings.Get("Tray_Settings");
+        // The corner icons carry no words, so the name they used to show has to be said out
+        // loud instead: as the accessible name, and as the tooltip that answers a hovering
+        // pointer with the same sentence a screen reader hears.
+        Describe(GrowthGuideButton, "PetGrowthGuide_LinkLabel");
+        Describe(SettingsButton, "Tray_Settings");
+        Describe(RefreshButton, "Companion_Refresh");
         SuggestionOpen.Content = Strings.Get("Companion_SuggestionOpen");
         SuggestionDismiss.Content = Strings.Get("Companion_SuggestionDismiss");
+    }
+
+    /// <summary>Names a wordless button, for a screen reader and for a hovering pointer alike.</summary>
+    private static void Describe(FrameworkElement element, string key)
+    {
+        var text = Strings.Get(key);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(element, text);
+        ToolTipService.SetToolTip(element, text);
     }
 
     public void UpdateSettings(CompanionSettings settings)
@@ -733,20 +741,24 @@ public sealed partial class CompanionWindow : Window
         ExperienceTrack.Background = new SolidColorBrush(CompanionPalette.HeroTrack);
         ExperienceBar.Background = heroInk;
 
-        // On the gradient, so it is painted out of the hero's own whites rather than the card
+        // On the gradient, so they are painted out of the hero's own whites rather than the card
         // brushes the rest of the window uses.
         var clear = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
-        RefreshButton.Background = clear;
-        RefreshButton.Foreground = heroInk;
-        RefreshButton.Resources["ButtonBackground"] = clear;
-        RefreshButton.Resources["ButtonBackgroundPointerOver"] = heroWell;
-        RefreshButton.Resources["ButtonBackgroundPressed"] = new SolidColorBrush(
-            Windows.UI.Color.FromArgb(0x52, 0xFF, 0xFF, 0xFF));
-        RefreshButton.Resources["ButtonBackgroundDisabled"] = clear;
-        RefreshButton.Resources["ButtonForeground"] = heroInk;
-        RefreshButton.Resources["ButtonForegroundPointerOver"] = heroInk;
-        RefreshButton.Resources["ButtonForegroundPressed"] = heroInk;
-        RefreshButton.Resources["ButtonForegroundDisabled"] = heroSubtle;
+        var pressed = new SolidColorBrush(Windows.UI.Color.FromArgb(0x52, 0xFF, 0xFF, 0xFF));
+
+        foreach (var button in new[] { GrowthGuideButton, SettingsButton, RefreshButton })
+        {
+            button.Background = clear;
+            button.Foreground = heroInk;
+            button.Resources["ButtonBackground"] = clear;
+            button.Resources["ButtonBackgroundPointerOver"] = heroWell;
+            button.Resources["ButtonBackgroundPressed"] = pressed;
+            button.Resources["ButtonBackgroundDisabled"] = clear;
+            button.Resources["ButtonForeground"] = heroInk;
+            button.Resources["ButtonForegroundPointerOver"] = heroInk;
+            button.Resources["ButtonForegroundPressed"] = heroInk;
+            button.Resources["ButtonForegroundDisabled"] = heroSubtle;
+        }
 
         var card = new SolidColorBrush(CompanionPalette.Card(dark));
         var cardBorder = new SolidColorBrush(CompanionPalette.CardBorder(dark));

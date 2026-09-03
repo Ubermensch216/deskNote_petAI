@@ -1,5 +1,7 @@
 # Phase 0 기준선
 
+> 이 문서는 2026-08-31 시점의 **기록**이다. 이후 변경은 되돌아보기 위한 기준선으로만 쓰고, 현재 동작은 [architecture.md](architecture.md)를 본다.
+
 기준 커밋: `fedebb0e0c3b0564c2b564e53467fa2e487b165f`  
 측정일: 2026-08-31  
 환경: Windows 10, win-x64, .NET SDK 10.0.400

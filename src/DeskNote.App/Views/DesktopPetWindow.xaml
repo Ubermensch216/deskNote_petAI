@@ -4,16 +4,21 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <Grid Background="Transparent">
+        <!-- Bottom-aligned, with the margin under it set from the pet's drawn height in
+             PositionSpeechBubble: the window is a fixed 250px tall but the animal inside it is
+             not, so a top-anchored bubble drifted further from a small or young pet the smaller
+             it was. It never takes the pointer — a click anywhere on the pet is the pet's. -->
         <Border
             x:Name="SpeechBubble"
             Width="210"
             Padding="12,9"
             HorizontalAlignment="Center"
-            VerticalAlignment="Top"
+            VerticalAlignment="Bottom"
             Background="#EE202124"
             BorderBrush="#5FFFFFFF"
             BorderThickness="1"
             CornerRadius="18"
+            IsHitTestVisible="False"
             Visibility="Collapsed">
             <TextBlock
                 x:Name="SpeechText"

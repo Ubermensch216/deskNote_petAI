@@ -24,6 +24,10 @@ public sealed partial class DesktopPetWindow : Window
     private const int FrameCount = 4;
     private const double WalkSpeed = 58;
     private const double CarePropSeconds = 2.6;
+    private const double SpeechBubbleGap = 2;
+    private const double SpeechBubbleReserve = 58;
+    private const int IdleChatterMinimumSeconds = 45;
+    private const int IdleChatterMaximumSeconds = 105;
     private const int GwlExStyle = -20;
     private const long WsExLayered = 0x0008_0000;
     private const long WsExToolWindow = 0x0000_0080;
@@ -40,6 +44,8 @@ public sealed partial class DesktopPetWindow : Window
     private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _bubbleTimer;
     private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _clickTimer;
     private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _carePropTimer;
+    private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _idleChatterTimer;
+    private readonly Random _chatter = new();
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     [ThreadStatic]
     private static object? _systemDispatcherQueueController;
@@ -70,6 +76,32 @@ public sealed partial class DesktopPetWindow : Window
     private TimeSpan _restUntil;
     private NativePoint _dragStartCursor;
     private PointInt32 _dragStartWindow;
+    private string? _lastChatterKey;
+
+    /// <summary>
+    /// What the pet says to itself when nothing has happened.
+    /// </summary>
+    /// <remarks>
+    /// Small, self-absorbed thoughts rather than prompts: the pet is not a reminder that has
+    /// learned to talk, and a line that asks the user for something every time it opens its mouth
+    /// stops being company and becomes another notification. Kept as keys so both languages get
+    /// their own writing instead of one being a translation of the other's jokes.
+    /// </remarks>
+    private static readonly string[] IdleChatterKeys =
+    [
+        "Companion_Idle01",
+        "Companion_Idle02",
+        "Companion_Idle03",
+        "Companion_Idle04",
+        "Companion_Idle05",
+        "Companion_Idle06",
+        "Companion_Idle07",
+        "Companion_Idle08",
+        "Companion_Idle09",
+        "Companion_Idle10",
+        "Companion_Idle11",
+        "Companion_Idle12",
+    ];
 
     public DesktopPetWindow(
         CompanionSnapshot snapshot,
@@ -126,6 +158,11 @@ public sealed partial class DesktopPetWindow : Window
         _carePropTimer.Interval = TimeSpan.FromMilliseconds(33);
         _carePropTimer.Tick += OnCarePropTick;
 
+        _idleChatterTimer = DispatcherQueue.CreateTimer();
+        _idleChatterTimer.IsRepeating = false;
+        _idleChatterTimer.Tick += OnIdleChatterTick;
+
+        ScheduleIdleChatter();
         UpdateSnapshot(snapshot);
         ApplyMotionPreference();
         Activated += OnFirstActivated;
@@ -208,6 +245,84 @@ public sealed partial class DesktopPetWindow : Window
         SpeechBubble.Visibility = Visibility.Visible;
         _bubbleTimer.Stop();
         _bubbleTimer.Start();
+
+        // Anything the pet was told to say resets the idle clock, so a musing never lands on top
+        // of news the user actually asked for.
+        ScheduleIdleChatter();
+    }
+
+    /// <summary>
+    /// Rests the bubble on the pet's head.
+    /// </summary>
+    /// <remarks>
+    /// The window is a fixed 250px tall; the pet inside it is anywhere from about 40px to the full
+    /// 200, once the size setting and the growth silhouette are applied. A bubble pinned to the top
+    /// of the window therefore floated further above the animal the smaller it was — most of a
+    /// hand's width away from a small, young pet, which reads as words belonging to nothing.
+    /// Measuring from the drawn height instead keeps the two together at every size; the cap stops
+    /// a full-grown pet from pushing the bubble out through the top of the window.
+    /// </remarks>
+    private void PositionSpeechBubble() =>
+        SpeechBubble.Margin = new Thickness(
+            0,
+            0,
+            0,
+            Math.Min(
+                (_frameHeight * _growthScaleY) + SpeechBubbleGap,
+                WindowHeight - SpeechBubbleReserve));
+
+    /// <summary>
+    /// Waits a while, then lets the pet think out loud.
+    /// </summary>
+    /// <remarks>
+    /// The gap is randomised because a fixed one turns into a metronome: the second time a bubble
+    /// appears exactly a minute after the first, it stops being a pet having a thought and becomes
+    /// a timer firing. Quiet hours and the proactive switch apply — this is the pet speaking
+    /// first, which is exactly what those settings are about.
+    /// </remarks>
+    private void ScheduleIdleChatter()
+    {
+        _idleChatterTimer.Stop();
+        _idleChatterTimer.Interval = TimeSpan.FromSeconds(
+            _chatter.Next(IdleChatterMinimumSeconds, IdleChatterMaximumSeconds + 1));
+        _idleChatterTimer.Start();
+    }
+
+    private void OnIdleChatterTick(
+        Microsoft.UI.Dispatching.DispatcherQueueTimer sender,
+        object args)
+    {
+        sender.Stop();
+
+        if (!_settings.AllowsProactiveAt(DateTimeOffset.Now)
+            || SpeechBubble.Visibility == Visibility.Visible
+            || _pointerDown)
+        {
+            ScheduleIdleChatter();
+            return;
+        }
+
+        Say(NextChatterKey());
+    }
+
+    /// <summary>Picks a line, never the one just said.</summary>
+    /// <remarks>
+    /// Drawing uniformly at random means the same thought repeating back to back roughly one time
+    /// in twelve, and a pet that says "I forgot what I was thinking" twice in a row reads as
+    /// broken rather than as forgetful.
+    /// </remarks>
+    private string NextChatterKey()
+    {
+        string key;
+
+        do
+        {
+            key = IdleChatterKeys[_chatter.Next(IdleChatterKeys.Length)];
+        }
+        while (string.Equals(key, _lastChatterKey, StringComparison.Ordinal));
+
+        _lastChatterKey = key;
+        return key;
     }
 
     /// <summary>Acts out one paid care action beside the pet.</summary>
@@ -369,6 +484,7 @@ public sealed partial class DesktopPetWindow : Window
         SpriteStrip.Width = _frameWidth * FrameCount;
         SpriteStrip.Height = _frameHeight;
         Canvas.SetLeft(SpriteStrip, -_frame * _frameWidth);
+        PositionSpeechBubble();
     }
 
     private void BeginRest(TimeSpan now, double? seconds = null)
@@ -403,6 +519,7 @@ public sealed partial class DesktopPetWindow : Window
         _growthScaleX = appearance.WidthScale;
         _growthScaleY = appearance.HeightScale;
         ApplyFacingTransform(_settings.ReduceMotion);
+        PositionSpeechBubble();
     }
 
     private void ApplyFacingTransform(bool forceRight = false)
@@ -498,16 +615,20 @@ public sealed partial class DesktopPetWindow : Window
     }
 
     /// <summary>
-    /// A single click has to wait out the system double-click interval before it acts, because
-    /// the first release of a double click looks exactly like a single one. Acting immediately
-    /// would leave a stray empty note behind every time someone asked for the dashboard.
+    /// One click opens the dashboard; two make a note.
     /// </summary>
+    /// <remarks>
+    /// The single click still has to wait out the system double-click interval before it acts,
+    /// because the first release of a double click looks exactly like a single one. What it costs
+    /// is a fraction of a second before the dashboard appears; what it buys is that a double click
+    /// never opens the dashboard on its way to the new note.
+    /// </remarks>
     private void RegisterClick()
     {
         if (_clickTimer.IsRunning)
         {
             _clickTimer.Stop();
-            _showDetails();
+            _ = CreateNoteSafelyAsync();
             return;
         }
 
@@ -519,7 +640,7 @@ public sealed partial class DesktopPetWindow : Window
         object args)
     {
         sender.Stop();
-        _ = CreateNoteSafelyAsync();
+        _showDetails();
     }
 
     private async Task CreateNoteSafelyAsync()
@@ -551,7 +672,7 @@ public sealed partial class DesktopPetWindow : Window
         }
 
         // A drag that started while a click was still pending reads as neither request, so the
-        // pending click is dropped rather than opening a note the user never asked for.
+        // pending click is dropped rather than opening a dashboard the user never asked for.
         _clickTimer.Stop();
         BeginRest(_lastTick, seconds: 2.5);
         _ = SavePositionSafelyAsync(new PointInt32(
@@ -606,6 +727,7 @@ public sealed partial class DesktopPetWindow : Window
         _bubbleTimer.Stop();
         _clickTimer.Stop();
         _carePropTimer.Stop();
+        _idleChatterTimer.Stop();
         _transparentBackdrop?.Dispose();
         _transparentBackdrop = null;
         _backdropCompositor?.Dispose();

@@ -310,6 +310,18 @@
   <data name="Companion_MoodHungry" xml:space="preserve"><value>배가 고파요.</value></data>
   <data name="Companion_MoodUnkempt" xml:space="preserve"><value>좀 씻고 싶어요.</value></data>
   <data name="Companion_MoodBored" xml:space="preserve"><value>심심해요. 놀아주세요.</value></data>
+  <data name="Companion_Idle01" xml:space="preserve"><value>방금 좋은 생각이 났는데… 어디 갔지?</value></data>
+  <data name="Companion_Idle02" xml:space="preserve"><value>오늘 구름은 식빵 모양이에요. 확실해요.</value></data>
+  <data name="Companion_Idle03" xml:space="preserve"><value>제자리에서 세 바퀴 돌면 기분이 좋아져요.</value></data>
+  <data name="Companion_Idle04" xml:space="preserve"><value>메모지 냄새 좋아해요. 바삭한 냄새.</value></data>
+  <data name="Companion_Idle05" xml:space="preserve"><value>조용히 있으면 생각이 더 잘 들려요.</value></data>
+  <data name="Companion_Idle06" xml:space="preserve"><value>낮잠 계획을 아주 꼼꼼히 세우는 중입니다.</value></data>
+  <data name="Companion_Idle07" xml:space="preserve"><value>그림자를 밟아봤는데 하나도 안 아파했어요.</value></data>
+  <data name="Companion_Idle08" xml:space="preserve"><value>좋은 문장은 대체로 짧더라고요.</value></data>
+  <data name="Companion_Idle09" xml:space="preserve"><value>까먹기 전에 적어두는 사람, 멋있어요.</value></data>
+  <data name="Companion_Idle10" xml:space="preserve"><value>오늘 할 일에 '쉬기'도 몰래 넣어뒀어요.</value></data>
+  <data name="Companion_Idle11" xml:space="preserve"><value>어제의 저보다 아주 조금 자란 것 같아요.</value></data>
+  <data name="Companion_Idle12" xml:space="preserve"><value>발끝이 시려서 한 발씩 번갈아 들고 있어요.</value></data>
   <data name="Companion_TaskCapture" xml:space="preserve"><value>의미 있는 메모 남기기</value></data>
   <data name="Companion_TaskRefine" xml:space="preserve"><value>기존 메모 다듬기</value></data>
   <data name="Companion_TaskOrganize" xml:space="preserve"><value>오래된 메모 정리하기</value></data>
