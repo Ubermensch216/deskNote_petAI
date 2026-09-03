@@ -3,260 +3,474 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <ScrollViewer>
-      <Border
-          Padding="18"
-          CornerRadius="16"
-          BorderThickness="1"
-          BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-          Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-        <StackPanel Spacing="14">
+    <!--
+        The dashboard is read top to bottom as three questions: who is this (hero), what should I
+        do now (today), and how is it doing (state). Everything that is reference rather than
+        action — traits, the guide, settings — sits under all three. Colour is applied from
+        CompanionPalette in code rather than through theme resources, because most of it depends on
+        runtime state: a gauge band, whether a tile is today's mission, whether it has been spent.
+    -->
+    <Grid x:Name="Board">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="14,14,14,18">
+            <StackPanel Spacing="12">
 
-            <Grid ColumnSpacing="12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="76" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
+                <!--
+                    Hero. One saturated band at the top so the window reads as a pet, not a form:
+                    the animal, who it is, what it is saying, and the single bar that says how far
+                    it has come. Nothing here is actionable, which is why it is also the only part
+                    that is allowed to be purely lovely.
+                -->
+                <Border x:Name="HeroCard" CornerRadius="18" Padding="16,14,16,15">
+                    <StackPanel Spacing="12">
 
+                        <Grid ColumnSpacing="14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <!--
+                                The gauges fall with the clock, so a dashboard left open all
+                                afternoon is showing this morning's pet. It re-reads itself on a
+                                timer; this is for the user who wants to know that what they are
+                                looking at is true right now.
+                            -->
+                            <Button
+                                x:Name="RefreshButton"
+                                Grid.Column="2"
+                                Width="30"
+                                Height="30"
+                                Padding="0"
+                                CornerRadius="8"
+                                BorderThickness="0"
+                                VerticalAlignment="Top"
+                                Click="OnRefreshClicked">
+                                <FontIcon Glyph="&#xE72C;" FontSize="13" />
+                            </Button>
+
+                            <Border
+                                x:Name="AvatarWell"
+                                Width="88"
+                                Height="88"
+                                CornerRadius="26">
+                                <!-- The strip is the same asset used by the desktop pet. The viewport
+                                     exposes exactly one of its four frames, so no neighbouring face leaks in. -->
+                                <Grid
+                                    x:Name="AvatarViewport"
+                                    Width="54"
+                                    Height="72"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    RenderTransformOrigin="0.5,1">
+                                    <Grid.RenderTransform>
+                                        <ScaleTransform x:Name="AvatarGrowthTransform" />
+                                    </Grid.RenderTransform>
+                                    <Grid.Clip>
+                                        <RectangleGeometry Rect="0,0,54,72" />
+                                    </Grid.Clip>
+                                    <Canvas Width="54" Height="72">
+                                        <Image
+                                            x:Name="AvatarSpriteStrip"
+                                            Width="216"
+                                            Height="72"
+                                            Canvas.Left="0"
+                                            Canvas.Top="0"
+                                            Stretch="Fill"
+                                            Source="ms-appx:///Assets/Companion/rabbit-walk.png" />
+                                    </Canvas>
+                                </Grid>
+                            </Border>
+
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="7">
+                                <TextBlock
+                                    x:Name="CompanionName"
+                                    FontSize="20"
+                                    FontWeight="SemiBold"
+                                    TextTrimming="CharacterEllipsis" />
+
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Border x:Name="StagePill" CornerRadius="9" Padding="8,2,8,3">
+                                        <TextBlock
+                                            x:Name="StageLabel"
+                                            FontSize="12"
+                                            FontWeight="SemiBold" />
+                                    </Border>
+                                </StackPanel>
+
+                                <!-- Five rungs, drawn. "1단계" is a number to read; this is a distance to see. -->
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <Border x:Name="StagePip1" Width="16" Height="5" CornerRadius="3" />
+                                    <Border x:Name="StagePip2" Width="16" Height="5" CornerRadius="3" />
+                                    <Border x:Name="StagePip3" Width="16" Height="5" CornerRadius="3" />
+                                    <Border x:Name="StagePip4" Width="16" Height="5" CornerRadius="3" />
+                                    <Border x:Name="StagePip5" Width="16" Height="5" CornerRadius="3" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- What the pet is saying, and why. The two lines that used to sit apart. -->
+                        <Border x:Name="SpeechBubble" CornerRadius="12" Padding="11,8,11,9">
+                            <StackPanel Spacing="2">
+                                <TextBlock
+                                    x:Name="MoodLabel"
+                                    FontSize="14"
+                                    FontWeight="SemiBold"
+                                    TextWrapping="Wrap" />
+                                <TextBlock
+                                    x:Name="RecentReason"
+                                    FontSize="12"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Spacing="6">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="ExperienceLabel" FontSize="12" FontWeight="SemiBold" />
+                                <TextBlock x:Name="ExperienceValue" Grid.Column="1" FontSize="12" />
+                            </Grid>
+
+                            <Border x:Name="ExperienceTrack" Height="10" CornerRadius="5">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition x:Name="ExperienceFill" Width="0*" />
+                                        <ColumnDefinition x:Name="ExperienceRest" Width="1*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border x:Name="ExperienceBar" CornerRadius="5" />
+                                </Grid>
+                            </Border>
+
+                            <TextBlock x:Name="CareDaysLabel" FontSize="12" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- The pet asking for something specific, when it has something to ask. -->
                 <Border
-                    Width="72"
-                    Height="72"
-                    CornerRadius="36"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    x:Name="SuggestionCard"
+                    Padding="13"
+                    CornerRadius="14"
                     BorderThickness="1"
-                    Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
-                    <!-- The strip is the same asset used by the desktop pet. The viewport
-                         exposes exactly one of its four frames, so no neighbouring face leaks in. -->
-                    <Grid
-                        x:Name="AvatarViewport"
-                        Width="54"
-                        Height="72"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        RenderTransformOrigin="0.5,1">
-                        <Grid.RenderTransform>
-                            <ScaleTransform x:Name="AvatarGrowthTransform" />
-                        </Grid.RenderTransform>
-                        <Grid.Clip>
-                            <RectangleGeometry Rect="0,0,54,72" />
-                        </Grid.Clip>
-                        <Canvas Width="54" Height="72">
-                            <Image
-                                x:Name="AvatarSpriteStrip"
-                                Width="216"
-                                Height="72"
-                                Canvas.Left="0"
-                                Canvas.Top="0"
-                                Stretch="Fill"
-                                Source="ms-appx:///Assets/Companion/rabbit-walk.png" />
-                        </Canvas>
-                    </Grid>
+                    Visibility="Collapsed">
+                    <StackPanel Spacing="9">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock
+                                FontFamily="Segoe UI Emoji"
+                                FontSize="16"
+                                Text="&#x1F4AC;"
+                                VerticalAlignment="Top" />
+                            <TextBlock
+                                x:Name="SuggestionText"
+                                FontSize="13"
+                                TextWrapping="Wrap"
+                                VerticalAlignment="Center" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+                            <Button x:Name="SuggestionDismiss" Click="OnSuggestionDismissed" />
+                            <Button
+                                x:Name="SuggestionOpen"
+                                Style="{ThemeResource AccentButtonStyle}"
+                                Click="OnSuggestionOpened" />
+                        </StackPanel>
+                    </StackPanel>
                 </Border>
 
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                    <TextBlock x:Name="CompanionName" FontSize="18" FontWeight="SemiBold" />
-                    <TextBlock x:Name="StageLabel" Opacity="0.85" />
-                    <TextBlock
-                        x:Name="MoodLabel"
-                        Opacity="0.72"
-                        TextWrapping="Wrap" />
-                </StackPanel>
-            </Grid>
+                <!--
+                    Today. The one block the user is meant to act on, so the mission and the buttons
+                    that complete it live together: the day's three tasks are counted at the top,
+                    the app task is stated as a task, and the two care tasks are the gold tiles in
+                    the grid below. Previously the mission was a paragraph at the bottom of the
+                    window, six sections away from the buttons that would have satisfied it.
+                -->
+                <Border x:Name="TodayCard" CornerRadius="16" BorderThickness="1" Padding="14">
+                    <StackPanel Spacing="13">
 
-            <Border
-                x:Name="SuggestionCard"
-                Padding="12"
-                CornerRadius="10"
-                BorderThickness="1"
-                BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                Visibility="Collapsed">
-                <StackPanel Spacing="8">
-                    <TextBlock x:Name="SuggestionText" TextWrapping="Wrap" />
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
-                        <Button x:Name="SuggestionDismiss" Click="OnSuggestionDismissed" />
-                        <Button
-                            x:Name="SuggestionOpen"
-                            Style="{ThemeResource AccentButtonStyle}"
-                            Click="OnSuggestionOpened" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock x:Name="TodayHeader" FontSize="15" FontWeight="SemiBold" />
+
+                            <StackPanel
+                                Grid.Column="1"
+                                Orientation="Horizontal"
+                                Spacing="6"
+                                VerticalAlignment="Center">
+                                <TextBlock x:Name="MissionProgressValue" FontSize="12" FontWeight="SemiBold" />
+                                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                    <Border x:Name="MissionPip1" Width="9" Height="9" CornerRadius="5" />
+                                    <Border x:Name="MissionPip2" Width="9" Height="9" CornerRadius="5" />
+                                    <Border x:Name="MissionPip3" Width="9" Height="9" CornerRadius="5" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+
+                        <!--
+                            The day's two budgets as one object. They stay visibly separate — app
+                            work and care cannot substitute for each other, which is the whole
+                            balance — but a single 30:70 bar says that in one glance where two
+                            score cards said it in four numbers.
+                        -->
+                        <StackPanel Spacing="6">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="DayScoreLabel" FontSize="12" />
+                                <TextBlock x:Name="DayScoreValue" Grid.Column="1" FontSize="12" FontWeight="SemiBold" />
+                            </Grid>
+
+                            <Grid ColumnSpacing="4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="30*" />
+                                    <ColumnDefinition Width="70*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border x:Name="AppScoreTrack" Height="9" CornerRadius="5">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition x:Name="AppScoreFill" Width="0*" />
+                                            <ColumnDefinition x:Name="AppScoreRest" Width="1*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border x:Name="AppScoreBar" CornerRadius="5" />
+                                    </Grid>
+                                </Border>
+
+                                <Border x:Name="CareScoreTrack" Grid.Column="1" Height="9" CornerRadius="5">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition x:Name="CareScoreFill" Width="0*" />
+                                            <ColumnDefinition x:Name="CareScoreRest" Width="1*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border x:Name="CareScoreBar" CornerRadius="5" />
+                                    </Grid>
+                                </Border>
+                            </Grid>
+
+                            <Grid ColumnSpacing="4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="30*" />
+                                    <ColumnDefinition Width="70*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="AppScoreCaption" FontSize="11" />
+                                <TextBlock x:Name="CareScoreCaption" Grid.Column="1" FontSize="11" />
+                            </Grid>
+                        </StackPanel>
+
+                        <!--
+                            The mission's app task. It has no button because it is not earned here:
+                            it is earned by using DeskNote, so it is stated rather than offered.
+                        -->
+                        <Border x:Name="AppTaskChip" CornerRadius="11" BorderThickness="1" Padding="11,9">
+                            <Grid ColumnSpacing="9">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock
+                                    x:Name="AppTaskIcon"
+                                    FontFamily="Segoe UI Emoji"
+                                    FontSize="15"
+                                    Text="&#x1F4DD;"
+                                    VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" Spacing="1">
+                                    <TextBlock x:Name="AppTaskText" FontSize="13" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="AppTaskHint" FontSize="11" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <TextBlock
+                                    x:Name="AppTaskState"
+                                    Grid.Column="2"
+                                    FontSize="12"
+                                    FontWeight="SemiBold"
+                                    VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Care tiles and play chips are built in code: each one carries its own
+                             state, and a template cannot say why a tile is unavailable. -->
+                        <StackPanel Spacing="7">
+                            <TextBlock x:Name="CareHeader" FontSize="12" />
+                            <Grid x:Name="CareTileHost" ColumnSpacing="8" RowSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                            </Grid>
+                        </StackPanel>
+
+                        <StackPanel Spacing="7">
+                            <TextBlock x:Name="PlayHeader" FontSize="12" />
+                            <Grid x:Name="PlayTileHost" ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                            </Grid>
+                        </StackPanel>
+
+                        <TextBlock
+                            x:Name="CareStatus"
+                            FontSize="12"
+                            TextWrapping="Wrap"
+                            Visibility="Collapsed" />
                     </StackPanel>
-                </StackPanel>
-            </Border>
+                </Border>
 
-            <!-- Needs -->
-            <StackPanel Spacing="9">
-                <TextBlock x:Name="NeedsHeader" FontWeight="SemiBold" />
+                <!--
+                    State. Four gauges, coloured by what they are asking for: red is a request,
+                    amber is soon, green is nothing to do. The number stays for anyone who wants
+                    it, but the colour is what is read.
+                -->
+                <Border x:Name="NeedsCard" CornerRadius="16" BorderThickness="1" Padding="14">
+                    <StackPanel Spacing="11">
+                        <TextBlock x:Name="NeedsHeader" FontSize="15" FontWeight="SemiBold" />
+
+                        <Grid ColumnSpacing="9">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="62" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="30" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock FontFamily="Segoe UI Emoji" FontSize="14" Text="&#x1F35A;" VerticalAlignment="Center" />
+                            <TextBlock x:Name="FullnessLabel" Grid.Column="1" FontSize="13" VerticalAlignment="Center" />
+                            <Border x:Name="FullnessTrack" Grid.Column="2" Height="9" CornerRadius="5" VerticalAlignment="Center">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition x:Name="FullnessFill" Width="0*" />
+                                        <ColumnDefinition x:Name="FullnessRest" Width="1*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border x:Name="FullnessBar" CornerRadius="5" />
+                                </Grid>
+                            </Border>
+                            <TextBlock x:Name="FullnessValue" Grid.Column="3" FontSize="12" TextAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+
+                        <Grid ColumnSpacing="9">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="62" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="30" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock FontFamily="Segoe UI Emoji" FontSize="14" Text="&#x1F6C1;" VerticalAlignment="Center" />
+                            <TextBlock x:Name="CleanlinessLabel" Grid.Column="1" FontSize="13" VerticalAlignment="Center" />
+                            <Border x:Name="CleanlinessTrack" Grid.Column="2" Height="9" CornerRadius="5" VerticalAlignment="Center">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition x:Name="CleanlinessFill" Width="0*" />
+                                        <ColumnDefinition x:Name="CleanlinessRest" Width="1*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border x:Name="CleanlinessBar" CornerRadius="5" />
+                                </Grid>
+                            </Border>
+                            <TextBlock x:Name="CleanlinessValue" Grid.Column="3" FontSize="12" TextAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+
+                        <Grid ColumnSpacing="9">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="62" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="30" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock FontFamily="Segoe UI Emoji" FontSize="14" Text="&#x1F60A;" VerticalAlignment="Center" />
+                            <TextBlock x:Name="MoodNeedLabel" Grid.Column="1" FontSize="13" VerticalAlignment="Center" />
+                            <Border x:Name="MoodTrack" Grid.Column="2" Height="9" CornerRadius="5" VerticalAlignment="Center">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition x:Name="MoodFill" Width="0*" />
+                                        <ColumnDefinition x:Name="MoodRest" Width="1*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border x:Name="MoodBar" CornerRadius="5" />
+                                </Grid>
+                            </Border>
+                            <TextBlock x:Name="MoodValue" Grid.Column="3" FontSize="12" TextAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+
+                        <Grid ColumnSpacing="9">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="62" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="30" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock FontFamily="Segoe UI Emoji" FontSize="14" Text="&#x1F497;" VerticalAlignment="Center" />
+                            <TextBlock x:Name="BondLabel" Grid.Column="1" FontSize="13" VerticalAlignment="Center" />
+                            <Border x:Name="BondTrack" Grid.Column="2" Height="9" CornerRadius="5" VerticalAlignment="Center">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition x:Name="BondFill" Width="0*" />
+                                        <ColumnDefinition x:Name="BondRest" Width="1*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border x:Name="BondBar" CornerRadius="5" />
+                                </Grid>
+                            </Border>
+                            <TextBlock x:Name="BondValue" Grid.Column="3" FontSize="12" TextAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Reference, not action: how the pet has been raised so far. -->
+                <Border x:Name="TraitCard" CornerRadius="16" BorderThickness="1" Padding="14">
+                    <StackPanel Spacing="10">
+                        <TextBlock x:Name="TraitHeader" FontSize="13" FontWeight="SemiBold" />
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border x:Name="CuriosityChip" CornerRadius="11" Padding="9,7">
+                                <StackPanel Spacing="1">
+                                    <TextBlock x:Name="CuriosityValue" FontSize="17" FontWeight="SemiBold" />
+                                    <TextBlock x:Name="CuriosityLabel" FontSize="11" />
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="InsightChip" Grid.Column="1" CornerRadius="11" Padding="9,7">
+                                <StackPanel Spacing="1">
+                                    <TextBlock x:Name="InsightValue" FontSize="17" FontWeight="SemiBold" />
+                                    <TextBlock x:Name="InsightLabel" FontSize="11" />
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="ReliabilityChip" Grid.Column="2" CornerRadius="11" Padding="9,7">
+                                <StackPanel Spacing="1">
+                                    <TextBlock x:Name="ReliabilityValue" FontSize="17" FontWeight="SemiBold" />
+                                    <TextBlock x:Name="ReliabilityLabel" FontSize="11" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
                 <Grid ColumnSpacing="8">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="66" />
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="34" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="FullnessLabel" VerticalAlignment="Center" />
-                    <ProgressBar x:Name="FullnessBar" Grid.Column="1" Maximum="100" />
-                    <TextBlock x:Name="FullnessValue" Grid.Column="2" TextAlignment="Right" />
-                </Grid>
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="66" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="34" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="CleanlinessLabel" VerticalAlignment="Center" />
-                    <ProgressBar x:Name="CleanlinessBar" Grid.Column="1" Maximum="100" />
-                    <TextBlock x:Name="CleanlinessValue" Grid.Column="2" TextAlignment="Right" />
-                </Grid>
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="66" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="34" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="MoodNeedLabel" VerticalAlignment="Center" />
-                    <ProgressBar x:Name="MoodBar" Grid.Column="1" Maximum="100" />
-                    <TextBlock x:Name="MoodValue" Grid.Column="2" TextAlignment="Right" />
-                </Grid>
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="66" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="34" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="BondLabel" VerticalAlignment="Center" />
-                    <ProgressBar x:Name="BondBar" Grid.Column="1" Maximum="100" />
-                    <TextBlock x:Name="BondValue" Grid.Column="2" TextAlignment="Right" />
+                    <Button
+                        x:Name="GrowthGuideButton"
+                        HorizontalAlignment="Stretch"
+                        Click="OnGrowthGuideClicked" />
+                    <Button x:Name="SettingsButton" Grid.Column="1" Click="OnSettingsClicked" />
                 </Grid>
             </StackPanel>
-
-            <!-- Growth -->
-            <Border
-                Padding="12"
-                CornerRadius="10"
-                Background="{ThemeResource SubtleFillColorSecondaryBrush}">
-                <StackPanel Spacing="6">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock x:Name="ExperienceLabel" FontWeight="SemiBold" />
-                        <TextBlock x:Name="ExperienceValue" Grid.Column="1" Opacity="0.75" />
-                    </Grid>
-                    <ProgressBar x:Name="ExperienceBar" Maximum="1" />
-                    <TextBlock x:Name="CareDaysLabel" Opacity="0.75" TextWrapping="Wrap" />
-                </StackPanel>
-            </Border>
-
-            <!-- Today's two budgets -->
-            <Grid ColumnSpacing="10">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <Border
-                    Padding="10"
-                    CornerRadius="10"
-                    Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
-                    <StackPanel Spacing="3">
-                        <TextBlock x:Name="AppScoreLabel" Opacity="0.75" />
-                        <TextBlock x:Name="AppScoreValue" FontSize="17" FontWeight="SemiBold" />
-                    </StackPanel>
-                </Border>
-                <Border
-                    Grid.Column="1"
-                    Padding="10"
-                    CornerRadius="10"
-                    Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
-                    <StackPanel Spacing="3">
-                        <TextBlock x:Name="CareScoreLabel" Opacity="0.75" />
-                        <TextBlock x:Name="CareScoreValue" FontSize="17" FontWeight="SemiBold" />
-                    </StackPanel>
-                </Border>
-            </Grid>
-
-            <!-- Care -->
-            <StackPanel Spacing="8">
-                <TextBlock x:Name="CareHeader" FontWeight="SemiBold" />
-                <Grid ColumnSpacing="6" RowSpacing="6">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Button x:Name="FeedButton" Tag="Feed" HorizontalAlignment="Stretch" Click="OnCareClicked" />
-                    <Button x:Name="BasicCareButton" Tag="BasicCare" Grid.Column="1" HorizontalAlignment="Stretch" Click="OnCareClicked" />
-                    <Button x:Name="SpecialCareButton" Tag="SpecialCare" Grid.Row="1" HorizontalAlignment="Stretch" Click="OnCareClicked" />
-                    <Button x:Name="RestButton" Tag="Rest" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" Click="OnCareClicked" />
-                </Grid>
-                <TextBlock x:Name="PlayHeader" Opacity="0.75" />
-                <Grid ColumnSpacing="6">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Button x:Name="ChasePlayButton" Tag="Play.Chase" HorizontalAlignment="Stretch" Click="OnCareClicked" />
-                    <Button x:Name="PuzzlePlayButton" Tag="Play.Puzzle" Grid.Column="1" HorizontalAlignment="Stretch" Click="OnCareClicked" />
-                    <Button x:Name="TossPlayButton" Tag="Play.Toss" Grid.Column="2" HorizontalAlignment="Stretch" Click="OnCareClicked" />
-                </Grid>
-                <Button
-                    x:Name="GreetingButton"
-                    Tag="Greeting"
-                    HorizontalAlignment="Stretch"
-                    Style="{ThemeResource AccentButtonStyle}"
-                    Click="OnCareClicked" />
-                <TextBlock
-                    x:Name="CareStatus"
-                    Opacity="0.75"
-                    TextWrapping="Wrap"
-                    Visibility="Collapsed" />
-            </StackPanel>
-
-            <!-- Mission -->
-            <Border
-                Padding="12"
-                CornerRadius="10"
-                Background="{ThemeResource SubtleFillColorSecondaryBrush}">
-                <StackPanel Spacing="5">
-                    <TextBlock x:Name="MissionHeader" FontWeight="SemiBold" />
-                    <TextBlock x:Name="MissionAppTask" TextWrapping="Wrap" />
-                    <TextBlock x:Name="MissionFirstCare" TextWrapping="Wrap" />
-                    <TextBlock x:Name="MissionSecondCare" TextWrapping="Wrap" />
-                    <TextBlock x:Name="MissionNote" Opacity="0.65" TextWrapping="Wrap" />
-                </StackPanel>
-            </Border>
-
-            <!-- Lifetime flavour counters -->
-            <Border
-                Padding="12"
-                CornerRadius="10"
-                Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
-                <StackPanel Spacing="4">
-                    <TextBlock x:Name="TraitHeader" FontWeight="SemiBold" />
-                    <TextBlock x:Name="TraitSummary" TextWrapping="Wrap" />
-                    <TextBlock x:Name="RecentReason" Opacity="0.72" TextWrapping="Wrap" />
-                </StackPanel>
-            </Border>
-
-            <Grid ColumnSpacing="8">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBlock
-                    x:Name="GrowthGuideLabel"
-                    VerticalAlignment="Center"
-                    FontWeight="SemiBold" />
-                <Button
-                    x:Name="GrowthGuideButton"
-                    Grid.Column="1"
-                    Click="OnGrowthGuideClicked" />
-            </Grid>
-
-            <Button x:Name="SettingsButton" HorizontalAlignment="Right" Click="OnSettingsClicked" />
-        </StackPanel>
-      </Border>
-    </ScrollViewer>
+        </ScrollViewer>
+    </Grid>
 </Window>

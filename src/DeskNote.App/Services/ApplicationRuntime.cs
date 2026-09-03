@@ -101,19 +101,19 @@ public sealed class ApplicationRuntime : IAsyncDisposable
         {
             var liveNoteCount = await _notes.CountAsync(NoteQuery.Default, cancellationToken)
                 .ConfigureAwait(true);
-            var deletedNoteCount = await _notes.CountAsync(
-                    NoteQuery.Default with { OnlyDeleted = true },
-                    cancellationToken)
-                .ConfigureAwait(true);
-            if (StartupNotePolicy.ShouldCreateFirstNote(
-                    Windows.OpenWindowCount,
-                    liveNoteCount + deletedNoteCount))
+
+            switch (StartupNotePolicy.Decide(Windows.OpenWindowCount, liveNoteCount))
             {
-                await Windows.CreateAsync(cancellationToken: cancellationToken).ConfigureAwait(true);
-            }
-            else
-            {
-                Windows.ShowLibrary();
+                case StartupNoteAction.CreateFirstNote:
+                    await Windows.CreateAsync(cancellationToken: cancellationToken).ConfigureAwait(true);
+                    break;
+
+                case StartupNoteAction.OpenMostRecent:
+                    await OpenMostRecentNoteAsync(cancellationToken).ConfigureAwait(true);
+                    break;
+
+                default:
+                    break;
             }
         }
 
@@ -180,6 +180,35 @@ public sealed class ApplicationRuntime : IAsyncDisposable
         await _indexer.BackfillAsync(cancellationToken).ConfigureAwait(true);
     }
 
+    /// <summary>
+    /// Brings back the note the user was last working on when nothing was left open.
+    /// </summary>
+    /// <remarks>
+    /// The desktop is the product; opening the library instead said "your notes are in a list
+    /// somewhere". Only one note is restored rather than the last handful: the user closed them,
+    /// and reopening five windows they had tidied away would be its own kind of wrong.
+    /// </remarks>
+    private async Task OpenMostRecentNoteAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var recent = await _notes
+                .ListAsync(NoteQuery.Default with { Limit = 1 }, cancellationToken)
+                .ConfigureAwait(true);
+
+            if (recent.Count > 0)
+            {
+                await Windows.FocusAsync(recent[0].Id, cancellationToken).ConfigureAwait(true);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Startup continues without it. The tray and the hotkeys still work, which is more
+            // than the user gets if this takes the launch down.
+            CrashLog.Write("Reopening the most recent note during startup failed", ex);
+        }
+    }
+
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
         if (Interlocked.Exchange(ref _stopping, 1) != 0)
@@ -197,6 +226,12 @@ public sealed class ApplicationRuntime : IAsyncDisposable
         // Persist note text before stopping the indexer. A final embedding may be skipped and
         // recovered by backfill, but a final note save may never be skipped.
         await _autosave.FlushAllAsync(cancellationToken).ConfigureAwait(true);
+
+        // Closing the note windows here, deliberately, is what lets them come back tomorrow: a
+        // window torn down by process exit still raises Closed, and that handler would mark every
+        // note closed in a race with the process ending.
+        await Windows.SuspendAsync(cancellationToken).ConfigureAwait(true);
+
         await _autosave.DisposeAsync().ConfigureAwait(true);
 
         _indexer.Dispose();
@@ -333,11 +368,15 @@ public sealed class ApplicationRuntime : IAsyncDisposable
             ShowSettings,
             PerformCareAsync,
             ActOnSuggestionAsync,
-            DismissSuggestionAsync);
+            DismissSuggestionAsync,
+            RefreshCompanionAsync);
         _companionWindow = window;
         window.Closed += (_, _) => _companionWindow = null;
         window.Activate();
     }
+
+    /// <summary>Re-reads the pet and pushes it to every window showing it.</summary>
+    private Task RefreshCompanionAsync() => _companionQueue.RefreshAsync();
 
     private void ConfigureSuggestionTimer(CompanionSettings settings)
     {

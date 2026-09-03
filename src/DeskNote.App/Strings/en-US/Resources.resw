@@ -33,7 +33,7 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <data name="Note_ContentPlaceholder" xml:space="preserve"><value>Write a note</value></data>
+  <data name="Note_ContentPlaceholder" xml:space="preserve"><value>First line becomes the title</value></data>
   <data name="Note_Opacity" xml:space="preserve"><value>Opacity</value></data>
   <data name="Note_Size" xml:space="preserve"><value>Size</value></data>
   <data name="Note_SizeFormat" xml:space="preserve"><value>{0} · {1}×{2}</value></data>
@@ -51,28 +51,36 @@
   <data name="Note_Delete" xml:space="preserve"><value>Delete</value></data>
   <data name="Note_AttachDropCaption" xml:space="preserve"><value>Attach to note</value></data>
   <data name="Explorer_Title" xml:space="preserve"><value>DeskNote — Notes</value></data>
-  <data name="Explorer_AllNotes" xml:space="preserve"><value>All notes</value></data>
-  <data name="Explorer_Deleted" xml:space="preserve"><value>Deleted</value></data>
   <data name="Explorer_Notebooks" xml:space="preserve"><value>Notebooks</value></data>
   <data name="Explorer_Tags" xml:space="preserve"><value>Tags</value></data>
   <data name="Explorer_All" xml:space="preserve"><value>All</value></data>
   <data name="Explorer_SearchPlaceholder" xml:space="preserve"><value>Search notes</value></data>
+  <data name="Explorer_RenameNotebook" xml:space="preserve"><value>Rename notebook</value></data>
+  <data name="Explorer_Rename" xml:space="preserve"><value>Rename</value></data>
+  <data name="Explorer_DeleteNotebook" xml:space="preserve"><value>Delete notebook</value></data>
+  <data name="Explorer_Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Explorer_DeleteNotebookConfirmFormat" xml:space="preserve"><value>Delete the notebook “{0}”? Its notes are kept and simply become unfiled.</value></data>
+  <data name="Explorer_MoveToNotebook" xml:space="preserve"><value>Move to notebook</value></data>
+  <data name="Explorer_NoNotebook" xml:space="preserve"><value>No notebook</value></data>
+  <data name="Explorer_SelectToMove" xml:space="preserve"><value>Select notes to move</value></data>
+  <data name="Explorer_MovedFormat" xml:space="preserve"><value>Moved {0} notes.</value></data>
+  <data name="Note_DeleteConfirmTitle" xml:space="preserve"><value>Delete note</value></data>
+  <data name="Note_DeleteConfirmBody" xml:space="preserve"><value>Permanently delete this note? Its history and attachments go with it, and it cannot be undone.</value></data>
+  <data name="Explorer_Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="Companion_Refresh" xml:space="preserve"><value>Refresh</value></data>
   <data name="Explorer_NewNotebook" xml:space="preserve"><value>New notebook</value></data>
   <data name="Explorer_NotebookName" xml:space="preserve"><value>Notebook name</value></data>
   <data name="Explorer_Create" xml:space="preserve"><value>Create</value></data>
   <data name="Explorer_Cancel" xml:space="preserve"><value>Cancel</value></data>
-  <data name="Explorer_Restore" xml:space="preserve"><value>Restore</value></data>
-  <data name="Explorer_SelectToRestore" xml:space="preserve"><value>Select a note to restore</value></data>
   <data name="Explorer_SelectNotes" xml:space="preserve"><value>Select notes</value></data>
   <data name="Explorer_SelectedFormat" xml:space="preserve"><value>{0} selected</value></data>
   <data name="Explorer_SelectAll" xml:space="preserve"><value>Select all</value></data>
   <data name="Explorer_ClearSelection" xml:space="preserve"><value>Clear selection</value></data>
   <data name="Explorer_DeleteSelected" xml:space="preserve"><value>Delete selected</value></data>
   <data name="Explorer_SelectToDelete" xml:space="preserve"><value>Select notes to delete</value></data>
-  <data name="Explorer_DeleteConfirmTitle" xml:space="preserve"><value>Delete selected notes</value></data>
-  <data name="Explorer_DeleteConfirmFormat" xml:space="preserve"><value>Move {0} selected notes to Deleted? You can restore them later.</value></data>
-  <data name="Explorer_DeletedFormat" xml:space="preserve"><value>Moved {0} notes to Deleted.</value></data>
-  <data name="Explorer_RestoredFormat" xml:space="preserve"><value>Restored {0} notes.</value></data>
+  <data name="Explorer_DeleteConfirmTitle" xml:space="preserve"><value>Delete notes permanently</value></data>
+  <data name="Explorer_DeleteConfirmFormat" xml:space="preserve"><value>Permanently delete {0} selected notes? This cannot be undone.</value></data>
+  <data name="Explorer_DeletedFormat" xml:space="preserve"><value>Deleted {0} notes.</value></data>
   <data name="Explorer_NoNotes" xml:space="preserve"><value>No notes</value></data>
   <data name="Explorer_NoMatchesFormat" xml:space="preserve"><value>No notes match “{0}”</value></data>
   <data name="Explorer_CountFormat" xml:space="preserve"><value>{0} notes</value></data>
@@ -236,10 +244,8 @@ Try adding a date or a weekday.</value></data>
   <data name="Settings_Saved" xml:space="preserve"><value>Saved.</value></data>
   <data name="Companion_Title" xml:space="preserve"><value>DeskNote PetAI</value></data>
   <data name="PetGrowthGuide_LinkLabel" xml:space="preserve"><value>How to raise your pet</value></data>
-  <data name="PetGrowthGuide_Open" xml:space="preserve"><value>Open guide</value></data>
   <data name="PetGrowthGuide_WindowTitle" xml:space="preserve"><value>DeskNote PetAI — How to raise your pet</value></data>
   <data name="PetGrowthGuide_Title" xml:space="preserve"><value>How to raise your pet</value></data>
-  <data name="PetGrowthGuide_Introduction" xml:space="preserve"><value>A day is worth 100 growth points: up to 30 from working with notes and up to 70 from hands-on care. Notes alone raise a young pet, but every stage after that also needs days you actually cared for it.</value></data>
   <data name="PetGrowthGuide_StagesHeader" xml:space="preserve"><value>Growth stages</value></data>
   <data name="PetGrowthGuide_TipsHeader" xml:space="preserve"><value>Worth knowing</value></data>
   <data name="Companion_StageFormat" xml:space="preserve"><value>Stage {0} · {1}</value></data>
@@ -273,8 +279,6 @@ Try adding a date or a weekday.</value></data>
   <data name="Companion_CareDaysRemainingFormat" xml:space="preserve"><value>Care days {0}/{1} · {2} more before the next stage.</value></data>
   <data name="Companion_CareDaysMetFormat" xml:space="preserve"><value>Care days {0}/{1} · only experience left to earn.</value></data>
   <data name="Companion_CareDaysTotalFormat" xml:space="preserve"><value>{0} days cared for</value></data>
-  <data name="Companion_AppScoreLabel" xml:space="preserve"><value>Today's app score</value></data>
-  <data name="Companion_CareScoreLabel" xml:space="preserve"><value>Today's care score</value></data>
   <data name="Companion_ScoreFormat" xml:space="preserve"><value>{0} / {1}</value></data>
   <data name="Companion_CareHeader" xml:space="preserve"><value>Care</value></data>
   <data name="Companion_PlayHeader" xml:space="preserve"><value>Play · two different games earn a bonus</value></data>
@@ -306,8 +310,6 @@ Try adding a date or a weekday.</value></data>
   <data name="Companion_MoodHungry" xml:space="preserve"><value>I am hungry.</value></data>
   <data name="Companion_MoodUnkempt" xml:space="preserve"><value>I could use a wash.</value></data>
   <data name="Companion_MoodBored" xml:space="preserve"><value>I am bored — play with me?</value></data>
-  <data name="Companion_MissionHeader" xml:space="preserve"><value>Today's mission</value></data>
-  <data name="Companion_MissionNote" xml:space="preserve"><value>Missions are a checklist only. Growth points come from the activities above.</value></data>
   <data name="Companion_TaskCapture" xml:space="preserve"><value>Write a meaningful note</value></data>
   <data name="Companion_TaskRefine" xml:space="preserve"><value>Refine an existing note</value></data>
   <data name="Companion_TaskOrganize" xml:space="preserve"><value>Tidy an older note</value></data>
@@ -315,17 +317,33 @@ Try adding a date or a weekday.</value></data>
   <data name="Companion_TaskReuse" xml:space="preserve"><value>Reuse an earlier note</value></data>
   <data name="Companion_TaskAiApplied" xml:space="preserve"><value>Apply an AI result to a note</value></data>
   <data name="Companion_TraitHeader" xml:space="preserve"><value>Lifetime traits</value></data>
-  <data name="Companion_TraitSummaryFormat" xml:space="preserve"><value>Curiosity {0} · Insight {1} · Reliability {2}</value></data>
+  <data name="Companion_TodayHeader" xml:space="preserve"><value>Today</value></data>
+  <data name="Companion_DayScoreLabel" xml:space="preserve"><value>Today's growth score</value></data>
+  <data name="Companion_MissionProgressFormat" xml:space="preserve"><value>Mission {0}/{1}</value></data>
+  <data name="Companion_AppBudgetFormat" xml:space="preserve"><value>App {0}/{1}</value></data>
+  <data name="Companion_CareBudgetFormat" xml:space="preserve"><value>Care {0}/{1}</value></data>
+  <data name="Companion_AppTaskHint" xml:space="preserve"><value>Earned by using DeskNote</value></data>
+  <data name="Companion_TaskDone" xml:space="preserve"><value>Done</value></data>
+  <data name="Companion_PointsFormat" xml:space="preserve"><value>+{0} pts</value></data>
+  <data name="Companion_ActionSpent" xml:space="preserve"><value>Done today</value></data>
+  <data name="Companion_ActionNotNeeded" xml:space="preserve"><value>Not needed yet</value></data>
+  <data name="Companion_TraitCuriosity" xml:space="preserve"><value>Curiosity</value></data>
+  <data name="Companion_TraitInsight" xml:space="preserve"><value>Insight</value></data>
+  <data name="Companion_TraitReliability" xml:space="preserve"><value>Trust</value></data>
   <data name="Companion_ReasonNoteRefined" xml:space="preserve"><value>You refined a note into something more useful.</value></data>
   <data name="Companion_ReasonNoteOrganized" xml:space="preserve"><value>You tidied an older note.</value></data>
   <data name="PetGrowthGuide_PointsPerDayFormat" xml:space="preserve"><value>{0} points a day</value></data>
   <data name="PetGrowthGuide_AppHeader" xml:space="preserve"><value>Points from using the app</value></data>
   <data name="PetGrowthGuide_CareHeader" xml:space="preserve"><value>Points from caring for your pet</value></data>
+  <data name="PetGrowthGuide_Lede" xml:space="preserve"><value>Notes alone raise a young pet. Past that, evolving takes days you actually cared for it.</value></data>
+  <data name="PetGrowthGuide_DayTotalFormat" xml:space="preserve"><value>{0} growth points a day</value></data>
+  <data name="PetGrowthGuide_AppShort" xml:space="preserve"><value>App work</value></data>
+  <data name="PetGrowthGuide_CareShort" xml:space="preserve"><value>Pet care</value></data>
+  <data name="PetGrowthGuide_DailyLimitFormat" xml:space="preserve"><value>{0}x a day</value></data>
+  <data name="PetGrowthGuide_StageCareDaysFormat" xml:space="preserve"><value>{0} care days</value></data>
   <data name="PetGrowthGuide_StageStart" xml:space="preserve"><value>Where every pet starts</value></data>
-  <data name="PetGrowthGuide_StageRequirementFormat" xml:space="preserve"><value>{0} experience · {1} care days</value></data>
   <data name="PetGrowthGuide_StageExperienceOnlyFormat" xml:space="preserve"><value>{0} experience</value></data>
-  <data name="PetGrowthGuide_ScoreLimitFormat" xml:space="preserve"><value>{0} points · {1}x a day</value></data>
-  <data name="PetGrowthGuide_PlayBonusFormat" xml:space="preserve"><value> · {0} bonus points for a second, different game</value></data>
+  <data name="PetGrowthGuide_PlayBonusFormat" xml:space="preserve"><value>Bonus +{0} pts for two different games</value></data>
   <data name="PetGrowthGuide_CareDayNoteFormat" xml:space="preserve"><value>A day counts as a care day once it earns {0} care points. The daily care maximum is {1}, care days do not have to be consecutive, and they are never taken away.</value></data>
   <data name="PetGrowthGuide_TaskCaptureDescription" xml:space="preserve"><value>Counted the first time a note reaches 20 characters.</value></data>
   <data name="PetGrowthGuide_TaskRefineDescription" xml:space="preserve"><value>Counted when you change an existing note by 40 characters or more, or change its checklist or tags.</value></data>

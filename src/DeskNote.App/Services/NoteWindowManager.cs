@@ -29,6 +29,10 @@ public sealed partial class NoteWindowManager(
     DailyBriefing? briefing = null)
 {
     private readonly Dictionary<Guid, NoteWindow> _windows = [];
+
+    /// <summary>Set while shutdown is closing the windows, so a close is not read as "hide this note".</summary>
+    private bool _suspending;
+
     private int _cascadeIndex;
     private NotesExplorerWindow? _explorer;
     private AiChatWindow? _chat;
@@ -202,6 +206,7 @@ public sealed partial class NoteWindowManager(
         };
 
         await notes.AddAsync(note, cancellationToken).ConfigureAwait(true);
+        RefreshLibrary();
 
         var window = Show(note);
         window.FocusEditor();
@@ -238,16 +243,34 @@ public sealed partial class NoteWindowManager(
         NoteOpened?.Invoke(this, new NoteOpened(noteId, context, clock.UtcNow));
     }
 
-    public async Task CloseAllAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Takes every note window off the screen for shutdown, leaving the notes marked open.
+    /// </summary>
+    /// <remarks>
+    /// Closing a note is the user saying "not now"; shutting the app down is not. Without the
+    /// distinction the ordinary Closed handler ran on the way out and cleared the open flag on
+    /// every note, so the next launch had nothing to restore — which is exactly why launching
+    /// used to land on an empty desktop with the library over it.
+    /// </remarks>
+    public async Task SuspendAsync(CancellationToken cancellationToken = default)
     {
-        await autosave.FlushAllAsync(cancellationToken).ConfigureAwait(true);
+        _suspending = true;
 
-        foreach (var window in _windows.Values.ToList())
+        try
         {
-            window.Close();
-        }
+            await autosave.FlushAllAsync(cancellationToken).ConfigureAwait(true);
 
-        _windows.Clear();
+            foreach (var window in _windows.Values.ToList())
+            {
+                window.Close();
+            }
+
+            _windows.Clear();
+        }
+        finally
+        {
+            _suspending = false;
+        }
     }
 
     private NoteWindow Show(Note note)
@@ -514,6 +537,13 @@ public sealed partial class NoteWindowManager(
 
         _windows.Remove(noteId);
 
+        if (_suspending)
+        {
+            // The app is closing, not the note. It stays open so it is on the desktop again next
+            // launch; the text has already been flushed by SuspendAsync.
+            return;
+        }
+
         await autosave.FlushAsync(noteId).ConfigureAwait(true);
         await notes.SetOpenAsync(noteId, isOpen: false).ConfigureAwait(true);
 
@@ -524,6 +554,15 @@ public sealed partial class NoteWindowManager(
 
     private Task OnDeleteRequestedAsync(Guid noteId) => DeleteNotesAsync([noteId]);
 
+    /// <summary>
+    /// Deletes notes for good.
+    /// </summary>
+    /// <remarks>
+    /// There is no deleted view to move them to: a note the user deleted is gone, along with its
+    /// revisions and its copied-in attachments. Both callers — the note's own menu and the
+    /// library's bulk action — confirm first, because this is the one action in the app that
+    /// cannot be taken back.
+    /// </remarks>
     private async Task DeleteNotesAsync(IReadOnlyList<Guid> noteIds)
     {
         foreach (var noteId in noteIds.Distinct())
@@ -539,8 +578,14 @@ public sealed partial class NoteWindowManager(
             }
 
             await autosave.FlushAsync(noteId).ConfigureAwait(true);
-            await notes.SoftDeleteAsync(noteId).ConfigureAwait(true);
+            await notes.PurgeAsync(noteId).ConfigureAwait(true);
+
+            // The rows cascade with the note; the bytes on disk do not, and nothing else refers
+            // to a deleted note's folder.
+            attachmentStore.DeleteEmbeddedFiles(noteId);
             savePipeline.Forget(noteId);
         }
+
+        RefreshLibrary();
     }
 }

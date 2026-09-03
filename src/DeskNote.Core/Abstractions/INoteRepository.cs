@@ -51,6 +51,6 @@ public interface INoteRepository
 
     Task RestoreAsync(Guid id, CancellationToken cancellationToken = default);
 
-    /// <summary>Irreversibly removes a soft-deleted note and its children. Requires user confirmation upstream.</summary>
+    /// <summary>Irreversibly removes a note and its children. Requires user confirmation upstream.</summary>
     Task PurgeAsync(Guid id, CancellationToken cancellationToken = default);
 }

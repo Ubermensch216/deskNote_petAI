@@ -31,6 +31,19 @@ public sealed partial class NotesExplorerWindow : Window
     private readonly Func<IReadOnlyList<Guid>, Task> _deleteNotes;
     private readonly DispatcherTimer _searchTimer = new() { Interval = SearchDebounce };
 
+    /// <summary>
+    /// How long edits elsewhere are collected before the list reloads.
+    /// </summary>
+    /// <remarks>
+    /// Autosave fires every few seconds while a note is being typed into, and each save changes
+    /// the row's preview and its position in "recently updated". Reloading on each one would make
+    /// the list jump under the pointer; a second of quiet means it reloads once, when the typing
+    /// stops.
+    /// </remarks>
+    private static readonly TimeSpan ChangeDebounce = TimeSpan.FromSeconds(1);
+
+    private readonly DispatcherTimer _refreshTimer = new() { Interval = ChangeDebounce };
+
     private NoteQuery _query = NoteQuery.Default;
     private bool _suppressFilterEvents;
 
@@ -61,13 +74,14 @@ public sealed partial class NotesExplorerWindow : Window
 
         AppWindow.Title = Strings.Get("Explorer_Title");
         AppIcon.Apply(this);
-        ScopeAll.Content = Strings.Get("Explorer_AllNotes");
-        ScopeDeleted.Content = Strings.Get("Explorer_Deleted");
         NotebooksHeader.Text = Strings.Get("Explorer_Notebooks");
         TagsHeader.Text = Strings.Get("Explorer_Tags");
         SearchBox.PlaceholderText = Strings.Get("Explorer_SearchPlaceholder");
-        NewNotebookButton.Content = Strings.Get("Explorer_NewNotebook");
-        RestoreButton.Content = Strings.Get("Explorer_Restore");
+        Describe(RefreshButton, "Explorer_Refresh");
+        Describe(NewNotebookButton, "Explorer_NewNotebook");
+        Describe(RenameNotebookButton, "Explorer_RenameNotebook");
+        Describe(DeleteNotebookButton, "Explorer_DeleteNotebook");
+        MoveToNotebookButton.Content = Strings.Get("Explorer_MoveToNotebook");
         SelectAllButton.Content = Strings.Get("Explorer_SelectAll");
         ClearSelectionButton.Content = Strings.Get("Explorer_ClearSelection");
         DeleteSelectedButton.Content = Strings.Get("Explorer_DeleteSelected");
@@ -85,6 +99,16 @@ public sealed partial class NotesExplorerWindow : Window
             await RefreshResultsAsync();
         };
 
+        _refreshTimer.Tick += async (_, _) =>
+        {
+            _refreshTimer.Stop();
+            await RefreshAllAsync();
+        };
+
+        // Nothing is selected yet, so the notebook commands start out inert rather than looking
+        // available for the moment before the first load.
+        UpdateNotebookCommands();
+
         Activated += OnFirstActivated;
     }
 
@@ -92,12 +116,54 @@ public sealed partial class NotesExplorerWindow : Window
     {
         Activated -= OnFirstActivated;
 
-        _suppressFilterEvents = true;
-        ScopeList.SelectedIndex = 0;
-        _suppressFilterEvents = false;
+        await RefreshAllAsync();
+    }
 
+    /// <summary>Reloads the sidebar and the list together.</summary>
+    public async Task RefreshAllAsync()
+    {
         await RefreshFiltersAsync();
         await RefreshResultsAsync();
+    }
+
+    /// <summary>
+    /// Reloads shortly, after a note changed somewhere else in the app.
+    /// </summary>
+    /// <remarks>
+    /// Skipped while rows are selected: the reload replaces the list, and taking a selection away
+    /// from someone who is halfway through choosing what to delete is worse than showing them a
+    /// preview that is a few seconds old. The refresh button is there for that case.
+    /// </remarks>
+    public void ScheduleRefresh()
+    {
+        if (!DispatcherQueue.HasThreadAccess)
+        {
+            DispatcherQueue.TryEnqueue(ScheduleRefresh);
+            return;
+        }
+
+        if (Results.SelectedItems.Count > 0)
+        {
+            return;
+        }
+
+        _refreshTimer.Stop();
+        _refreshTimer.Start();
+    }
+
+    private async void OnRefreshClicked(object sender, RoutedEventArgs e)
+    {
+        _refreshTimer.Stop();
+        RefreshButton.IsEnabled = false;
+
+        try
+        {
+            await RefreshAllAsync();
+        }
+        finally
+        {
+            RefreshButton.IsEnabled = true;
+        }
     }
 
     /// <summary>Reloads the sidebar. Called on open and after anything changes the notebook or tag sets.</summary>
@@ -133,6 +199,7 @@ public sealed partial class NotesExplorerWindow : Window
         }
 
         _suppressFilterEvents = false;
+        UpdateNotebookCommands();
     }
 
     /// <summary>
@@ -215,17 +282,6 @@ public sealed partial class NotesExplorerWindow : Window
         _searchTimer.Start();
     }
 
-    private async void OnScopeChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_suppressFilterEvents || ScopeList.SelectedItem is not ListViewItem { Tag: string scope })
-        {
-            return;
-        }
-
-        _query = _query with { OnlyDeleted = scope == "deleted" };
-        await RefreshResultsAsync();
-    }
-
     private async void OnNotebookChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_suppressFilterEvents || NotebookList.SelectedItem is not NotebookChoice choice)
@@ -234,6 +290,7 @@ public sealed partial class NotesExplorerWindow : Window
         }
 
         _query = _query with { NotebookId = choice.Id };
+        UpdateNotebookCommands();
         await RefreshResultsAsync();
     }
 
@@ -283,22 +340,21 @@ public sealed partial class NotesExplorerWindow : Window
             : Strings.Format("Explorer_SelectedFormat", selectedCount);
         SelectAllButton.IsEnabled = Results.Items.Count > 0 && selectedCount < Results.Items.Count;
         ClearSelectionButton.IsEnabled = selectedCount > 0;
-        DeleteSelectedButton.Visibility = _query.OnlyDeleted
-            ? Visibility.Collapsed
-            : Visibility.Visible;
-        DeleteSelectedButton.IsEnabled = selectedCount > 0 && !_query.OnlyDeleted;
-        RestoreButton.Visibility = _query.OnlyDeleted ? Visibility.Visible : Visibility.Collapsed;
-        RestoreButton.IsEnabled = selectedCount > 0;
+        MoveToNotebookButton.IsEnabled = selectedCount > 0;
+        DeleteSelectedButton.IsEnabled = selectedCount > 0;
+    }
+
+    /// <summary>A notebook is only actionable when it is a real one — "All" is a filter, not a folder.</summary>
+    private void UpdateNotebookCommands()
+    {
+        var selected = NotebookList.SelectedItem is NotebookChoice { Id: not null };
+        RenameNotebookButton.IsEnabled = selected;
+        DeleteNotebookButton.IsEnabled = selected;
     }
 
     private async void OnDeleteSelectedClicked(object sender, RoutedEventArgs e)
     {
-        var selected = Results.SelectedItems
-            .OfType<NoteSummary>()
-            .Where(note => !note.IsDeleted)
-            .Select(note => note.Id)
-            .Distinct()
-            .ToList();
+        var selected = SelectedNoteIds();
         if (selected.Count == 0)
         {
             StatusText.Text = Strings.Get("Explorer_SelectToDelete");
@@ -336,29 +392,165 @@ public sealed partial class NotesExplorerWindow : Window
         }
     }
 
-    private async void OnRestoreClicked(object sender, RoutedEventArgs e)
+    private List<Guid> SelectedNoteIds() => Results.SelectedItems
+        .OfType<NoteSummary>()
+        .Select(note => note.Id)
+        .Distinct()
+        .ToList();
+
+    /// <summary>
+    /// Builds the destinations at the moment the menu opens.
+    /// </summary>
+    /// <remarks>
+    /// Reading the notebooks here rather than caching them means one made seconds ago in the
+    /// sidebar is already somewhere notes can go. "No notebook" comes first because taking a note
+    /// out of a folder is as ordinary an act as putting it in one.
+    /// </remarks>
+    private async void OnMoveFlyoutOpening(object? sender, object e)
     {
-        var selected = Results.SelectedItems
-            .OfType<NoteSummary>()
-            .Where(note => note.IsDeleted)
-            .Select(note => note.Id)
-            .Distinct()
-            .ToList();
+        MoveToNotebookFlyout.Items.Clear();
+
+        var unfiled = new MenuFlyoutItem { Text = Strings.Get("Explorer_NoNotebook") };
+        unfiled.Click += async (_, _) => await MoveSelectedAsync(null);
+        MoveToNotebookFlyout.Items.Add(unfiled);
+
+        try
+        {
+            var notebooks = await _library.ListNotebooksAsync();
+            if (notebooks.Count > 0)
+            {
+                MoveToNotebookFlyout.Items.Add(new MenuFlyoutSeparator());
+            }
+
+            foreach (var notebook in notebooks)
+            {
+                var item = new MenuFlyoutItem { Text = notebook.Name };
+                var target = notebook.Id;
+                item.Click += async (_, _) => await MoveSelectedAsync(target);
+                MoveToNotebookFlyout.Items.Add(item);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            CrashLog.Write("Listing notebooks for a move failed", ex);
+        }
+    }
+
+    private async Task MoveSelectedAsync(Guid? notebookId)
+    {
+        var selected = SelectedNoteIds();
         if (selected.Count == 0)
         {
-            StatusText.Text = Strings.Get("Explorer_SelectToRestore");
+            StatusText.Text = Strings.Get("Explorer_SelectToMove");
             return;
         }
 
-        RestoreButton.IsEnabled = false;
-        foreach (var noteId in selected)
+        try
         {
-            await _notes.RestoreAsync(noteId);
+            foreach (var noteId in selected)
+            {
+                await _notes.SetNotebookAsync(noteId, notebookId);
+            }
+
+            await RefreshAllAsync();
+            StatusText.Text = Strings.Format("Explorer_MovedFormat", selected.Count);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            CrashLog.Write("Moving notes to a notebook failed", ex);
+            StatusText.Text = ex.Message;
+        }
+    }
+
+    private async void OnRenameNotebookClicked(object sender, RoutedEventArgs e)
+    {
+        if (NotebookList.SelectedItem is not NotebookChoice { Id: { } notebookId } choice)
+        {
+            return;
         }
 
-        await RefreshFiltersAsync();
-        await RefreshResultsAsync();
-        StatusText.Text = Strings.Format("Explorer_RestoredFormat", selected.Count);
+        var input = new TextBox { Text = choice.Label, SelectionStart = choice.Label.Length };
+        var dialog = new ContentDialog
+        {
+            XamlRoot = Root.XamlRoot,
+            Title = Strings.Get("Explorer_RenameNotebook"),
+            Content = input,
+            PrimaryButtonText = Strings.Get("Explorer_Rename"),
+            CloseButtonText = Strings.Get("Explorer_Cancel"),
+            DefaultButton = ContentDialogButton.Primary,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary
+            || string.IsNullOrWhiteSpace(input.Text))
+        {
+            return;
+        }
+
+        try
+        {
+            await _library.RenameNotebookAsync(notebookId, input.Text);
+            await RefreshAllAsync();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            CrashLog.Write("Renaming a notebook failed", ex);
+            StatusText.Text = ex.Message;
+        }
+    }
+
+    /// <summary>
+    /// Deletes a notebook. The notes inside it are not deleted with it.
+    /// </summary>
+    /// <remarks>
+    /// The dialog says so out loud. With no deleted view left to recover from, a user has every
+    /// reason to fear that removing the folder removes the work, and being told otherwise is what
+    /// makes the command usable.
+    /// </remarks>
+    private async void OnDeleteNotebookClicked(object sender, RoutedEventArgs e)
+    {
+        if (NotebookList.SelectedItem is not NotebookChoice { Id: { } notebookId } choice)
+        {
+            return;
+        }
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = Root.XamlRoot,
+            Title = Strings.Get("Explorer_DeleteNotebook"),
+            Content = Strings.Format("Explorer_DeleteNotebookConfirmFormat", choice.Label),
+            PrimaryButtonText = Strings.Get("Explorer_Delete"),
+            CloseButtonText = Strings.Get("Explorer_Cancel"),
+            DefaultButton = ContentDialogButton.Close,
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        try
+        {
+            await _library.DeleteNotebookAsync(notebookId);
+
+            if (_query.NotebookId == notebookId)
+            {
+                _query = _query with { NotebookId = null };
+            }
+
+            await RefreshAllAsync();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            CrashLog.Write("Deleting a notebook failed", ex);
+            StatusText.Text = ex.Message;
+        }
+    }
+
+    private static void Describe(FrameworkElement element, string key)
+    {
+        var text = Strings.Get(key);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(element, text);
+        ToolTipService.SetToolTip(element, text);
     }
 
     private async void OnNewNotebookClicked(object sender, RoutedEventArgs e)

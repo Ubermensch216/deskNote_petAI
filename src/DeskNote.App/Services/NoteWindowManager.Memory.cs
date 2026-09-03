@@ -28,9 +28,23 @@ public sealed partial class NoteWindowManager
             (noteId, origin) => FocusAsync(noteId, new NoteOpenContext { Origin = origin }),
             DeleteNotesAsync,
             hybridSearch);
-        _explorer.Closed += (_, _) => _explorer = null;
+
+        // Only while it is on screen. The library showing yesterday's preview of a note that has
+        // been edited since is the thing that made it feel like a separate, stale application.
+        savePipeline.Saved += OnNoteSavedWhileLibraryOpen;
+        _explorer.Closed += (_, _) =>
+        {
+            savePipeline.Saved -= OnNoteSavedWhileLibraryOpen;
+            _explorer = null;
+        };
+
         _explorer.Activate();
     }
+
+    private void OnNoteSavedWhileLibraryOpen(NoteSaveResult result) => RefreshLibrary();
+
+    /// <summary>Tells the library, if it is open, that what it is showing has changed.</summary>
+    public void RefreshLibrary() => _explorer?.ScheduleRefresh();
 
     /// <summary>
     /// Opens a note's stored versions, or replaces the window if another note's are showing.

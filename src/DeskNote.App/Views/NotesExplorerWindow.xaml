@@ -11,34 +11,48 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <!-- Scopes: everything, the deleted view, notebooks and tags. -->
+        <!-- The two ways of filtering: notebooks and tags. -->
         <Grid Grid.Column="0" Padding="12,16,8,12" RowSpacing="10">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <ListView
-                x:Name="ScopeList"
-                Grid.Row="0"
-                SelectionMode="Single"
-                SelectionChanged="OnScopeChanged">
-                <ListViewItem x:Name="ScopeAll" Tag="all" />
-                <ListViewItem x:Name="ScopeDeleted" Tag="deleted" />
-            </ListView>
+            <!--
+                New, rename and delete sit on the notebook list rather than in the bottom bar:
+                they act on what is selected right underneath them, and a rename with no visible
+                relationship to the list it changes is a command nobody finds.
+            -->
+            <Grid Grid.Row="0" ColumnSpacing="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
 
-            <TextBlock
-                Grid.Row="1"
-                Margin="4,8,0,0"
-                Style="{ThemeResource CaptionTextBlockStyle}"
-                x:Name="NotebooksHeader" />
+                <TextBlock
+                    x:Name="NotebooksHeader"
+                    Margin="4,0,0,0"
+                    VerticalAlignment="Center"
+                    Style="{ThemeResource CaptionTextBlockStyle}" />
+
+                <Button x:Name="NewNotebookButton" Grid.Column="1" Width="30" Height="28" Padding="0" Click="OnNewNotebookClicked">
+                    <FontIcon Glyph="&#xE710;" FontSize="12" />
+                </Button>
+                <Button x:Name="RenameNotebookButton" Grid.Column="2" Width="30" Height="28" Padding="0" Click="OnRenameNotebookClicked">
+                    <FontIcon Glyph="&#xE70F;" FontSize="12" />
+                </Button>
+                <Button x:Name="DeleteNotebookButton" Grid.Column="3" Width="30" Height="28" Padding="0" Click="OnDeleteNotebookClicked">
+                    <FontIcon Glyph="&#xE74D;" FontSize="12" />
+                </Button>
+            </Grid>
 
             <ListView
                 x:Name="NotebookList"
-                Grid.Row="2"
+                Grid.Row="1"
                 SelectionMode="Single"
                 SelectionChanged="OnNotebookChanged">
                 <ListView.ItemTemplate>
@@ -49,14 +63,14 @@
             </ListView>
 
             <TextBlock
-                Grid.Row="3"
+                Grid.Row="2"
                 Margin="4,8,0,0"
                 Style="{ThemeResource CaptionTextBlockStyle}"
                 x:Name="TagsHeader" />
 
             <ListView
                 x:Name="TagList"
-                Grid.Row="4"
+                Grid.Row="3"
                 SelectionMode="Single"
                 SelectionChanged="OnTagChanged">
                 <ListView.ItemTemplate>
@@ -75,15 +89,36 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <AutoSuggestBox
-                x:Name="SearchBox"
-                Grid.Row="0"
-                QueryIcon="Find"
-                TextChanged="OnSearchTextChanged" />
+            <Grid Grid.Row="0" ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <AutoSuggestBox
+                    x:Name="SearchBox"
+                    QueryIcon="Find"
+                    TextChanged="OnSearchTextChanged" />
+
+                <!--
+                    The list also reloads itself when a note is saved elsewhere. The button is for
+                    the case that cannot be caught from in here — a change made while a selection
+                    was being held, or simple doubt about whether what is on screen is current.
+                -->
+                <Button
+                    x:Name="RefreshButton"
+                    Grid.Column="1"
+                    Width="36"
+                    Padding="0"
+                    Click="OnRefreshClicked">
+                    <FontIcon Glyph="&#xE72C;" FontSize="14" />
+                </Button>
+            </Grid>
 
             <Grid Grid.Row="1" ColumnSpacing="8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
@@ -102,9 +137,16 @@
                     x:Name="ClearSelectionButton"
                     Grid.Column="2"
                     Click="OnClearSelectionClicked" />
+                <!-- The notebooks are read when the flyout opens, so a notebook made a moment
+                     ago in the sidebar is already a destination. -->
+                <Button x:Name="MoveToNotebookButton" Grid.Column="3">
+                    <Button.Flyout>
+                        <MenuFlyout x:Name="MoveToNotebookFlyout" Opening="OnMoveFlyoutOpening" />
+                    </Button.Flyout>
+                </Button>
                 <Button
                     x:Name="DeleteSelectedButton"
-                    Grid.Column="3"
+                    Grid.Column="4"
                     Click="OnDeleteSelectedClicked" />
             </Grid>
 
@@ -169,10 +211,6 @@
                     Opacity="0.7"
                     Style="{ThemeResource CaptionTextBlockStyle}" />
 
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                    <Button x:Name="NewNotebookButton" Click="OnNewNotebookClicked" />
-                    <Button x:Name="RestoreButton" Click="OnRestoreClicked" Visibility="Collapsed" />
-                </StackPanel>
             </Grid>
         </Grid>
     </Grid>

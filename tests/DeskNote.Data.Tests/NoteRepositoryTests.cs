@@ -148,20 +148,30 @@ public class NoteRepositoryTests
         Assert.Single(await db.Notes.ListAsync(NoteQuery.Default));
     }
 
-    /// <summary>Purge is irreversible, so it must refuse a note that was never soft-deleted.</summary>
+    /// <summary>
+    /// Deleting is immediate: the note goes, whether or not it ever passed through a deleted view.
+    /// </summary>
+    /// <remarks>
+    /// It used to refuse a live note, because deletion was two-stage and the guard was what stopped
+    /// a stray call from destroying work. The app now deletes on the spot at the user's request, so
+    /// the guard would refuse every real deletion; the confirmation dialog is what protects the
+    /// note instead.
+    /// </remarks>
     [Fact]
-    public async Task Purge_refuses_a_live_note_and_accepts_a_deleted_one()
+    public async Task Purge_removes_a_live_note_outright()
     {
         await using var db = await TestDatabase.CreateAsync();
         var note = NewNote("영구 삭제");
         await db.Notes.AddAsync(note);
 
         await db.Notes.PurgeAsync(note.Id);
-        Assert.NotNull(await db.Notes.GetAsync(note.Id));
-
-        await db.Notes.SoftDeleteAsync(note.Id);
-        await db.Notes.PurgeAsync(note.Id);
         Assert.Null(await db.Notes.GetAsync(note.Id));
+
+        var soft = NewNote("거쳐 간 메모");
+        await db.Notes.AddAsync(soft);
+        await db.Notes.SoftDeleteAsync(soft.Id);
+        await db.Notes.PurgeAsync(soft.Id);
+        Assert.Null(await db.Notes.GetAsync(soft.Id));
     }
 
     [Fact]

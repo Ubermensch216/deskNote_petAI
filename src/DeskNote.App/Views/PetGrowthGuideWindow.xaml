@@ -3,96 +3,176 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <ScrollViewer>
-        <StackPanel Padding="24" Spacing="18">
+    <!--
+        The manual for the game the dashboard plays, and it uses the dashboard's own language:
+        the same hero band, the same indigo for app work and teal for care, the same gold for the
+        thing you are aiming at. A user arrives here from the pet window, and a help page in system
+        greys would read as a different application.
+    -->
+    <Grid x:Name="Board">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="22,20,22,22">
+            <StackPanel Spacing="14">
 
-            <StackPanel Spacing="5">
-                <TextBlock
-                    x:Name="PageTitle"
-                    Style="{ThemeResource TitleTextBlockStyle}" />
-                <TextBlock
-                    x:Name="Introduction"
-                    Opacity="0.75"
-                    TextWrapping="Wrap" />
-            </StackPanel>
+                <Border x:Name="HeroCard" CornerRadius="18" Padding="20,16,20,17">
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
 
-            <Border
-                Padding="14"
-                CornerRadius="12"
-                Background="{ThemeResource SubtleFillColorSecondaryBrush}">
-                <Grid ColumnSpacing="12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Spacing="2">
-                        <TextBlock x:Name="AppBudgetLabel" Opacity="0.75" />
-                        <TextBlock x:Name="AppBudgetValue" FontSize="18" FontWeight="SemiBold" />
+                        <Border x:Name="AvatarWell" Width="84" Height="84" CornerRadius="26">
+                            <Grid Width="54" Height="72" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Grid.Clip>
+                                    <RectangleGeometry Rect="0,0,54,72" />
+                                </Grid.Clip>
+                                <Canvas Width="54" Height="72">
+                                    <Image
+                                        x:Name="AvatarSpriteStrip"
+                                        Width="216"
+                                        Height="72"
+                                        Canvas.Left="0"
+                                        Canvas.Top="0"
+                                        Stretch="Fill" />
+                                </Canvas>
+                            </Grid>
+                        </Border>
+
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="7">
+                            <TextBlock x:Name="PageTitle" FontSize="24" FontWeight="SemiBold" />
+                            <TextBlock x:Name="Lede" FontSize="13" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!--
+                    The one number the whole page hangs off, drawn rather than stated. The 30:70
+                    split is the balance itself — app work and care cannot substitute for each
+                    other — and the two colours here are the two section cards further down.
+                -->
+                <Border x:Name="BudgetCard" CornerRadius="16" BorderThickness="1" Padding="18,15,18,16">
+                    <StackPanel Spacing="11">
+                        <TextBlock x:Name="BudgetHeader" FontSize="15" FontWeight="SemiBold" />
+
+                        <Grid ColumnSpacing="6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="30*" />
+                                <ColumnDefinition Width="70*" />
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="AppBudgetBar" Height="12" CornerRadius="6" />
+                            <Border x:Name="CareBudgetBar" Grid.Column="1" Height="12" CornerRadius="6" />
+                        </Grid>
+
+                        <Grid ColumnSpacing="6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="30*" />
+                                <ColumnDefinition Width="70*" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Spacing="1">
+                                <TextBlock x:Name="AppBudgetLabel" FontSize="12" />
+                                <TextBlock x:Name="AppBudgetValue" FontSize="15" FontWeight="SemiBold" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="1">
+                                <TextBlock x:Name="CareBudgetLabel" FontSize="12" />
+                                <TextBlock x:Name="CareBudgetValue" FontSize="15" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Spacing="2">
-                        <TextBlock x:Name="CareBudgetLabel" Opacity="0.75" />
-                        <TextBlock x:Name="CareBudgetValue" FontSize="18" FontWeight="SemiBold" />
+                </Border>
+
+                <!-- The ladder, as a ladder: five stops on one rail, with the last one gold. -->
+                <Border x:Name="StagesCard" CornerRadius="16" BorderThickness="1" Padding="18,15,18,16">
+                    <StackPanel Spacing="14">
+                        <TextBlock x:Name="StagesHeader" FontSize="15" FontWeight="SemiBold" />
+
+                        <Grid x:Name="StageTrack">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- The rail sits behind the stops; it is added first so it stays there. -->
+                            <Border
+                                x:Name="StageRail"
+                                Grid.ColumnSpan="5"
+                                Height="4"
+                                CornerRadius="2"
+                                Margin="48,15,48,0"
+                                VerticalAlignment="Top" />
+                        </Grid>
+
+                        <Border x:Name="CareDayNoteBox" CornerRadius="12" Padding="13,11">
+                            <Grid ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    FontFamily="Segoe UI Emoji"
+                                    FontSize="15"
+                                    Text="&#x1F4A1;"
+                                    VerticalAlignment="Top" />
+                                <TextBlock
+                                    x:Name="CareDayNote"
+                                    Grid.Column="1"
+                                    FontSize="12.5"
+                                    TextWrapping="Wrap" />
+                            </Grid>
+                        </Border>
                     </StackPanel>
-                </Grid>
-            </Border>
-
-            <StackPanel Spacing="8">
-                <TextBlock
-                    x:Name="StagesHeader"
-                    Style="{ThemeResource SubtitleTextBlockStyle}" />
-                <Border
-                    Padding="16"
-                    CornerRadius="12"
-                    Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1">
-                    <StackPanel x:Name="StageRows" Spacing="9" />
                 </Border>
-                <TextBlock x:Name="CareDayNote" Opacity="0.75" TextWrapping="Wrap" />
-            </StackPanel>
 
-            <StackPanel Spacing="8">
-                <TextBlock
-                    x:Name="AppHeader"
-                    Style="{ThemeResource SubtitleTextBlockStyle}" />
-                <Border
-                    Padding="16"
-                    CornerRadius="12"
-                    Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1">
-                    <StackPanel x:Name="AppRows" Spacing="12" />
+                <Border x:Name="AppCard" CornerRadius="16" BorderThickness="1" Padding="18,15,18,16">
+                    <StackPanel Spacing="12">
+                        <Grid ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="AppAccent" Width="5" Height="18" CornerRadius="3" VerticalAlignment="Center" />
+                            <TextBlock x:Name="AppHeader" Grid.Column="1" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <Border x:Name="AppHeaderChip" Grid.Column="2" CornerRadius="9" Padding="9,3">
+                                <TextBlock x:Name="AppHeaderChipText" FontSize="12" FontWeight="SemiBold" />
+                            </Border>
+                        </Grid>
+                        <StackPanel x:Name="AppRows" Spacing="0" />
+                    </StackPanel>
                 </Border>
-            </StackPanel>
 
-            <StackPanel Spacing="8">
-                <TextBlock
-                    x:Name="CareHeader"
-                    Style="{ThemeResource SubtitleTextBlockStyle}" />
-                <Border
-                    Padding="16"
-                    CornerRadius="12"
-                    Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1">
-                    <StackPanel x:Name="CareRows" Spacing="12" />
+                <Border x:Name="CareCard" CornerRadius="16" BorderThickness="1" Padding="18,15,18,16">
+                    <StackPanel Spacing="12">
+                        <Grid ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="CareAccent" Width="5" Height="18" CornerRadius="3" VerticalAlignment="Center" />
+                            <TextBlock x:Name="CareHeader" Grid.Column="1" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <Border x:Name="CareHeaderChip" Grid.Column="2" CornerRadius="9" Padding="9,3">
+                                <TextBlock x:Name="CareHeaderChipText" FontSize="12" FontWeight="SemiBold" />
+                            </Border>
+                        </Grid>
+                        <StackPanel x:Name="CareRows" Spacing="0" />
+                    </StackPanel>
                 </Border>
+
+                <Border x:Name="TipsCard" CornerRadius="16" BorderThickness="1" Padding="18,15,18,16">
+                    <StackPanel Spacing="11">
+                        <TextBlock x:Name="TipsHeader" FontSize="15" FontWeight="SemiBold" />
+                        <StackPanel x:Name="TipRows" Spacing="9" />
+                    </StackPanel>
+                </Border>
+
+                <Button
+                    x:Name="CloseButton"
+                    HorizontalAlignment="Right"
+                    Click="OnCloseClicked" />
             </StackPanel>
-
-            <Border
-                Padding="16"
-                CornerRadius="12"
-                Background="{ThemeResource SubtleFillColorSecondaryBrush}">
-                <StackPanel Spacing="7">
-                    <TextBlock x:Name="TipsHeader" FontWeight="SemiBold" />
-                    <StackPanel x:Name="TipRows" Spacing="7" />
-                </StackPanel>
-            </Border>
-
-            <Button
-                x:Name="CloseButton"
-                HorizontalAlignment="Right"
-                Click="OnCloseClicked" />
-        </StackPanel>
-    </ScrollViewer>
+        </ScrollViewer>
+    </Grid>
 </Window>

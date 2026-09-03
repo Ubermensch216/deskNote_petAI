@@ -32,7 +32,9 @@ namespace DeskNote.App.Views;
 /// <para>
 /// The note has no title field and no visible chrome at rest: what is on screen is the text and
 /// the paper it sits on. The commands fade in on hover or focus, which is what report p4 asks for
-/// and what keeps a 240×180 note from spending a third of its height on furniture.
+/// and what keeps a 240×180 note from spending a third of its height on furniture. The title is
+/// the first line (<see cref="NoteContent.DeriveTitle"/>) and appears with that chrome, so the
+/// name the library shows is discoverable without costing the note a row.
 /// </para>
 /// </remarks>
 public sealed partial class NoteWindow : Window
@@ -115,6 +117,7 @@ public sealed partial class NoteWindow : Window
         _suppressChangeEvents = false;
 
         LocalizeChrome();
+        ShowTitle();
         UpdatePinState();
         BuildColorChoices();
         ApplySurface();
@@ -234,6 +237,7 @@ public sealed partial class NoteWindow : Window
         ContentBox.Text = content;
         ContentBox.SelectionStart = content.Length;
         _suppressChangeEvents = false;
+        ShowTitle();
     }
 
     /// <summary>Inserts text at the caret, as an ordinary undoable edit.</summary>
@@ -426,8 +430,34 @@ public sealed partial class NoteWindow : Window
     private void RaiseAppearanceChanged() =>
         AppearanceChanged?.Invoke(this, new NoteAppearance(_colorKey, _opacity, _alwaysOnTop));
 
-    private void RaiseTextChanged() =>
+    private void RaiseTextChanged()
+    {
+        ShowTitle();
         TextChanged?.Invoke(this, new NoteText(CurrentTitle, ContentBox.Text));
+    }
+
+    /// <summary>
+    /// Puts the note's derived title where it can be seen.
+    /// </summary>
+    /// <remarks>
+    /// A note has no title field: the title is its first line, stripped of markup
+    /// (<see cref="NoteContent.DeriveTitle"/>), and that is what the library, search results and
+    /// reminders show. Until now nothing on the note itself said so, which left "how do I set the
+    /// title?" as a question the app never answered. The strip shows it on hover, and the window
+    /// name carries it into Alt+Tab and the taskbar.
+    /// </remarks>
+    private void ShowTitle()
+    {
+        var title = CurrentTitle;
+
+        TitleLabel.Text = title;
+
+        var windowTitle = title.Length > 0 ? title : "DeskNote";
+        if (!string.Equals(AppWindow.Title, windowTitle, StringComparison.Ordinal))
+        {
+            AppWindow.Title = windowTitle;
+        }
+    }
 
     private void OnTextChanged(object sender, TextChangedEventArgs e)
     {
@@ -740,10 +770,41 @@ public sealed partial class NoteWindow : Window
     }
 
 
-    private void OnDeleteRowClicked(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// Asks before deleting, because deleting is now final.
+    /// </summary>
+    /// <remarks>
+    /// The menu row used to delete on the click: the note went to the deleted view and could be
+    /// restored from the library, so the click was recoverable. Deletion is immediate now, and the
+    /// same click a hand's width from "Keep on top" would destroy the note and its history with no
+    /// way back. The dialog is what replaces the deleted view as the safety net.
+    /// </remarks>
+    private async void OnDeleteRowClicked(object sender, RoutedEventArgs e)
     {
         MoreFlyout.Hide();
-        DeleteRequested?.Invoke(this, EventArgs.Empty);
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = Surface.XamlRoot,
+            Title = Strings.Get("Note_DeleteConfirmTitle"),
+            Content = Strings.Get("Note_DeleteConfirmBody"),
+            PrimaryButtonText = Strings.Get("Note_Delete"),
+            CloseButtonText = Strings.Get("Explorer_Cancel"),
+            DefaultButton = ContentDialogButton.Close,
+        };
+
+        try
+        {
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+            {
+                DeleteRequested?.Invoke(this, EventArgs.Empty);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // A dialog that cannot open must not delete the note by default.
+            CrashLog.Write("Confirming a note deletion failed", ex);
+        }
     }
 
     private void OnColorChosen(object sender, RoutedEventArgs e)
@@ -935,7 +996,7 @@ public sealed partial class NoteWindow : Window
     {
         var visible = _pointerInside || _menuOpen || ContentBox.FocusState != FocusState.Unfocused;
 
-        foreach (var element in new UIElement[] { LeadingChrome, TrailingChrome, FormatBar })
+        foreach (var element in new UIElement[] { LeadingChrome, TitleLabel, TrailingChrome, FormatBar })
         {
             element.Opacity = visible ? 1 : 0;
             element.IsHitTestVisible = visible;
@@ -1034,6 +1095,7 @@ public sealed partial class NoteWindow : Window
         Surface.Resources["ButtonBackgroundPressed"] = Tint(ink, 0x2A);
 
         ContentBox.Foreground = inkBrush;
+        TitleLabel.Foreground = Tint(ink, 0x99);
         FormatSeparator.Background = Tint(ink, 0x33);
 
         // AI is the one command on the strip that is not about the note as an object, and it is

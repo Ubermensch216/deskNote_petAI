@@ -104,6 +104,26 @@
                     </Button>
                 </StackPanel>
 
+                <!--
+                    The note's title, which is its first line. There is no title field to fill in,
+                    so this is where a user finds out what their note is called: it appears with
+                    the rest of the chrome and is not hit-testable, leaving the strip a drag handle.
+                -->
+                <TextBlock
+                    x:Name="TitleLabel"
+                    Grid.Column="1"
+                    Margin="8,0,8,0"
+                    FontSize="11"
+                    VerticalAlignment="Center"
+                    TextAlignment="Center"
+                    TextTrimming="CharacterEllipsis"
+                    IsHitTestVisible="False"
+                    Opacity="0">
+                    <TextBlock.OpacityTransition>
+                        <ScalarTransition Duration="0:0:0.12" />
+                    </TextBlock.OpacityTransition>
+                </TextBlock>
+
                 <StackPanel x:Name="TrailingChrome" Grid.Column="2" Orientation="Horizontal" Opacity="0">
                     <StackPanel.OpacityTransition>
                         <ScalarTransition Duration="0:0:0.12" />

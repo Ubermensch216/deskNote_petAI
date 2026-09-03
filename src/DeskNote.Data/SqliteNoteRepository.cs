@@ -257,12 +257,15 @@ public sealed class SqliteNoteRepository(SqliteConnectionFactory connectionFacto
             cancellationToken);
 
     /// <remarks>
-    /// Guarded on <c>deleted_at IS NOT NULL</c> so a live note can never be destroyed by a stray
-    /// purge call; a note must pass through the deleted view first.
+    /// Unconditional, and it is the app's only delete: there is no deleted view for a note to pass
+    /// through any more, so a guard on <c>deleted_at</c> would refuse every deletion the user
+    /// actually asks for. Confirmation belongs to the UI, which is the only place that knows a
+    /// person asked; by the time this runs the decision has been made. Revisions, attachments,
+    /// reminders and index rows go with the note through the schema's cascades.
     /// </remarks>
     public Task PurgeAsync(Guid id, CancellationToken cancellationToken = default) =>
         ExecuteAsync(
-            "DELETE FROM notes WHERE id = @id AND deleted_at IS NOT NULL;",
+            "DELETE FROM notes WHERE id = @id;",
             new { id = id.ToString() },
             cancellationToken);
 
