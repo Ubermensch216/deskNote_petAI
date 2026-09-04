@@ -74,6 +74,11 @@ internal sealed class NoteEditor
             Format(_box.Document.GetRange(span.Start, span.Start + span.Length).CharacterFormat, span.Style);
         }
 
+        // Loading a note is not an edit the user made, so it must not be one they can undo. Left on
+        // the stack, holding Ctrl+Z walked back past the first keystroke and emptied the note —
+        // every word of it, from a key people press without looking. The stack starts here.
+        _box.Document.ClearUndoRedoHistory();
+
         Invalidate();
     }
 

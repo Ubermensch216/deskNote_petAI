@@ -242,6 +242,19 @@
   <data name="Settings_QuietEnd" xml:space="preserve"><value>종료</value></data>
   <data name="Settings_Save" xml:space="preserve"><value>저장</value></data>
   <data name="Settings_Saved" xml:space="preserve"><value>저장했습니다.</value></data>
+  <data name="Settings_CharacterHeader" xml:space="preserve"><value>캐릭터</value></data>
+  <data name="Settings_StatusOn" xml:space="preserve"><value>켜짐</value></data>
+  <data name="Settings_StatusOff" xml:space="preserve"><value>꺼짐</value></data>
+  <data name="Settings_CompanionEnabledDescription" xml:space="preserve"><value>끄면 펫은 화면에 나타나지 않고 아무것도 기록하지 않습니다.</value></data>
+  <data name="Settings_ProactiveDescription" xml:space="preserve"><value>일이 멈춰 있거나 처리할 것이 남았을 때 펫이 먼저 한마디 건넵니다.</value></data>
+  <data name="Settings_AlwaysVisibleDescription" xml:space="preserve"><value>펫 상세 창을 다른 창 위에 계속 띄워 둡니다.</value></data>
+  <data name="Settings_ReduceMotionDescription" xml:space="preserve"><value>펫이 바탕화면을 걸어 다닙니다. 끄면 놓아둔 자리에 머뭅니다.</value></data>
+  <data name="Settings_QuietWindowFormat" xml:space="preserve"><value>{0}부터 {1}까지 · {2} 동안 조용합니다</value></data>
+  <data name="Settings_QuietNone" xml:space="preserve"><value>시작과 종료가 같아 방해 금지 시간이 없습니다.</value></data>
+  <data name="Settings_QuietInactiveHint" xml:space="preserve"><value>‘필요할 때 먼저 제안하기’가 켜져 있을 때만 적용됩니다.</value></data>
+  <data name="Settings_DurationHoursFormat" xml:space="preserve"><value>{0}시간</value></data>
+  <data name="Settings_DurationHoursMinutesFormat" xml:space="preserve"><value>{0}시간 {1}분</value></data>
+  <data name="Settings_DurationMinutesFormat" xml:space="preserve"><value>{0}분</value></data>
   <data name="Companion_Title" xml:space="preserve"><value>DeskNote PetAI</value></data>
   <data name="PetGrowthGuide_LinkLabel" xml:space="preserve"><value>펫 키우는 방법</value></data>
   <data name="PetGrowthGuide_WindowTitle" xml:space="preserve"><value>DeskNote PetAI — 펫 키우는 방법</value></data>

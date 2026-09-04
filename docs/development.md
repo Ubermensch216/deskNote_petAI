@@ -132,6 +132,11 @@ Start-Process .\dist\DeskNote-win-x64\DeskNote.exe -ArgumentList "--data", $demo
 원래 자리로 돌아간다. 메모의 조작 요소는 `SetCursorPos` 로 커서를 순간이동시키면 나타나지 않는다 —
 WinUI는 커서의 위치가 아니라 **입력 큐**를 보므로 실제 입력 이벤트로 움직여야 한다.
 
+한 화면보다 긴 창은 두 장으로 나눠 찍는다. 설정 창(`settings-character.png`,
+`settings-behavior.png`)이 그런 경우로, 기본 크기 그대로 두고 휠로 위·아래 끝까지 굴린 뒤 각각
+찍었다. 창을 `MoveWindow` 로 늘려 한 장에 담으려고 하면 안 된다 — `AppWindow` 가 모르는 사이에
+크기가 바뀌어 그 뒤의 활성화가 이상하게 동작한다.
+
 **UI를 바꾸면 그 화면의 이미지도 함께 다시 찍는다.** `docs/images/` 는 추적되는 파일이고, 낡은 사진은
 없는 사진보다 나쁘다 — README를 읽는 사람은 사진 쪽을 믿는다.
 

@@ -242,6 +242,19 @@ Try adding a date or a weekday.</value></data>
   <data name="Settings_QuietEnd" xml:space="preserve"><value>Ends</value></data>
   <data name="Settings_Save" xml:space="preserve"><value>Save</value></data>
   <data name="Settings_Saved" xml:space="preserve"><value>Saved.</value></data>
+  <data name="Settings_CharacterHeader" xml:space="preserve"><value>Character</value></data>
+  <data name="Settings_StatusOn" xml:space="preserve"><value>On</value></data>
+  <data name="Settings_StatusOff" xml:space="preserve"><value>Off</value></data>
+  <data name="Settings_CompanionEnabledDescription" xml:space="preserve"><value>Turned off, the pet never appears and nothing is recorded.</value></data>
+  <data name="Settings_ProactiveDescription" xml:space="preserve"><value>The pet speaks up when work has stalled or something is still waiting.</value></data>
+  <data name="Settings_AlwaysVisibleDescription" xml:space="preserve"><value>Keeps the pet's detail window above your other windows.</value></data>
+  <data name="Settings_ReduceMotionDescription" xml:space="preserve"><value>The pet walks around the desktop. Off, it stays where you put it.</value></data>
+  <data name="Settings_QuietWindowFormat" xml:space="preserve"><value>Quiet from {0} to {1} · {2}</value></data>
+  <data name="Settings_QuietNone" xml:space="preserve"><value>Start and end match, so there are no quiet hours.</value></data>
+  <data name="Settings_QuietInactiveHint" xml:space="preserve"><value>Applies only while timely suggestions are on.</value></data>
+  <data name="Settings_DurationHoursFormat" xml:space="preserve"><value>{0} hr</value></data>
+  <data name="Settings_DurationHoursMinutesFormat" xml:space="preserve"><value>{0} hr {1} min</value></data>
+  <data name="Settings_DurationMinutesFormat" xml:space="preserve"><value>{0} min</value></data>
   <data name="Companion_Title" xml:space="preserve"><value>DeskNote PetAI</value></data>
   <data name="PetGrowthGuide_LinkLabel" xml:space="preserve"><value>How to raise your pet</value></data>
   <data name="PetGrowthGuide_WindowTitle" xml:space="preserve"><value>DeskNote PetAI — How to raise your pet</value></data>
