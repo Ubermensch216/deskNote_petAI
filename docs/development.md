@@ -47,6 +47,12 @@ CI가 실패한 변경은 병합하지 않는다. 특히 테스트 성공 뒤 pu
 스크립트는 `dist/DeskNote-win-x64/DeskNote.exe`를 포함한 폴더를 만들고, 실제 시작 검사를 통과한 뒤
 `dist/DeskNote-win-x64.zip`으로 압축한다. CI도 같은 스크립트를 사용한다.
 
+`scripts/install-ai.bat` 과 `scripts/install-ai.ps1` 도 같은 폴더로 복사된다. ZIP을 받는 사람은
+저장소를 볼 일이 없고, 그에게 로컬 AI 준비는 "`install-ai.bat` 을 누른다" 한 줄이어야 하기
+때문이다. 스크립트가 하는 일과 옵션은 [README의 AI 설치 장](../README.md#ai-설치하고-연결하기)에
+있다. 배치 파일은 실행 로직을 갖지 않는 실행기일 뿐이다 — 한글 메시지는 BOM이 붙은 `.ps1` 안에
+두고, `.bat` 은 ASCII만 담는다. 콘솔 코드 페이지가 무엇이든 안내가 깨지지 않게 하려는 것이다.
+
 받는 쪽에 필요한 것은 Windows 10 1809 이상(x64)과 Visual C++ 재배포 가능 패키지뿐이다. 후자는
 self-contained Windows App SDK가 요구하는 유일한 시스템 구성 요소이고 publish 출력에 들어가지 않는다.
 

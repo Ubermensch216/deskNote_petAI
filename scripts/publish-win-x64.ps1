@@ -55,6 +55,12 @@ foreach ($requiredFile in $requiredFiles) {
     }
 }
 
+# The AI installer ships beside the app: the person who unzips this never sees the repository,
+# and "run install-ai.bat" is the whole local-AI setup for them.
+foreach ($installerFile in @('install-ai.bat', 'install-ai.ps1')) {
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot $installerFile) -Destination $outputDirectory -Force
+}
+
 $appPath = Join-Path $outputDirectory 'DeskNote.exe'
 $process = Start-Process -FilePath $appPath -WorkingDirectory $outputDirectory -PassThru
 

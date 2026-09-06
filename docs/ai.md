@@ -13,6 +13,9 @@ ollama pull gemma4:e2b
 ollama pull bge-m3
 ```
 
+설치·서버 기동·모델 내려받기·연결 확인을 한 번에 하려면 `scripts/install-ai.bat` 을 실행한다
+(진단만 하려면 `-CheckOnly`). 단계별 설명은 [README](../README.md#ai-설치하고-연결하기)에 있다.
+
 | 설정 키 | 기본값 | 뜻 |
 |---|---|---|
 | `ai.enabled` | (없음 = 켬) | `false` 면 소켓조차 열지 않는다 |

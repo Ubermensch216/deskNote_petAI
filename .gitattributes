@@ -13,6 +13,12 @@
 *.json text eol=lf
 *.py text eol=lf
 
+# Windows shells read these; a batch file with LF-only endings breaks label jumps,
+# and PowerShell 5.1 needs the BOM that these files are stored with.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
 *.ico binary
 *.png binary
 *.jpg binary
