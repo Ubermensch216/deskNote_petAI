@@ -83,6 +83,22 @@ public static class Strings
         }
     }
 
+    /// <summary>
+    /// The language actually in force, resolved rather than reported.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="OverrideLocale"/> is null while the app follows Windows, which is the answer to
+    /// a different question. Callers outside the resource system - the pet's chatter corpus, for
+    /// one - need to know which language is on screen right now, not whether the user picked it.
+    /// </remarks>
+    public static string ActiveLocale =>
+        OverrideLocale
+        ?? (CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals(
+                "ko",
+                StringComparison.OrdinalIgnoreCase)
+            ? "ko-KR"
+            : "en-US");
+
     /// <summary>The string for <paramref name="key"/> with <paramref name="args"/> substituted.</summary>
     public static string Format(string key, params object?[] args) =>
         string.Format(CultureInfo.CurrentCulture, Get(key), args);

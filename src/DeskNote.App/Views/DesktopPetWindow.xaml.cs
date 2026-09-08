@@ -31,6 +31,10 @@ public sealed partial class DesktopPetWindow : Window
     private const int GwlExStyle = -20;
     private const long WsExLayered = 0x0008_0000;
     private const long WsExToolWindow = 0x0000_0080;
+    private const long WsExTopmost = 0x0000_0008;
+    private const nint HwndTopmost = -1;
+    private const uint SwpKeepTopmost = 0x0001 | 0x0002 | 0x0010;
+    private const double TopmostRecheckSeconds = 2;
     private const uint DwmBbEnable = 0x0000_0001;
     private const uint DwmBbBlurRegion = 0x0000_0002;
     private const int DwmwaWindowCornerPreference = 33;
@@ -74,9 +78,9 @@ public sealed partial class DesktopPetWindow : Window
     private PetAnimation _animation = PetAnimation.Walk;
     private PetMotionState _motionState = PetMotionState.Walking;
     private TimeSpan _restUntil;
+    private TimeSpan _lastTopmostCheck;
     private NativePoint _dragStartCursor;
     private PointInt32 _dragStartWindow;
-    private string? _lastChatterKey;
 
     /// <summary>
     /// What the pet says to itself when nothing has happened.
@@ -84,24 +88,15 @@ public sealed partial class DesktopPetWindow : Window
     /// <remarks>
     /// Small, self-absorbed thoughts rather than prompts: the pet is not a reminder that has
     /// learned to talk, and a line that asks the user for something every time it opens its mouth
-    /// stops being company and becomes another notification. Kept as keys so both languages get
-    /// their own writing instead of one being a translation of the other's jokes.
+    /// stops being company and becomes another notification. The corpus is per species and per
+    /// language, and it is dealt from a shuffled deck rather than drawn at random - three hundred
+    /// lines picked independently repeat inside an afternoon, and a repeat is what makes a large
+    /// corpus feel like a small one.
     /// </remarks>
-    private static readonly string[] IdleChatterKeys =
-    [
-        "Companion_Idle01",
-        "Companion_Idle02",
-        "Companion_Idle03",
-        "Companion_Idle04",
-        "Companion_Idle05",
-        "Companion_Idle06",
-        "Companion_Idle07",
-        "Companion_Idle08",
-        "Companion_Idle09",
-        "Companion_Idle10",
-        "Companion_Idle11",
-        "Companion_Idle12",
-    ];
+    private CompanionChatterBag? _chatterBag;
+
+    /// <summary>The species and language the loaded corpus belongs to.</summary>
+    private (CompanionPetKind Pet, string Locale) _chatterSource;
 
     public DesktopPetWindow(
         CompanionSnapshot snapshot,
@@ -134,8 +129,12 @@ public sealed partial class DesktopPetWindow : Window
             presenter.IsResizable = false;
             presenter.IsMinimizable = false;
             presenter.IsMaximizable = false;
-            presenter.IsAlwaysOnTop = true;
         }
+
+        // Always-on-top is deliberately not set here: assigned before the window is first shown it
+        // does not stick, and the pet ends up in the ordinary z-order band under whatever the user
+        // is working in. AssertAlwaysOnTop runs from OnFirstActivated instead, once there is a live
+        // HWND for the window manager to promote.
 
         MakeBackgroundTransparent();
         ApplyAccessibleName();
@@ -173,10 +172,7 @@ public sealed partial class DesktopPetWindow : Window
     {
         var sizeChanged = _settings.PetSize != settings.PetSize;
         _settings = settings;
-        if (AppWindow.Presenter is OverlappedPresenter presenter)
-        {
-            presenter.IsAlwaysOnTop = true;
-        }
+        AssertAlwaysOnTop();
 
         if (sizeChanged)
         {
@@ -239,9 +235,25 @@ public sealed partial class DesktopPetWindow : Window
         return needs.Mood <= CompanionCareRules.PlayThreshold ? "Companion_MoodBored" : null;
     }
 
-    private void Say(string key)
+    private void Say(string key) => SayLine(Strings.Get(key));
+
+    /// <summary>
+    /// Puts one already-written line in the bubble.
+    /// </summary>
+    /// <remarks>
+    /// The care and mood lines come from the UI resources by key, while the idle musings come from
+    /// the chatter corpus as finished text. Both end here so the bubble timing and the idle reset
+    /// are written once - the pet should not have two ways of opening its mouth.
+    /// </remarks>
+    private void SayLine(string line)
     {
-        SpeechText.Text = Strings.Get(key);
+        if (string.IsNullOrEmpty(line))
+        {
+            ScheduleIdleChatter();
+            return;
+        }
+
+        SpeechText.Text = line;
         SpeechBubble.Visibility = Visibility.Visible;
         _bubbleTimer.Stop();
         _bubbleTimer.Start();
@@ -302,27 +314,29 @@ public sealed partial class DesktopPetWindow : Window
             return;
         }
 
-        Say(NextChatterKey());
+        SayLine(Chatter().Next());
     }
 
-    /// <summary>Picks a line, never the one just said.</summary>
+    /// <summary>
+    /// Loads the corpus for the species and language now in force, if either has changed.
+    /// </summary>
     /// <remarks>
-    /// Drawing uniformly at random means the same thought repeating back to back roughly one time
-    /// in twelve, and a pet that says "I forgot what I was thinking" twice in a row reads as
-    /// broken rather than as forgetful.
+    /// Both can change while the window is alive - the user picks another species in settings, or
+    /// switches the UI language - and a pet that went on musing in the language it was born in
+    /// would be the most visible part of the app to miss the switch.
     /// </remarks>
-    private string NextChatterKey()
+    private CompanionChatterBag Chatter()
     {
-        string key;
+        var source = (Pet: _settings.SelectedPet, Locale: Strings.ActiveLocale);
 
-        do
+        if (_chatterBag is null || _chatterSource != source)
         {
-            key = IdleChatterKeys[_chatter.Next(IdleChatterKeys.Length)];
+            _chatterSource = source;
+            _chatterBag = new CompanionChatterBag(
+                CompanionChatterCatalog.Lines(source.Pet, source.Locale));
         }
-        while (string.Equals(key, _lastChatterKey, StringComparison.Ordinal));
 
-        _lastChatterKey = key;
-        return key;
+        return _chatterBag;
     }
 
     /// <summary>Acts out one paid care action beside the pet.</summary>
@@ -400,7 +414,54 @@ public sealed partial class DesktopPetWindow : Window
         _x = Math.Clamp(requested.X, area.X, Math.Max(area.X, area.X + area.Width - WindowWidth));
         _y = Math.Clamp(requested.Y, area.Y, Math.Max(area.Y, area.Y + area.Height - WindowHeight));
         AppWindow.Move(new PointInt32((int)_x, (int)_y));
+        AssertAlwaysOnTop();
         _lastTick = _clock.Elapsed;
+        _lastTopmostCheck = _lastTick;
+    }
+
+    /// <summary>
+    /// Puts the pet window into the topmost band and keeps it there.
+    /// </summary>
+    /// <remarks>
+    /// The presenter flag alone is not enough on two counts. It is ignored while the window has not
+    /// been shown yet, and re-assigning the value the presenter already holds is not guaranteed to
+    /// reach the window manager, so the explicit HWND_TOPMOST call is what actually does the work.
+    /// It is sent without activating: the pet must never steal focus from the document underneath
+    /// it, which is the whole reason the window is a tool window in the first place.
+    /// </remarks>
+    private void AssertAlwaysOnTop()
+    {
+        if (AppWindow.Presenter is OverlappedPresenter presenter)
+        {
+            presenter.IsAlwaysOnTop = true;
+        }
+
+        var window = Microsoft.UI.Win32Interop.GetWindowFromWindowId(AppWindow.Id);
+        _ = SetWindowPos(window, HwndTopmost, 0, 0, 0, 0, SwpKeepTopmost);
+    }
+
+    /// <summary>
+    /// Re-promotes the pet if something demoted it out of the topmost band.
+    /// </summary>
+    /// <remarks>
+    /// Full-screen apps and shell transitions strip WS_EX_TOPMOST from windows they cover, and the
+    /// pet has no way of hearing about it. The style word is read rather than the promotion simply
+    /// being repeated on a timer, so a pet that is still on top is left exactly where the user's
+    /// own pinned windows put it.
+    /// </remarks>
+    private void EnsureStillTopmost(TimeSpan now)
+    {
+        if ((now - _lastTopmostCheck).TotalSeconds < TopmostRecheckSeconds)
+        {
+            return;
+        }
+
+        _lastTopmostCheck = now;
+        var window = Microsoft.UI.Win32Interop.GetWindowFromWindowId(AppWindow.Id);
+        if ((GetWindowLongPtr(window, GwlExStyle).ToInt64() & WsExTopmost) == 0)
+        {
+            AssertAlwaysOnTop();
+        }
     }
 
     private void OnAnimationTick(
@@ -415,6 +476,7 @@ public sealed partial class DesktopPetWindow : Window
         var now = _clock.Elapsed;
         var elapsed = Math.Min(0.05, (now - _lastTick).TotalSeconds);
         _lastTick = now;
+        EnsureStillTopmost(now);
 
         if (_motionState == PetMotionState.Resting)
         {

@@ -151,9 +151,12 @@ internal sealed class NoteEditor
     /// A rich edit control separates paragraphs with CR. Handing it LF and hoping is how a note
     /// grows a blank line between every pair of lines each time it is opened, so the conversion is
     /// done here and undone in <see cref="ReadShown"/> — one place each way, and neither can drift
-    /// from the other.
+    /// from the other. CRLF is collapsed first rather than assumed absent: a CR-LF pair
+    /// reaching the document as two paragraph marks is the same blank line by a different
+    /// route, and the normalizer is free when the text holds no CR at all.
     /// </remarks>
-    private static string ForEditor(string text) => text.Replace('\n', '\r');
+    private static string ForEditor(string text) =>
+        NoteContent.NormalizeLineEndings(text).Replace('\n', '\r');
 
     /// <summary>
     /// The body as the user sees it, with the editor's line endings normalized.

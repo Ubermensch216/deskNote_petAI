@@ -4,4 +4,13 @@
     <ProjectReference Include="..\DeskNote.Core\DeskNote.Core.csproj" />
   </ItemGroup>
 
+  <!--
+    The pet's small talk ships inside the assembly rather than beside it. A corpus read from disk
+    is a corpus that can go missing from a publish, and a pet that has been struck mute by a
+    packaging mistake is a bug nobody notices until a user mentions it months later.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="Chatter\**\*.txt" />
+  </ItemGroup>
+
 </Project>

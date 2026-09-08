@@ -323,18 +323,6 @@ Try adding a date or a weekday.</value></data>
   <data name="Companion_MoodHungry" xml:space="preserve"><value>I am hungry.</value></data>
   <data name="Companion_MoodUnkempt" xml:space="preserve"><value>I could use a wash.</value></data>
   <data name="Companion_MoodBored" xml:space="preserve"><value>I am bored — play with me?</value></data>
-  <data name="Companion_Idle01" xml:space="preserve"><value>I had a good thought just now... where did it go?</value></data>
-  <data name="Companion_Idle02" xml:space="preserve"><value>Today's clouds are loaf-shaped. I am certain.</value></data>
-  <data name="Companion_Idle03" xml:space="preserve"><value>Three spins on the spot and the day improves.</value></data>
-  <data name="Companion_Idle04" xml:space="preserve"><value>I like how paper smells. Crisp, sort of.</value></data>
-  <data name="Companion_Idle05" xml:space="preserve"><value>When it is quiet I can hear my own thinking.</value></data>
-  <data name="Companion_Idle06" xml:space="preserve"><value>I am planning a nap. Planning it very carefully.</value></data>
-  <data name="Companion_Idle07" xml:space="preserve"><value>I stepped on my shadow and it did not mind at all.</value></data>
-  <data name="Companion_Idle08" xml:space="preserve"><value>The good sentences are usually the short ones.</value></data>
-  <data name="Companion_Idle09" xml:space="preserve"><value>Writing it down before you forget — that is impressive.</value></data>
-  <data name="Companion_Idle10" xml:space="preserve"><value>I snuck “rest” onto today's list of things to do.</value></data>
-  <data name="Companion_Idle11" xml:space="preserve"><value>I think I am a little bigger than I was yesterday.</value></data>
-  <data name="Companion_Idle12" xml:space="preserve"><value>My toes are cold, so I am holding them up in turns.</value></data>
   <data name="Companion_TaskCapture" xml:space="preserve"><value>Write a meaningful note</value></data>
   <data name="Companion_TaskRefine" xml:space="preserve"><value>Refine an existing note</value></data>
   <data name="Companion_TaskOrganize" xml:space="preserve"><value>Tidy an older note</value></data>

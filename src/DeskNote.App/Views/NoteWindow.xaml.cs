@@ -247,9 +247,17 @@ public sealed partial class NoteWindow : Window
     }
 
     /// <summary>Inserts text at the caret, as an ordinary undoable edit.</summary>
+    /// <remarks>
+    /// Line endings are normalized on the way in because the note's text is LF throughout — that
+    /// is what storage, checklist parsing and the derived title are all written against. Text
+    /// arriving from outside the app carries CRLF, and a CR that reaches the rich edit document
+    /// unconverted becomes a paragraph mark of its own, so every pasted line came in followed by
+    /// a blank one.
+    /// </remarks>
     public void InsertAtCaret(string text)
     {
-        ApplyEditorState(EditorState().ReplacingSelection(text));
+        ArgumentNullException.ThrowIfNull(text);
+        ApplyEditorState(EditorState().ReplacingSelection(NoteContent.NormalizeLineEndings(text)));
         RaiseTextChanged();
     }
 
@@ -746,8 +754,7 @@ public sealed partial class NoteWindow : Window
             var text = await clipboard.GetTextAsync();
             if (text.Length > 0)
             {
-                ApplyEditorState(EditorState().ReplacingSelection(text));
-                RaiseTextChanged();
+                InsertAtCaret(text);
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
