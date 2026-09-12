@@ -283,22 +283,41 @@ public sealed partial class NoteWindowManager(
         var window = new NoteWindow(note, ai, neighbourhood);
         _windows[note.Id] = window;
 
-        window.TextChanged += (_, text) => autosave.Schedule(note.Id, text.Title, text.Content);
-        window.GeometryChanged += async (_, geometry) => await OnGeometryChangedAsync(note.Id, geometry);
-        window.AppearanceChanged += async (_, appearance) => await OnAppearanceChangedAsync(note.Id, appearance);
-        window.CloseRequested += async (_, _) => await OnCloseRequestedAsync(note.Id);
-        window.DeleteRequested += async (_, _) => await OnDeleteRequestedAsync(note.Id);
-        window.LibraryRequested += (_, _) => ShowLibrary();
-        window.HistoryRequested += (w, _) => ShowHistory(((NoteWindow)w!).NoteId);
-        window.AiApplied += async (w, edit) => await OnAiAppliedAsync(((NoteWindow)w!).NoteId, edit);
-        window.RelatedRequested += (w, _) => ShowRelated(((NoteWindow)w!).NoteId);
-        window.CustomReminderRequested += (w, _) => ShowReminderComposer(((NoteWindow)w!).NoteId);
-        window.NewNoteRequested += async (_, seed) => await CreateAsync(seed.Preset, seed.ColorKey);
-        window.ReminderRequested += async (_, offset) => await AddReminderAsync(note.Id, offset);
-        window.ReminderAtRequested += async (_, dueAt) => await AddReminderAtAsync(note.Id, dueAt);
-        window.AskRequested += (w, _) => ShowChat(((NoteWindow)w!).NoteId);
-        window.AttachmentRequested += async (w, request) => await OnAttachmentRequestedAsync(w, request);
-        window.ImageRemoveRequested += async (w, image) => await OnImageRemoveRequestedAsync(w, image);
+        // Every one of these is an `async void` or a throwing synchronous call the moment it is
+        // attached to an event, so each goes through SafeHandler: a note window must survive a
+        // failure in any one gesture, and closing a note is the gesture that carries the user's
+        // last unsaved sentence.
+        window.TextChanged += SafeHandler.Sync<NoteText>(
+            "Scheduling a note save", text => autosave.Schedule(note.Id, text.Title, text.Content));
+        window.GeometryChanged += SafeHandler.Async<NoteGeometry>(
+            "Saving a note's position", geometry => OnGeometryChangedAsync(note.Id, geometry));
+        window.AppearanceChanged += SafeHandler.Async<NoteAppearance>(
+            "Saving a note's appearance", appearance => OnAppearanceChangedAsync(note.Id, appearance));
+        window.CloseRequested += SafeHandler.Async(
+            "Closing a note", () => OnCloseRequestedAsync(note.Id));
+        window.DeleteRequested += SafeHandler.Async(
+            "Deleting a note", () => OnDeleteRequestedAsync(note.Id));
+        window.LibraryRequested += SafeHandler.Sync("Opening the library", ShowLibrary);
+        window.HistoryRequested += SafeHandler.SyncWithSender(
+            "Opening a note's history", w => ShowHistory(((NoteWindow)w!).NoteId));
+        window.AiApplied += SafeHandler.AsyncWithSender<AiEdit>(
+            "Applying an AI suggestion", (w, edit) => OnAiAppliedAsync(((NoteWindow)w!).NoteId, edit));
+        window.RelatedRequested += SafeHandler.SyncWithSender(
+            "Opening related notes", w => ShowRelated(((NoteWindow)w!).NoteId));
+        window.CustomReminderRequested += SafeHandler.SyncWithSender(
+            "Opening the reminder composer", w => ShowReminderComposer(((NoteWindow)w!).NoteId));
+        window.NewNoteRequested += SafeHandler.Async<NoteSeed>(
+            "Creating a note", seed => CreateAsync(seed.Preset, seed.ColorKey));
+        window.ReminderRequested += SafeHandler.Async<TimeSpan>(
+            "Adding a reminder", offset => AddReminderAsync(note.Id, offset));
+        window.ReminderAtRequested += SafeHandler.Async<DateTimeOffset>(
+            "Adding a reminder", dueAt => AddReminderAtAsync(note.Id, dueAt));
+        window.AskRequested += SafeHandler.SyncWithSender(
+            "Opening the question window", w => ShowChat(((NoteWindow)w!).NoteId));
+        window.AttachmentRequested += SafeHandler.AsyncWithSender<AttachmentRequest>(
+            "Attaching a file", OnAttachmentRequestedAsync);
+        window.ImageRemoveRequested += SafeHandler.AsyncWithSender<NoteImage>(
+            "Removing an image", OnImageRemoveRequestedAsync);
         window.Activated += (w, args) =>
         {
             if (args.WindowActivationState != Microsoft.UI.Xaml.WindowActivationState.Deactivated)

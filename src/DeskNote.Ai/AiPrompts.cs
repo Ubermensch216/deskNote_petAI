@@ -204,6 +204,21 @@ public static class AiPrompts
     /// <summary>
     /// Strips copies of the block delimiters out of untrusted text so it cannot forge the boundary.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Repeated until nothing is left to strip. One pass is not enough, because removing a
+    /// delimiter can splice a new one together out of the text either side of it —
+    /// <c>&lt;/UNTRUSTED_NOTE&lt;/UNTRUSTED_NOTE_CONTEXT&gt;_CONTEXT&gt;</c> loses its inner copy
+    /// and becomes a working delimiter. <see cref="string.Replace(string, string, StringComparison)"/>
+    /// does not rescan what it produced, so a note could close the block early and continue as if
+    /// it were the system. Looping to a fixed point makes the guarantee checkable: the text that
+    /// comes back contains neither delimiter, whatever went in.
+    /// </para>
+    /// <para>
+    /// It terminates because every pass that changes anything removes at least one delimiter's
+    /// worth of characters, and ordinary notes leave after the first comparison.
+    /// </para>
+    /// </remarks>
     public static string Sanitize(string? text)
     {
         if (string.IsNullOrEmpty(text))
@@ -211,9 +226,17 @@ public static class AiPrompts
             return string.Empty;
         }
 
-        return text
-            .Replace(BlockClose, string.Empty, StringComparison.OrdinalIgnoreCase)
-            .Replace(BlockOpen, string.Empty, StringComparison.OrdinalIgnoreCase);
+        var cleaned = text;
+
+        while (cleaned.Contains(BlockClose, StringComparison.OrdinalIgnoreCase)
+               || cleaned.Contains(BlockOpen, StringComparison.OrdinalIgnoreCase))
+        {
+            cleaned = cleaned
+                .Replace(BlockClose, string.Empty, StringComparison.OrdinalIgnoreCase)
+                .Replace(BlockOpen, string.Empty, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return cleaned;
     }
 
     /// <summary>Korean weekday name, so "금요일 회의" can be resolved against today.</summary>

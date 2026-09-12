@@ -132,6 +132,68 @@ public class MigrationTests
         Assert.False(MigrationRunner.IsSqliteVersionRisky("3.52.0"));
     }
 
+    /// <summary>
+    /// The rollback copy has to hold what the user had actually written.
+    /// </summary>
+    /// <remarks>
+    /// With WAL on, a committed note lives in the <c>-wal</c> sidecar until a checkpoint moves it
+    /// into <c>notes.db</c>. A backup taken by copying the database file alone therefore restores
+    /// a library that is missing the most recent notes — silently, and exactly at the moment a
+    /// failed upgrade makes it the only copy left. This pins the vacuum that fixed it.
+    /// </remarks>
+    [Fact]
+    public async Task Backup_contains_notes_still_sitting_in_the_write_ahead_log()
+    {
+        var directory = NewDirectory();
+        var databasePath = Path.Combine(directory, "notes.db");
+        var factory = new SqliteConnectionFactory(databasePath);
+        await new MigrationRunner(factory).MigrateAsync();
+
+        var noteId = Guid.NewGuid().ToString();
+        var now = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
+
+        await using (var writer = await factory.OpenAsync())
+        {
+            await writer.ExecuteAsync(
+                "INSERT INTO notes(id, content, created_at, updated_at) VALUES (@id, 'wal-resident', @now, @now);",
+                new { id = noteId, now });
+        }
+
+        // No checkpoint in between: this is the state an upgrade actually finds.
+        Assert.True(new FileInfo(databasePath + "-wal").Length > 0, "The note should still be in the WAL.");
+
+        var backupPath = Path.Combine(directory, "backup.db");
+        await using (var connection = await factory.OpenAsync())
+        {
+            await MigrationRunner.BackupToAsync(connection, backupPath);
+        }
+
+        await using var restored = await new SqliteConnectionFactory(backupPath).OpenAsync();
+        Assert.Equal(
+            "wal-resident",
+            await restored.ExecuteScalarAsync<string>(
+                "SELECT content FROM notes WHERE id = @id;", new { id = noteId }));
+    }
+
+    /// <summary>A backup is one file: a restore is a copy, not a procedure with sidecars.</summary>
+    [Fact]
+    public async Task Backup_replaces_an_existing_file_and_writes_no_sidecars()
+    {
+        var directory = NewDirectory();
+        var factory = new SqliteConnectionFactory(Path.Combine(directory, "notes.db"));
+        await new MigrationRunner(factory).MigrateAsync();
+
+        var backupPath = Path.Combine(directory, "backup.db");
+        await File.WriteAllTextAsync(backupPath, "not a database");
+
+        await using var connection = await factory.OpenAsync();
+        await MigrationRunner.BackupToAsync(connection, backupPath);
+
+        Assert.True(File.Exists(backupPath));
+        Assert.False(File.Exists(backupPath + "-wal"));
+        Assert.False(File.Exists(backupPath + "-shm"));
+    }
+
     [Fact]
     public async Task Deleting_a_note_cascades_to_its_children()
     {

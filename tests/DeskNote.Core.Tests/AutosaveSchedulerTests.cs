@@ -198,4 +198,96 @@ public class AutosaveSchedulerTests
         Assert.Single(recorder.Saves);
         Assert.Equal("종료 직전", recorder.Saves.First().Content);
     }
+
+    /// <summary>
+    /// Shutdown has to wait for a write that had already begun.
+    /// </summary>
+    /// <remarks>
+    /// A note leaves the pending queue the moment its write starts, so a flush that only walked
+    /// that queue returned while the last save of the session was still in the database's hands —
+    /// and the process ended underneath it. This is the exact shape of that race: the debounce
+    /// fires, the write blocks, and shutdown arrives while it is blocked.
+    /// </remarks>
+    [Fact]
+    public async Task Flushing_waits_for_a_save_that_is_already_running()
+    {
+        var released = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var finished = 0;
+
+        var recorder = new Recorder
+        {
+            OnSave = async _ =>
+            {
+                started.TrySetResult();
+                await released.Task;
+                Interlocked.Increment(ref finished);
+            },
+        };
+
+        await using var scheduler = new AutosaveScheduler(recorder.WriteAsync, Debounce);
+
+        scheduler.Schedule(Guid.NewGuid(), string.Empty, "마지막 문장");
+        await started.Task;
+
+        // The write is in flight, so nothing is queued any more — the state the old flush missed.
+        Assert.True(scheduler.HasPendingWork);
+
+        var flush = scheduler.FlushAllAsync();
+        Assert.False(flush.IsCompleted);
+
+        released.SetResult();
+        await flush;
+
+        Assert.Equal(1, Volatile.Read(ref finished));
+        Assert.False(scheduler.HasPendingWork);
+    }
+
+    /// <summary>
+    /// Two writes for one note are never in flight together.
+    /// </summary>
+    /// <remarks>
+    /// Each save carries the whole note rather than a delta, so an earlier write finishing last
+    /// leaves the note holding text the user had already replaced — a save that silently undoes
+    /// the edit after it. Ordering is what rules that out.
+    /// </remarks>
+    [Fact]
+    public async Task A_second_save_of_one_note_cannot_overtake_the_first()
+    {
+        var noteId = Guid.NewGuid();
+        var firstReached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseFirst = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completions = new ConcurrentQueue<string>();
+
+        var recorder = new Recorder
+        {
+            OnSave = async save =>
+            {
+                // Only the first write is held; the second must not be able to pass it.
+                if (save.Content == "먼저")
+                {
+                    firstReached.TrySetResult();
+                    await releaseFirst.Task;
+                }
+
+                completions.Enqueue(save.Content);
+            },
+        };
+
+        await using var scheduler = new AutosaveScheduler(recorder.WriteAsync, Debounce);
+
+        scheduler.Schedule(noteId, string.Empty, "먼저");
+        await firstReached.Task;
+
+        // Typed while the first write is still running, and flushed at once the way losing focus
+        // or closing the note would.
+        scheduler.Schedule(noteId, string.Empty, "나중");
+        var flush = scheduler.FlushAsync(noteId);
+
+        releaseFirst.SetResult();
+        await flush;
+        await scheduler.FlushAllAsync();
+
+        Assert.Equal(["먼저", "나중"], completions);
+    }
 }

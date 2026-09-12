@@ -21,6 +21,7 @@ public sealed record MigrationResult(int FromVersion, int ToVersion, string? Bac
 /// <remarks>
 /// A copy of the database is taken before the first migration of a run so a failed upgrade can be
 /// rolled back to N-1, which the report lists as a release gate alongside migration testing (p6).
+/// See <see cref="BackupToAsync"/> for why that copy is vacuumed out rather than copied off disk.
 /// </remarks>
 public sealed partial class MigrationRunner(SqliteConnectionFactory connectionFactory)
 {
@@ -52,7 +53,9 @@ public sealed partial class MigrationRunner(SqliteConnectionFactory connectionFa
         // Only worth backing up when there is prior data to roll back to. On a first run the
         // connection above has already created an empty file, so backing it up would drop a
         // pointless .bak next to every new installation.
-        var backupPath = current > 0 ? BackupDatabase() : null;
+        var backupPath = current > 0
+            ? await BackupDatabaseAsync(connection, cancellationToken).ConfigureAwait(false)
+            : null;
 
         foreach (var migration in pending)
         {
@@ -90,7 +93,9 @@ public sealed partial class MigrationRunner(SqliteConnectionFactory connectionFa
     public static bool IsSqliteVersionRisky(string sqliteVersion) =>
         Version.TryParse(sqliteVersion, out var parsed) && parsed < MinimumSafeSqliteVersion;
 
-    private string? BackupDatabase()
+    private async Task<string?> BackupDatabaseAsync(
+        SqliteConnection connection,
+        CancellationToken cancellationToken)
     {
         var path = connectionFactory.DatabasePath;
         if (!File.Exists(path))
@@ -99,8 +104,44 @@ public sealed partial class MigrationRunner(SqliteConnectionFactory connectionFa
         }
 
         var backupPath = $"{path}.{DateTimeOffset.UtcNow:yyyyMMddHHmmss}.bak";
-        File.Copy(path, backupPath, overwrite: true);
+        await BackupToAsync(connection, backupPath, cancellationToken).ConfigureAwait(false);
         return backupPath;
+    }
+
+    /// <summary>
+    /// Writes a consistent copy of the database that a failed upgrade can be rolled back to.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>VACUUM INTO</c> rather than a file copy. The connection runs in WAL mode, so committed
+    /// transactions live in the <c>-wal</c> sidecar until a checkpoint moves them across: copying
+    /// only <c>notes.db</c> produces a backup that is missing the user's most recent notes, which
+    /// is the opposite of what a rollback target is for.
+    /// </para>
+    /// <para>
+    /// Must run outside a transaction — SQLite refuses to vacuum inside one — which is why the
+    /// migration takes it before opening the first one. The result is a single self-contained
+    /// file with no sidecars of its own, so restoring it is a copy rather than a procedure.
+    /// </para>
+    /// </remarks>
+    /// <param name="connection">An open connection to the database being copied.</param>
+    /// <param name="targetPath">Where to write the copy. Replaced if it already exists.</param>
+    public static async Task BackupToAsync(
+        SqliteConnection connection,
+        string targetPath,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+        ArgumentException.ThrowIfNullOrWhiteSpace(targetPath);
+
+        // VACUUM INTO refuses to write over an existing file, and two upgrades within the same
+        // second would otherwise collide on the timestamped name the migration picks.
+        File.Delete(targetPath);
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = "VACUUM INTO $target;";
+        command.Parameters.AddWithValue("$target", targetPath);
+        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task EnsureVersionTableAsync(SqliteConnection connection, CancellationToken cancellationToken)

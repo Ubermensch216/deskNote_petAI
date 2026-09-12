@@ -2,6 +2,7 @@
 using DeskNote.Core.Ai;
 using DeskNote.Core.Models;
 using DeskNote.Core.Services;
+using DeskNote.Data;
 using DeskNote.App.Views;
 using DeskNote.Companion.Core;
 using Microsoft.UI.Dispatching;
@@ -173,11 +174,12 @@ public sealed class ApplicationRuntime : IAsyncDisposable
             }));
         _tray.Start();
 
-        // AI and semantic indexing remain last. Neither is allowed to delay the first note.
+        // AI and semantic indexing remain last. Neither is allowed to delay the first note, which
+        // is why the backfill is started rather than awaited: it now runs the library to
+        // completion instead of queueing one batch, and that is not something to wait behind.
         Windows.TrackAiCapability();
         Ai.StartProbing(AiProbeInterval);
-        _indexer.Start();
-        await _indexer.BackfillAsync(cancellationToken).ConfigureAwait(true);
+        _indexer.StartBackfill();
     }
 
     /// <summary>

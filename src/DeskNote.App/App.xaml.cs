@@ -35,6 +35,23 @@ public partial class App : Application
             CrashLog.Write("Unobserved task exception", e.Exception);
             e.SetObserved();
         };
+
+        // The last line before the process dies.
+        //
+        // Every `async void` handler in a WinUI app — which is every UI event handler — routes its
+        // exceptions here, and the default is to terminate. For a sticky note app that default is
+        // the worst possible one: the text on screen is the copy the user can still see, and
+        // killing the window to report a failed database write throws away the very thing the
+        // failure was about. Handling it keeps the notes on the desktop; the log says what broke.
+        //
+        // This is a net, not a substitute for handling failures where they happen. Callers that
+        // can say something useful to the user still should, and the wrappers in
+        // NoteWindowManager.Show exist so this is never the first place a note error is noticed.
+        UnhandledException += (_, e) =>
+        {
+            CrashLog.Write("Unhandled exception on the UI thread", e.Exception);
+            e.Handled = true;
+        };
     }
 
     /// <summary>Local AI, once startup has built it. Always present, often unavailable.</summary>
@@ -73,8 +90,12 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
+            // Rethrowing here went nowhere: OnLaunched discards this task, so the failure only
+            // surfaced whenever the finalizer got round to it. A start that did not finish leaves
+            // a process with no window and no tray icon, which the user cannot even quit — so it
+            // is written down and then ended.
             CrashLog.Write("Startup failed", ex);
-            throw;
+            Exit();
         }
     }
 }
