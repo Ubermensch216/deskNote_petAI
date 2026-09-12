@@ -55,11 +55,10 @@ public static class RankFusion
             }
         }
 
+        // Ties break by which retriever saw the item first, so the order is deterministic rather
+        // than dependent on dictionary iteration.
         return scores
             .OrderByDescending(pair => pair.Value)
-
-            // Ties break by which retriever saw the item first, so the order is deterministic
-            // rather than dependent on dictionary iteration.
             .ThenBy(pair => firstSeen[pair.Key])
             .Take(limit)
             .Select(pair => pair.Key)
