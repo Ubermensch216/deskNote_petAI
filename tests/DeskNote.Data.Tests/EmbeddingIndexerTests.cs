@@ -193,6 +193,10 @@ public class EmbeddingIndexerTests
         await WaitForAsync(async () => await UnindexedCountAsync(database, vectors) == 0);
 
         Assert.Equal(0, await UnindexedCountAsync(database, vectors));
+
+        // The queue is only reported idle once the worker has left the note, which is a moment
+        // after its vectors are readable — asserting it the instant the rows appear is a race.
+        await WaitForAsync(() => Task.FromResult(!indexer.IsBusy));
         Assert.False(indexer.IsBusy);
     }
 }
