@@ -1,8 +1,12 @@
 using System.Globalization;
+using DeskNote.Ai;
 using DeskNote.App.Services;
 using DeskNote.App.Theming;
 using DeskNote.Companion.Core;
 using DeskNote.Core.Abstractions;
+using DeskNote.Core.Ai;
+using DeskNote.Core.Models;
+using DeskNote.Core.Services;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -42,13 +46,35 @@ public sealed partial class SettingsWindow : Window
         TextBlock Description,
         ToggleSwitch Switch);
 
+    /// <summary>The three pages this window holds.</summary>
+    private enum SettingsTab
+    {
+        Character,
+        Ai,
+        General,
+    }
+
     private readonly ISettingsStore _settings;
+    private readonly Func<Task<AiCapability>>? _reloadAi;
     private readonly List<BehaviorRow> _behaviorRows = [];
     private readonly List<Border> _separators = [];
     private readonly ToggleSwitch _companionEnabled = NewSwitch();
     private readonly ToggleSwitch _proactiveEnabled = NewSwitch();
     private readonly ToggleSwitch _alwaysVisible = NewSwitch();
     private readonly ToggleSwitch _petMovement = NewSwitch();
+    private readonly ToggleSwitch _aiEnabled = NewSwitch();
+
+    private BehaviorRow? _aiEnabledRow;
+    private SettingsTab _tab = SettingsTab.Character;
+
+    /// <summary>The AI settings as they were loaded, so saving can tell what actually changed.</summary>
+    private OllamaOptions _loadedAi = new();
+
+    /// <summary>The chosen UI language, or null for "follow Windows".</summary>
+    private string? _locale;
+
+    /// <summary>What a new note will start as.</summary>
+    private NoteDefaults _noteDefaults = new();
 
     private bool _loaded;
     private bool _dragonUnlocked;
@@ -57,12 +83,20 @@ public sealed partial class SettingsWindow : Window
     private CompanionPetKind _selectedPet = CompanionPetKind.Rabbit;
     private CompanionPetSize _petSize = CompanionPetSize.Large;
 
-    public SettingsWindow(ISettingsStore settings)
+    /// <param name="settings">Where every value on this page is read from and written to.</param>
+    /// <param name="reloadAi">
+    /// Applies saved AI settings to the running app and reports what the AI can do afterwards.
+    /// Passed as a callback rather than the host itself: this window has no business knowing how
+    /// the AI is hosted, and the answer it wants back is the one line it puts on screen. Null
+    /// leaves the AI page a pure editor whose values take effect on the next launch.
+    /// </param>
+    public SettingsWindow(ISettingsStore settings, Func<Task<AiCapability>>? reloadAi = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
 
         InitializeComponent();
         _settings = settings;
+        _reloadAi = reloadAi;
 
         AppWindow.Title = Strings.Get("Settings_Title");
         AppIcon.Apply(this);
@@ -76,6 +110,7 @@ public sealed partial class SettingsWindow : Window
         }
 
         BuildBehaviorRows();
+        BuildAiRow();
 
         PetNameInput.TextChanged += (_, _) =>
         {
@@ -102,6 +137,33 @@ public sealed partial class SettingsWindow : Window
             };
         }
 
+        _aiEnabled.Toggled += (_, _) =>
+        {
+            UpdateAiAvailability();
+            ClearStatus();
+        };
+
+        // The warning has to follow the field as it is typed. Finding out that the address leaves
+        // the machine only after pressing Save is finding out too late.
+        AiEndpointInput.TextChanged += (_, _) =>
+        {
+            UpdateRemoteWarning();
+            ClearStatus();
+        };
+
+        foreach (var box in new[] { AiModelInput, AiEmbeddingInput })
+        {
+            box.TextChanged += (_, _) => ClearStatus();
+        }
+
+        AiKeepAlive.ValueChanged += (_, _) =>
+        {
+            UpdateKeepAliveLabel();
+            ClearStatus();
+        };
+
+        DataLocationPath.Text = AppPaths.Root;
+
         Render();
 
         // Tiles and rows are painted as they are built, so a theme switch rebuilds them. The state
@@ -112,6 +174,9 @@ public sealed partial class SettingsWindow : Window
     }
 
     public event Action<CompanionSettings>? SettingsChanged;
+
+    /// <summary>Raised with the new note defaults, so the next note uses them without a restart.</summary>
+    public event Action<NoteDefaults>? NoteDefaultsChanged;
 
     private bool IsDark =>
         Board.ActualTheme == ElementTheme.Dark
@@ -129,36 +194,170 @@ public sealed partial class SettingsWindow : Window
         try
         {
             Apply(await CompanionSettings.LoadAsync(_settings).ConfigureAwait(true));
+            ApplyAi(await OllamaOptions.LoadAsync(_settings).ConfigureAwait(true));
+            _locale = await _settings.GetAsync(SettingKeys.UiLocale).ConfigureAwait(true);
+            _noteDefaults = await NoteDefaults.LoadAsync(_settings).ConfigureAwait(true);
+
+            Render();
+            ClearStatus();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            CrashLog.Write("Loading companion settings failed", ex);
+            CrashLog.Write("Loading settings failed", ex);
             ShowError(ex.Message);
         }
     }
 
+    private void ApplyAi(OllamaOptions value)
+    {
+        _loadedAi = value;
+        _aiEnabled.IsOn = value.Enabled;
+        AiEndpointInput.Text = value.Endpoint.ToString();
+        AiModelInput.Text = value.Model;
+        AiEmbeddingInput.Text = value.EmbeddingModel;
+        AiKeepAlive.Value = OllamaOptions.ClampKeepAliveMinutes(value.KeepAlive.TotalMinutes);
+    }
+
+    /// <summary>
+    /// The AI page as it now reads, or null when a field cannot be made sense of.
+    /// </summary>
+    /// <remarks>
+    /// A blank model or endpoint is left as whatever was loaded rather than saved as empty: the
+    /// loader falls back to the default for an empty value, so saving one would silently change
+    /// the setting to something the user never typed.
+    /// </remarks>
+    private OllamaOptions? ReadAi()
+    {
+        if (!OllamaOptions.TryParseEndpoint(AiEndpointInput.Text, out var endpoint))
+        {
+            return null;
+        }
+
+        var model = AiModelInput.Text.Trim();
+        var embedding = AiEmbeddingInput.Text.Trim();
+
+        return _loadedAi with
+        {
+            Enabled = _aiEnabled.IsOn,
+            Endpoint = endpoint,
+            Model = model.Length > 0 ? model : _loadedAi.Model,
+            EmbeddingModel = embedding.Length > 0 ? embedding : _loadedAi.EmbeddingModel,
+            KeepAlive = TimeSpan.FromMinutes(OllamaOptions.ClampKeepAliveMinutes(AiKeepAlive.Value)),
+        };
+    }
+
+    /// <summary>
+    /// Writes all three pages at once.
+    /// </summary>
+    /// <remarks>
+    /// One Save for one window: a user who changed the pet's name and the model in the same visit
+    /// pressed Save once and means both. A field that cannot be parsed stops the whole save and
+    /// moves to the page holding it, rather than writing the rest and leaving the user to discover
+    /// which part did not take.
+    /// </remarks>
     private async void OnSaveClicked(object sender, RoutedEventArgs e)
     {
         SaveButton.IsEnabled = false;
         SaveStatus.Text = string.Empty;
 
-        var value = Read();
         try
         {
-            await value.SaveAsync(_settings).ConfigureAwait(true);
-            SaveStatus.Text = "✓ " + Strings.Get("Settings_Saved");
-            SaveStatus.Foreground = new SolidColorBrush(CompanionPalette.CareBudget(IsDark));
-            SettingsChanged?.Invoke(value);
+            if (ReadAi() is not { } ai)
+            {
+                ShowTab(SettingsTab.Ai);
+                ShowError(Strings.Get("Settings_AiEndpointInvalid"));
+                return;
+            }
+
+            var companion = Read();
+
+            await companion.SaveAsync(_settings).ConfigureAwait(true);
+            await ai.SaveAsync(_settings).ConfigureAwait(true);
+            await _noteDefaults.SaveAsync(_settings).ConfigureAwait(true);
+            await SaveLocaleAsync().ConfigureAwait(true);
+
+            ApplyAi(ai);
+            SettingsChanged?.Invoke(companion);
+            NoteDefaultsChanged?.Invoke(_noteDefaults);
+
+            ShowSaved(await ApplyAiToRunningAppAsync().ConfigureAwait(true));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            CrashLog.Write("Saving companion settings failed", ex);
+            CrashLog.Write("Saving settings failed", ex);
             ShowError(ex.Message);
         }
         finally
         {
             SaveButton.IsEnabled = true;
         }
+    }
+
+    /// <summary>
+    /// Stores the language choice and puts it in force for windows opened from here on.
+    /// </summary>
+    /// <remarks>
+    /// Removing the key rather than writing an empty one is what "follow Windows" means to the
+    /// loader: an empty override and no override are the same intent, and only one of them
+    /// survives a read.
+    /// </remarks>
+    private async Task SaveLocaleAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_locale))
+        {
+            await _settings.RemoveAsync(SettingKeys.UiLocale).ConfigureAwait(true);
+        }
+        else
+        {
+            await _settings.SetAsync(SettingKeys.UiLocale, _locale).ConfigureAwait(true);
+        }
+
+        Strings.UseLocale(_locale);
+    }
+
+    /// <summary>
+    /// Hands the saved AI settings to the running app, and reports what it can do with them.
+    /// </summary>
+    /// <remarks>
+    /// This is the difference between a settings screen and a form. Typing a model name that is
+    /// not installed is the easiest mistake to make here and the hardest to notice — the AI simply
+    /// stays greyed out somewhere else — so the answer comes back on the same button press.
+    /// </remarks>
+    private async Task<string?> ApplyAiToRunningAppAsync()
+    {
+        if (_reloadAi is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var capability = await _reloadAi().ConfigureAwait(true);
+
+            return capability.Availability switch
+            {
+                AiAvailability.Available => Strings.Format(
+                    "Settings_AiConnectedFormat",
+                    capability.ModelId ?? string.Empty),
+                AiAvailability.Disabled => null,
+                var reason => Strings.Get($"Note_AiUnavailable{reason}"),
+            };
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // The settings are already stored; failing to apply them now is a worse launch, not a
+            // failed save, and saying "saved" without the detail is the honest report.
+            CrashLog.Write("Applying AI settings to the running app failed", ex);
+            return null;
+        }
+    }
+
+    private void ShowSaved(string? detail)
+    {
+        SaveStatus.Text = detail is null
+            ? "✓ " + Strings.Get("Settings_Saved")
+            : "✓ " + Strings.Get("Settings_Saved") + "  ·  " + detail;
+        SaveStatus.Foreground = new SolidColorBrush(CompanionPalette.CareBudget(IsDark));
     }
 
     private void ShowError(string message)
@@ -212,10 +411,319 @@ public sealed partial class SettingsWindow : Window
         ApplyPalette();
         BuildPetTiles();
         BuildSizeChoices();
+        BuildLanguageChoices();
+        BuildNoteColorChoices();
+        BuildNoteSizeChoices();
         UpdateHero();
         UpdateQuietHours();
         UpdateAvailability();
+        UpdateAiAvailability();
+        UpdateRemoteWarning();
+        UpdateKeepAliveLabel();
+        ShowTab(_tab);
     }
+
+    /// <summary>
+    /// Three buttons that behave as a segmented control.
+    /// </summary>
+    /// <remarks>
+    /// Built here rather than in markup for the same reason the pet tiles are: which one is
+    /// selected is runtime state, and a selected tab has to be painted from the palette or it
+    /// turns system grey the moment the pointer touches it.
+    /// </remarks>
+    private void BuildTabStrip()
+    {
+        var dark = IsDark;
+        var accent = CompanionPalette.AppBudget(dark);
+
+        TabHost.Children.Clear();
+
+        var tabs = new[]
+        {
+            (Tab: SettingsTab.Character, Key: "Settings_TabCharacter"),
+            (Tab: SettingsTab.Ai, Key: "Settings_TabAi"),
+            (Tab: SettingsTab.General, Key: "Settings_TabGeneral"),
+        };
+
+        for (var index = 0; index < tabs.Length; index++)
+        {
+            var (tab, key) = tabs[index];
+            var selected = tab == _tab;
+            var surface = selected
+                ? new CompanionTileSurface(accent, accent, CompanionPalette.HeroInk, CompanionPalette.HeroInk)
+                : CompanionPalette.Tile(CompanionTileState.Ready, dark);
+
+            var button = new Button
+            {
+                Content = new TextBlock
+                {
+                    Text = Strings.Get(key),
+                    FontSize = 13,
+                    FontWeight = selected
+                        ? Microsoft.UI.Text.FontWeights.SemiBold
+                        : Microsoft.UI.Text.FontWeights.Normal,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                },
+                MinWidth = 0,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                CornerRadius = new CornerRadius(11),
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(4, 8, 4, 8),
+            };
+
+            Paint(button, surface, dark);
+            button.Click += (_, _) => ShowTab(tab);
+
+            Grid.SetColumn(button, index);
+            TabHost.Children.Add(button);
+        }
+    }
+
+    private void ShowTab(SettingsTab tab)
+    {
+        _tab = tab;
+        CompanionPage.Visibility = Shown(tab == SettingsTab.Character);
+        AiPage.Visibility = Shown(tab == SettingsTab.Ai);
+        GeneralPage.Visibility = Shown(tab == SettingsTab.General);
+        BuildTabStrip();
+    }
+
+    private static Visibility Shown(bool shown) => shown ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>Three languages, as three buttons, in the shape the pet sizes already use.</summary>
+    private void BuildLanguageChoices()
+    {
+        var dark = IsDark;
+        var accent = CompanionPalette.CareBudget(dark);
+
+        LanguageHost.Children.Clear();
+
+        var choices = new (string? Locale, string Key)[]
+        {
+            (null, "Settings_LanguageSystem"),
+            ("ko-KR", "Settings_LanguageKorean"),
+            ("en-US", "Settings_LanguageEnglish"),
+        };
+
+        for (var index = 0; index < choices.Length; index++)
+        {
+            var (locale, key) = choices[index];
+            var selected = string.Equals(locale, _locale, StringComparison.OrdinalIgnoreCase);
+            var surface = selected
+                ? new CompanionTileSurface(accent, accent, CompanionPalette.HeroInk, CompanionPalette.HeroInk)
+                : CompanionPalette.Tile(CompanionTileState.Ready, dark);
+
+            var button = new Button
+            {
+                Content = new TextBlock
+                {
+                    Text = Strings.Get(key),
+                    FontSize = 12.5,
+                    FontWeight = selected
+                        ? Microsoft.UI.Text.FontWeights.SemiBold
+                        : Microsoft.UI.Text.FontWeights.Normal,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                },
+                MinWidth = 0,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                CornerRadius = new CornerRadius(11),
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(4, 9, 4, 9),
+            };
+
+            Paint(button, surface, dark);
+            button.Click += (_, _) =>
+            {
+                _locale = locale;
+                BuildLanguageChoices();
+                ClearStatus();
+            };
+
+            Grid.SetColumn(button, index);
+            LanguageHost.Children.Add(button);
+        }
+    }
+
+    /// <summary>
+    /// The eight note colours, as the colours themselves.
+    /// </summary>
+    /// <remarks>
+    /// Painted from <see cref="NotePalette"/>, which is what actually draws a note, so the swatch
+    /// is the colour rather than a description of it. The chosen one is marked with a ring instead
+    /// of a fill, because the fill is already carrying the only information that matters.
+    /// </remarks>
+    private void BuildNoteColorChoices()
+    {
+        var dark = IsDark;
+
+        NoteColorHost.Children.Clear();
+        NoteColorHost.RowDefinitions.Clear();
+
+        const int columns = 4;
+        var rows = (NoteColors.All.Count + columns - 1) / columns;
+
+        for (var row = 0; row < rows; row++)
+        {
+            NoteColorHost.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        }
+
+        for (var index = 0; index < NoteColors.All.Count; index++)
+        {
+            var key = NoteColors.All[index];
+            var selected = string.Equals(key, _noteDefaults.ColorKey, StringComparison.Ordinal);
+            var surface = NotePalette.Resolve(key, dark);
+
+            var swatch = new Button
+            {
+                Content = new TextBlock
+                {
+                    Text = Strings.Get($"Note_Color{char.ToUpperInvariant(key[0])}{key[1..]}"),
+                    FontSize = 11.5,
+                    FontWeight = selected
+                        ? Microsoft.UI.Text.FontWeights.SemiBold
+                        : Microsoft.UI.Text.FontWeights.Normal,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                },
+                MinWidth = 0,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                CornerRadius = new CornerRadius(11),
+                BorderThickness = new Thickness(selected ? 2.5 : 1),
+                Padding = new Thickness(4, 10, 4, 10),
+            };
+
+            Paint(
+                swatch,
+                new CompanionTileSurface(
+                    surface.Background,
+                    selected ? CompanionPalette.Ink(dark) : surface.Border,
+                    surface.Ink,
+                    surface.Ink),
+                dark);
+
+            swatch.Click += (_, _) =>
+            {
+                _noteDefaults = _noteDefaults with { ColorKey = key };
+                BuildNoteColorChoices();
+                ClearStatus();
+            };
+
+            Grid.SetColumn(swatch, index % columns);
+            Grid.SetRow(swatch, index / columns);
+            NoteColorHost.Children.Add(swatch);
+        }
+    }
+
+    /// <summary>The three sizes a new note may start at, drawn as three proportional blocks.</summary>
+    private void BuildNoteSizeChoices()
+    {
+        var dark = IsDark;
+        var accent = CompanionPalette.CareBudget(dark);
+
+        NoteSizeHost.Children.Clear();
+
+        for (var index = 0; index < NoteDefaults.SelectableSizes.Count; index++)
+        {
+            var size = NoteDefaults.SelectableSizes[index];
+            var selected = size == _noteDefaults.Size;
+            var surface = selected
+                ? new CompanionTileSurface(accent, accent, CompanionPalette.HeroInk, CompanionPalette.HeroInk)
+                : CompanionPalette.Tile(CompanionTileState.Ready, dark);
+
+            // The block is the note's real proportions, scaled down — the same trick the pet size
+            // choices use, and a better answer than the words "small" and "large".
+            var (width, height) = NoteGeometry.SizeOf(size);
+            var block = new Border
+            {
+                Width = width / 18.0,
+                Height = height / 18.0,
+                CornerRadius = new CornerRadius(3),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Background = new SolidColorBrush(selected ? surface.Ink : accent),
+            };
+
+            var stack = new StackPanel { Spacing = 6, HorizontalAlignment = HorizontalAlignment.Center };
+            stack.Children.Add(new Border
+            {
+                Height = NoteGeometry.SizeOf(NoteSizePreset.Large).Height / 18.0,
+                Child = block,
+                Padding = new Thickness(0),
+            });
+            stack.Children.Add(new TextBlock
+            {
+                Text = Strings.Get($"Settings_NoteSize{size}"),
+                FontSize = 12,
+                FontWeight = selected
+                    ? Microsoft.UI.Text.FontWeights.SemiBold
+                    : Microsoft.UI.Text.FontWeights.Normal,
+                Foreground = new SolidColorBrush(surface.Ink),
+                HorizontalAlignment = HorizontalAlignment.Center,
+            });
+
+            var button = new Button
+            {
+                Content = stack,
+                MinWidth = 0,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                VerticalContentAlignment = VerticalAlignment.Bottom,
+                CornerRadius = new CornerRadius(11),
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(4, 9, 4, 9),
+            };
+
+            Paint(button, surface, dark);
+            button.Click += (_, _) =>
+            {
+                _noteDefaults = _noteDefaults with { Size = size };
+                BuildNoteSizeChoices();
+                ClearStatus();
+            };
+
+            Grid.SetColumn(button, index);
+            NoteSizeHost.Children.Add(button);
+        }
+    }
+
+    /// <summary>Everything below the switch is meaningless while the switch is off.</summary>
+    private void UpdateAiAvailability()
+    {
+        var enabled = _aiEnabled.IsOn;
+
+        foreach (var control in new Control[] { AiEndpointInput, AiModelInput, AiEmbeddingInput, AiKeepAlive })
+        {
+            control.IsEnabled = enabled;
+            control.Opacity = enabled ? 1 : 0.4;
+        }
+
+        UpdateRemoteWarning();
+    }
+
+    /// <summary>
+    /// Says out loud when the configured address would send note text off this machine.
+    /// </summary>
+    /// <remarks>
+    /// Nothing here refuses the address — pointing at Ollama on another machine of your own is a
+    /// reasonable thing to want. What is not reasonable is the product promising local processing
+    /// while one unlabelled text field silently undoes it.
+    /// </remarks>
+    private void UpdateRemoteWarning()
+    {
+        var remote = _aiEnabled.IsOn
+                     && OllamaOptions.TryParseEndpoint(AiEndpointInput.Text, out var endpoint)
+                     && !endpoint.IsLoopback;
+
+        AiRemoteWarning.Visibility = Shown(remote);
+    }
+
+    private void UpdateKeepAliveLabel() =>
+        AiKeepAliveValue.Text = AiKeepAlive.Value <= 0
+            ? Strings.Get("Settings_AiKeepAliveOff")
+            : Strings.Format(
+                "Settings_AiKeepAliveFormat",
+                AiKeepAlive.Value.ToString("0", CultureInfo.InvariantCulture));
 
     private void ApplyPalette()
     {
@@ -286,9 +794,79 @@ public sealed partial class SettingsWindow : Window
         DragonLockHint.Foreground = new SolidColorBrush(note.Ink);
         DragonLockBox.Visibility = _dragonUnlocked ? Visibility.Collapsed : Visibility.Visible;
 
-        PaintNameInput(dark, character);
+        PaintTextBox(PetNameInput, dark, character);
         PaintBehaviorRows(dark, behavior);
         PaintActionBar(dark, character);
+        PaintAiPage(dark);
+        PaintGeneralPage(dark);
+    }
+
+    /// <summary>The AI page, in amber: a fourth meaning, so it is a fourth colour.</summary>
+    private void PaintAiPage(bool dark)
+    {
+        var accent = CompanionPalette.Mission(dark);
+        var card = new SolidColorBrush(CompanionPalette.Card(dark));
+        var cardBorder = new SolidColorBrush(CompanionPalette.CardBorder(dark));
+
+        AiCard.Background = card;
+        AiCard.BorderBrush = cardBorder;
+        AiAccent.Background = new SolidColorBrush(accent);
+        AiHeader.Foreground = new SolidColorBrush(CompanionPalette.Ink(dark));
+
+        foreach (var label in new[] { AiDescription, AiEmbeddingHint, AiKeepAliveLabel, AiKeepAliveValue })
+        {
+            label.Foreground = new SolidColorBrush(CompanionPalette.Subtle(dark));
+        }
+
+        foreach (var box in new[] { AiEndpointInput, AiModelInput, AiEmbeddingInput })
+        {
+            PaintTextBox(box, dark, accent);
+        }
+
+        // The warning is the one thing on this page that is not decoration, so it borrows the
+        // colour the gauges use for "this needs attention".
+        var alarm = CompanionPalette.Gauge(CompanionGaugeLevel.Low, dark);
+        AiRemoteWarning.Background = new SolidColorBrush(Wash(alarm, dark));
+        AiRemoteWarningText.Foreground = new SolidColorBrush(alarm);
+
+        AiKeepAlive.Foreground = new SolidColorBrush(accent);
+        AiKeepAlive.Resources["SliderTrackValueFill"] = new SolidColorBrush(accent);
+        AiKeepAlive.Resources["SliderTrackValueFillPointerOver"] =
+            new SolidColorBrush(CompanionPalette.Lift(accent, dark));
+        AiKeepAlive.Resources["SliderTrackValueFillPressed"] =
+            new SolidColorBrush(CompanionPalette.Press(accent, dark));
+        AiKeepAlive.Resources["SliderThumbBackground"] = new SolidColorBrush(accent);
+        AiKeepAlive.Resources["SliderTrackFill"] = new SolidColorBrush(CompanionPalette.Track(dark));
+
+        PaintSwitch(_aiEnabled, dark, accent);
+
+        if (_aiEnabledRow is { } row)
+        {
+            row.Icon.Background = new SolidColorBrush(Wash(accent, dark));
+            row.Title.Foreground = new SolidColorBrush(CompanionPalette.Ink(dark));
+            row.Description.Foreground = new SolidColorBrush(CompanionPalette.Subtle(dark));
+        }
+    }
+
+    private void PaintGeneralPage(bool dark)
+    {
+        GeneralCard.Background = new SolidColorBrush(CompanionPalette.Card(dark));
+        GeneralCard.BorderBrush = new SolidColorBrush(CompanionPalette.CardBorder(dark));
+        GeneralAccent.Background = new SolidColorBrush(CompanionPalette.CareBudget(dark));
+        GeneralHeader.Foreground = new SolidColorBrush(CompanionPalette.Ink(dark));
+
+        foreach (var label in new[]
+                 {
+                     LanguageHint, DataLocationPath, NoteColorLabel, NoteSizeLabel,
+                 })
+        {
+            label.Foreground = new SolidColorBrush(CompanionPalette.Subtle(dark));
+        }
+
+        foreach (var heading in new[] { LanguageLabel, DataLocationLabel, NewNoteLabel })
+        {
+            heading.Foreground = new SolidColorBrush(CompanionPalette.Ink(dark));
+        }
     }
 
     /// <summary>
@@ -299,7 +877,7 @@ public sealed partial class SettingsWindow : Window
     /// visual state, so overriding those brushes on the control's own resources — the same trick
     /// the dashboard uses for its tiles — is what keeps it from turning system grey on hover.
     /// </remarks>
-    private void PaintNameInput(bool dark, Color accent)
+    private static void PaintTextBox(TextBox box, bool dark, Color accent)
     {
         var field = new SolidColorBrush(CompanionPalette.Tile(CompanionTileState.Spent, dark).Fill);
         var border = new SolidColorBrush(CompanionPalette.CardBorder(dark));
@@ -307,9 +885,9 @@ public sealed partial class SettingsWindow : Window
         var ink = new SolidColorBrush(CompanionPalette.Ink(dark));
         var subtle = new SolidColorBrush(CompanionPalette.Subtle(dark));
 
-        PetNameInput.Background = field;
-        PetNameInput.BorderBrush = border;
-        PetNameInput.Foreground = ink;
+        box.Background = field;
+        box.BorderBrush = border;
+        box.Foreground = ink;
 
         foreach (var key in new[]
                  {
@@ -317,13 +895,13 @@ public sealed partial class SettingsWindow : Window
                      "TextControlBackgroundFocused", "TextControlBackgroundDisabled",
                  })
         {
-            PetNameInput.Resources[key] = field;
+            box.Resources[key] = field;
         }
 
-        PetNameInput.Resources["TextControlBorderBrush"] = border;
-        PetNameInput.Resources["TextControlBorderBrushPointerOver"] = border;
-        PetNameInput.Resources["TextControlBorderBrushDisabled"] = border;
-        PetNameInput.Resources["TextControlBorderBrushFocused"] = focused;
+        box.Resources["TextControlBorderBrush"] = border;
+        box.Resources["TextControlBorderBrushPointerOver"] = border;
+        box.Resources["TextControlBorderBrushDisabled"] = border;
+        box.Resources["TextControlBorderBrushFocused"] = focused;
 
         foreach (var key in new[]
                  {
@@ -331,7 +909,7 @@ public sealed partial class SettingsWindow : Window
                      "TextControlForegroundFocused",
                  })
         {
-            PetNameInput.Resources[key] = ink;
+            box.Resources[key] = ink;
         }
 
         foreach (var key in new[]
@@ -340,7 +918,7 @@ public sealed partial class SettingsWindow : Window
                      "TextControlPlaceholderForegroundFocused", "TextControlHeaderForeground",
                  })
         {
-            PetNameInput.Resources[key] = subtle;
+            box.Resources[key] = subtle;
         }
     }
 
@@ -584,6 +1162,18 @@ public sealed partial class SettingsWindow : Window
             _behaviorRows.Add(row);
             BehaviorRows.Children.Add(row.Root);
         }
+    }
+
+    /// <summary>The AI switch, in the same shape as the companion switches a page away.</summary>
+    private void BuildAiRow()
+    {
+        _aiEnabledRow = NewBehaviorRow(
+            "\U0001F9E0",
+            Strings.Get("Settings_AiEnabled"),
+            Strings.Get("Settings_AiEnabledDescription"),
+            _aiEnabled);
+
+        AiRows.Children.Add(_aiEnabledRow.Root);
     }
 
     private static BehaviorRow NewBehaviorRow(
@@ -910,6 +1500,24 @@ public sealed partial class SettingsWindow : Window
         QuietStart.Header = Strings.Get("Settings_QuietStart");
         QuietEnd.Header = Strings.Get("Settings_QuietEnd");
         QuietInactiveHint.Text = Strings.Get("Settings_QuietInactiveHint");
+        AiHeader.Text = Strings.Get("Settings_AiHeader");
+        AiDescription.Text = Strings.Get("Settings_AiDescription");
+        AiEndpointInput.Header = Strings.Get("Settings_AiEndpoint");
+        AiEndpointInput.PlaceholderText = Strings.Get("Settings_AiEndpointPlaceholder");
+        AiRemoteWarningText.Text = Strings.Get("Settings_AiRemoteWarning");
+        AiModelInput.Header = Strings.Get("Settings_AiModel");
+        AiModelInput.PlaceholderText = Strings.Get("Settings_AiModelPlaceholder");
+        AiEmbeddingInput.Header = Strings.Get("Settings_AiEmbeddingModel");
+        AiEmbeddingInput.PlaceholderText = Strings.Get("Settings_AiEmbeddingModelPlaceholder");
+        AiEmbeddingHint.Text = Strings.Get("Settings_AiEmbeddingHint");
+        AiKeepAliveLabel.Text = Strings.Get("Settings_AiKeepAlive");
+        GeneralHeader.Text = Strings.Get("Settings_GeneralHeader");
+        LanguageLabel.Text = Strings.Get("Settings_Language");
+        LanguageHint.Text = Strings.Get("Settings_LanguageHint");
+        DataLocationLabel.Text = Strings.Get("Settings_DataLocation");
+        NewNoteLabel.Text = Strings.Get("Settings_NewNote");
+        NoteColorLabel.Text = Strings.Get("Settings_NoteColor");
+        NoteSizeLabel.Text = Strings.Get("Settings_NoteSize");
         SaveButton.Content = Strings.Get("Settings_Save");
         CloseButton.Content = Strings.Get("Ai_Close");
     }

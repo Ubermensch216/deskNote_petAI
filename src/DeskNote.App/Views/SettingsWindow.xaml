@@ -17,12 +17,16 @@
     -->
     <Grid x:Name="Board">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16,16,16,18">
-            <StackPanel Spacing="12">
+        <!--
+            The hero and the tab strip are pinned. The page is three pages now, and a tab strip
+            that scrolls away is one you have to scroll back up to in order to leave the page.
+        -->
+        <StackPanel Grid.Row="0" Margin="16,16,16,0" Spacing="12">
 
                 <!--
                     Hero. The pet you are about to change, at the size you are about to give it,
@@ -83,6 +87,26 @@
                         </StackPanel>
                     </Grid>
                 </Border>
+
+            <!--
+                Three pages, one window. Built in code like the size choices below it, because a
+                system TabView brings its own greys onto a page whose whole point is that colour
+                carries meaning.
+            -->
+            <Grid x:Name="TabHost" ColumnSpacing="6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+            </Grid>
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="16,12,16,18">
+            <Grid>
+
+                <!-- The character page: who the pet is, what it may do, when it stays quiet. -->
+                <StackPanel x:Name="CompanionPage" Spacing="12">
 
                 <!-- Who the pet is: its name, its species, its size. -->
                 <Border x:Name="CharacterCard" CornerRadius="16" BorderThickness="1" Padding="16,14,16,16">
@@ -246,14 +270,155 @@
                             Visibility="Collapsed" />
                     </StackPanel>
                 </Border>
-            </StackPanel>
+                </StackPanel>
+
+                <!--
+                    The AI page. Every value here used to live only in the settings table, which
+                    meant changing the model took a third-party SQLite editor and a restart - for
+                    the feature the product is named after.
+                -->
+                <StackPanel x:Name="AiPage" Spacing="12" Visibility="Collapsed">
+                    <Border x:Name="AiCard" CornerRadius="16" BorderThickness="1" Padding="16,14,16,16">
+                        <StackPanel Spacing="13">
+                            <Grid ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border x:Name="AiAccent" Width="5" Height="18" CornerRadius="3" VerticalAlignment="Center" />
+                                <TextBlock
+                                    x:Name="AiHeader"
+                                    Grid.Column="1"
+                                    FontSize="15"
+                                    FontWeight="SemiBold"
+                                    VerticalAlignment="Center" />
+                            </Grid>
+
+                            <TextBlock x:Name="AiDescription" FontSize="12.5" TextWrapping="Wrap" />
+                            <StackPanel x:Name="AiRows" Spacing="0" />
+
+                            <TextBox x:Name="AiEndpointInput" CornerRadius="10" />
+
+                            <!--
+                                Shown only when the address leaves this machine. The product's
+                                claim is that note text stays here, and this is the one field that
+                                can quietly make that untrue.
+                            -->
+                            <Border x:Name="AiRemoteWarning" CornerRadius="12" Padding="12,10" Visibility="Collapsed">
+                                <Grid ColumnSpacing="9">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock
+                                        FontFamily="Segoe UI Emoji"
+                                        FontSize="14"
+                                        Text="&#x26A0;"
+                                        VerticalAlignment="Top" />
+                                    <TextBlock
+                                        x:Name="AiRemoteWarningText"
+                                        Grid.Column="1"
+                                        FontSize="12"
+                                        TextWrapping="Wrap" />
+                                </Grid>
+                            </Border>
+
+                            <TextBox x:Name="AiModelInput" CornerRadius="10" />
+                            <TextBox x:Name="AiEmbeddingInput" CornerRadius="10" />
+                            <TextBlock x:Name="AiEmbeddingHint" FontSize="11.5" TextWrapping="Wrap" />
+
+                            <StackPanel Spacing="6">
+                                <TextBlock x:Name="AiKeepAliveLabel" FontSize="12" FontWeight="SemiBold" />
+                                <Slider
+                                    x:Name="AiKeepAlive"
+                                    Minimum="0"
+                                    Maximum="60"
+                                    StepFrequency="5"
+                                    TickFrequency="15"
+                                    TickPlacement="Outside" />
+                                <TextBlock x:Name="AiKeepAliveValue" FontSize="11.5" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- The general page: language, and where the notes actually live. -->
+                <StackPanel x:Name="GeneralPage" Spacing="12" Visibility="Collapsed">
+                    <Border x:Name="GeneralCard" CornerRadius="16" BorderThickness="1" Padding="16,14,16,16">
+                        <StackPanel Spacing="13">
+                            <Grid ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border x:Name="GeneralAccent" Width="5" Height="18" CornerRadius="3" VerticalAlignment="Center" />
+                                <TextBlock
+                                    x:Name="GeneralHeader"
+                                    Grid.Column="1"
+                                    FontSize="15"
+                                    FontWeight="SemiBold"
+                                    VerticalAlignment="Center" />
+                            </Grid>
+
+                            <StackPanel Spacing="8">
+                                <TextBlock x:Name="LanguageLabel" FontSize="12" FontWeight="SemiBold" />
+                                <Grid x:Name="LanguageHost" ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                </Grid>
+                                <TextBlock x:Name="LanguageHint" FontSize="11.5" TextWrapping="Wrap" />
+                            </StackPanel>
+
+                            <!--
+                                What a new note starts as. Both settings existed from the start and
+                                nothing read them, so every note arrived yellow and medium however
+                                many times its owner had changed it afterwards.
+                            -->
+                            <StackPanel Spacing="8">
+                                <TextBlock x:Name="NewNoteLabel" FontSize="12" FontWeight="SemiBold" />
+                                <TextBlock x:Name="NoteColorLabel" FontSize="11.5" />
+                                <!-- Eight swatches in the note's own colours: naming them would be a worse answer. -->
+                                <Grid x:Name="NoteColorHost" ColumnSpacing="8" RowSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                </Grid>
+
+                                <TextBlock x:Name="NoteSizeLabel" FontSize="11.5" Margin="0,4,0,0" />
+                                <Grid x:Name="NoteSizeHost" ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                </Grid>
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <TextBlock x:Name="DataLocationLabel" FontSize="12" FontWeight="SemiBold" />
+                                <TextBlock
+                                    x:Name="DataLocationPath"
+                                    FontSize="11.5"
+                                    TextWrapping="Wrap"
+                                    IsTextSelectionEnabled="True" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
         </ScrollViewer>
 
         <!--
             Save is pinned. The page is long enough that the button used to be below the fold, and
             a settings screen whose changes are lost unless you scroll to the bottom is a trap.
         -->
-        <Border x:Name="ActionBar" Grid.Row="1" Padding="16,12" BorderThickness="0,1,0,0">
+        <Border x:Name="ActionBar" Grid.Row="2" Padding="16,12" BorderThickness="0,1,0,0">
             <Grid ColumnSpacing="10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />

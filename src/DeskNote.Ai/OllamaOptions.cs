@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using DeskNote.Core.Abstractions;
 
@@ -115,9 +116,95 @@ public sealed record OllamaOptions
         if (settings.TryGetValue(SettingKeys.AiKeepAliveMinutes, out var keepAlive)
             && double.TryParse(keepAlive, NumberStyles.Float, CultureInfo.InvariantCulture, out var minutes))
         {
-            options = options with { KeepAlive = TimeSpan.FromMinutes(Math.Clamp(minutes, 0, 60)) };
+            options = options with { KeepAlive = TimeSpan.FromMinutes(ClampKeepAliveMinutes(minutes)) };
         }
 
         return options;
+    }
+
+    /// <summary>Longest the model may be asked to stay resident, in minutes.</summary>
+    public const double MaximumKeepAliveMinutes = 60;
+
+    /// <summary>Brings a typed-in keep-alive into the range the daemon is asked for.</summary>
+    public static double ClampKeepAliveMinutes(double minutes) =>
+        Math.Clamp(minutes, 0, MaximumKeepAliveMinutes);
+
+    /// <summary>
+    /// Reads an endpoint the way <see cref="FromSettings"/> does, for a caller that has to refuse
+    /// a bad one rather than silently fall back to the default.
+    /// </summary>
+    /// <remarks>
+    /// A settings screen and the loader have to agree on what counts as an address, or a value the
+    /// screen accepted would be dropped on the next launch and the AI would quietly go back to
+    /// localhost with nothing said.
+    /// </remarks>
+    public static bool TryParseEndpoint(string? value, [NotNullWhen(true)] out Uri? endpoint)
+    {
+        endpoint = null;
+
+        if (!Uri.TryCreate(value?.Trim(), UriKind.Absolute, out var parsed)
+            || (parsed.Scheme != Uri.UriSchemeHttp && parsed.Scheme != Uri.UriSchemeHttps))
+        {
+            return false;
+        }
+
+        endpoint = parsed;
+        return true;
+    }
+
+    /// <summary>
+    /// Whether this endpoint keeps note text on this machine.
+    /// </summary>
+    /// <remarks>
+    /// The product's claim is that inference is local, and the endpoint is the one setting that
+    /// can quietly make it untrue: an address pointing somewhere else sends note bodies over the
+    /// network with nothing on screen to say so. Nothing here forbids it — running Ollama on a
+    /// machine of your own is a reasonable thing to want — but a caller can say it out loud.
+    /// </remarks>
+    public bool IsLocal => Endpoint.IsLoopback;
+
+    /// <summary>
+    /// Writes the values <see cref="FromSettings"/> reads, and only those.
+    /// </summary>
+    /// <remarks>
+    /// The timeouts and the temperature are deliberately not persisted: they are properties of how
+    /// this client talks to the daemon rather than choices a user makes, and writing them would
+    /// turn a tuning change in a future version into a value already pinned in every install.
+    /// </remarks>
+    public async Task SaveAsync(ISettingsStore store, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(store);
+
+        await store.SetAsync(SettingKeys.AiEnabled, Enabled ? "true" : "false", cancellationToken)
+            .ConfigureAwait(false);
+        await store.SetAsync(SettingKeys.AiEndpoint, Endpoint.ToString(), cancellationToken)
+            .ConfigureAwait(false);
+        await store.SetAsync(SettingKeys.AiModel, Model.Trim(), cancellationToken)
+            .ConfigureAwait(false);
+        await store.SetAsync(SettingKeys.AiEmbeddingModel, EmbeddingModel.Trim(), cancellationToken)
+            .ConfigureAwait(false);
+        await store.SetAsync(
+                SettingKeys.AiKeepAliveMinutes,
+                ClampKeepAliveMinutes(KeepAlive.TotalMinutes)
+                    .ToString("0.##", CultureInfo.InvariantCulture),
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Whether two configurations would talk to the same daemon in the same way.
+    /// </summary>
+    /// <remarks>
+    /// Used to decide whether saving has to rebuild the AI client. Rebuilding it cancels whatever
+    /// it is doing, so saving a new pet name should not take a summary down with it.
+    /// </remarks>
+    public bool TalksTheSameWayAs(OllamaOptions other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        return Enabled == other.Enabled
+            && Endpoint == other.Endpoint
+            && string.Equals(Model, other.Model, StringComparison.Ordinal)
+            && KeepAlive == other.KeepAlive;
     }
 }

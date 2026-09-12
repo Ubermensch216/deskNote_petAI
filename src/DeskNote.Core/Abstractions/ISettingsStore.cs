@@ -21,8 +21,10 @@ public static class SettingKeys
     /// <summary>"ko-KR", "en-US", or absent to follow the system locale.</summary>
     public const string UiLocale = "ui.locale";
 
-    /// <summary>"light", "dark", or "system".</summary>
-    public const string Theme = "ui.theme";
+    // There is no theme key. Every window reads the Windows theme from its own root element and
+    // repaints on ActualThemeChanged, so an app-level override would have to be threaded through
+    // all thirteen of them — a key that exists but is read nowhere is worse than no key, because
+    // it reads as a supported setting to anyone browsing this list or the settings table.
 
     /// <summary>JSON map of command name to hotkey gesture.</summary>
     public const string Hotkeys = "input.hotkeys";

@@ -258,9 +258,15 @@ public sealed class ApplicationRuntime : IAsyncDisposable
             return;
         }
 
-        var window = new SettingsWindow(_settings);
+        // The host is handed over as a callback: settings saves the values, and the running AI is
+        // pointed at them on the same button press, so a model name that is not installed says so
+        // there instead of leaving the AI menu greyed out with no explanation.
+        var window = new SettingsWindow(_settings, () => Ai.ReloadAsync(_settings));
         _settingsWindow = window;
         window.SettingsChanged += OnCompanionSettingsChanged;
+
+        // The next note, not the next launch.
+        window.NoteDefaultsChanged += defaults => Windows.Defaults = defaults;
         window.Closed += (_, _) => _settingsWindow = null;
         window.Activate();
     }

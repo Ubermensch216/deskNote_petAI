@@ -20,18 +20,25 @@ namespace DeskNote.App.Services;
 /// </remarks>
 public sealed class LocalAiHost : IDisposable
 {
-    private readonly ILocalAiService _service;
     private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcher;
     private readonly CancellationTokenSource _stopping = new();
+    private readonly IAiRetriever? _retriever;
+
+    private ILocalAiService _service;
+    private OllamaOptions? _options;
 
     private LocalAiHost(
         ILocalAiService service,
         AiCapability capability,
-        Microsoft.UI.Dispatching.DispatcherQueue dispatcher)
+        Microsoft.UI.Dispatching.DispatcherQueue dispatcher,
+        IAiRetriever? retriever = null,
+        OllamaOptions? options = null)
     {
         _service = service;
         Capability = capability;
         _dispatcher = dispatcher;
+        _retriever = retriever;
+        _options = options;
     }
 
     /// <summary>Raised on the UI thread whenever availability changes.</summary>
@@ -64,12 +71,13 @@ public sealed class LocalAiHost : IDisposable
         {
             var options = await OllamaOptions.LoadAsync(settings, cancellationToken).ConfigureAwait(true);
 
-            return options.Enabled
-                ? new LocalAiHost(
-                    new OllamaAiService(options, retriever),
-                    AiCapability.Unavailable(AiAvailability.WorkerUnavailable),
-                    dispatcher)
-                : Disabled(dispatcher);
+            return new LocalAiHost(
+                Build(options, retriever),
+                AiCapability.Unavailable(
+                    options.Enabled ? AiAvailability.WorkerUnavailable : AiAvailability.Disabled),
+                dispatcher,
+                retriever,
+                options);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -77,6 +85,60 @@ public sealed class LocalAiHost : IDisposable
             return Disabled(dispatcher);
         }
     }
+
+    /// <summary>
+    /// Re-reads the AI settings and points the host at whatever they now describe.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Without this, changing the model or the endpoint would only take effect on the next launch,
+    /// and a settings screen whose most important field does nothing until you restart teaches the
+    /// user not to trust the screen. Everything downstream reads <see cref="Service"/> at the
+    /// moment it acts, so replacing it here is enough — no window holds the old one.
+    /// </para>
+    /// <para>
+    /// The client is only rebuilt when the new settings would talk to the daemon differently.
+    /// Rebuilding disposes the old one, which fails whatever it was in the middle of, and saving a
+    /// new pet name must not cancel a summary that is still generating.
+    /// </para>
+    /// <para>
+    /// The embedding model is deliberately not part of this. The vector store is keyed by the model
+    /// that produced each row, and the index, the retriever and the neighbourhood search are all
+    /// built around that key at startup — switching it live would leave half the library
+    /// unsearchable in a way nothing on screen could explain. The settings screen says so instead.
+    /// </para>
+    /// </remarks>
+    /// <returns>What the AI can do once the new settings are in force.</returns>
+    public async Task<AiCapability> ReloadAsync(
+        ISettingsStore settings,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        var options = await OllamaOptions.LoadAsync(settings, cancellationToken).ConfigureAwait(true);
+
+        if (_options is { } current && current.TalksTheSameWayAs(options))
+        {
+            _options = options;
+            return Capability;
+        }
+
+        var replacement = Build(options, _retriever);
+        var previous = _service;
+
+        _service = replacement;
+        _options = options;
+        (previous as IDisposable)?.Dispose();
+
+        var capability = await replacement.ProbeAsync(cancellationToken).ConfigureAwait(true);
+        Publish(capability);
+        return capability;
+    }
+
+    private static ILocalAiService Build(OllamaOptions options, IAiRetriever? retriever) =>
+        options.Enabled
+            ? new OllamaAiService(options, retriever)
+            : new NullAiService(AiAvailability.Disabled);
 
     /// <summary>
     /// Asks the worker to load the model, without waiting for it.

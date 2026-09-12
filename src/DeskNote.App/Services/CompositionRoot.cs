@@ -105,7 +105,12 @@ public static class CompositionRoot
             retriever,
             revisions,
             neighbourhood,
-            new DailyBriefing(library, notes, clock, ai));
+            new DailyBriefing(library, notes, clock, ai))
+        {
+            // Read here rather than on every note creation: it is two settings values, and the
+            // settings screen pushes changes straight onto the manager.
+            Defaults = await NoteDefaults.LoadAsync(settings, cancellationToken).ConfigureAwait(true),
+        };
 
         var reminders = new ReminderService(reminderRepository, notes, clock, dispatcher);
 

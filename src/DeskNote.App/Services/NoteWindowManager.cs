@@ -189,18 +189,33 @@ public sealed partial class NoteWindowManager(
         }
     }
 
+    /// <summary>
+    /// What a new note starts as when the caller does not say.
+    /// </summary>
+    /// <remarks>
+    /// Settable rather than fixed at construction so saving the settings screen reaches the next
+    /// note rather than the next launch.
+    /// </remarks>
+    public NoteDefaults Defaults { get; set; } = new();
+
     /// <summary>Creates a note, stores it, and shows it. This is the path the global hotkey takes.</summary>
+    /// <param name="preset">Size to open at, or null for the user's default.</param>
+    /// <param name="colorKey">Colour to open in, or null for the user's default.</param>
+    /// <remarks>
+    /// Null rather than a constant default, so "the caller did not care" and "the caller asked for
+    /// medium" stay different questions — only the first of them should be answered by a setting.
+    /// </remarks>
     public async Task<Note> CreateAsync(
-        NoteSizePreset preset = NoteSizePreset.Medium,
-        string colorKey = NoteColors.Default,
+        NoteSizePreset? preset = null,
+        string? colorKey = null,
         CancellationToken cancellationToken = default)
     {
         var now = clock.UtcNow;
         var note = new Note
         {
             Id = Guid.CreateVersion7(),
-            Geometry = MonitorLayout.PlaceNewNote(preset, _cascadeIndex++),
-            ColorKey = colorKey,
+            Geometry = MonitorLayout.PlaceNewNote(preset ?? Defaults.Size, _cascadeIndex++),
+            ColorKey = NoteColors.Normalize(colorKey ?? Defaults.ColorKey),
             CreatedAt = now,
             UpdatedAt = now,
         };

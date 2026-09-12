@@ -375,4 +375,37 @@ Try adding a date or a weekday.</value></data>
   <data name="PetGrowthGuide_TipPassive" xml:space="preserve"><value>Launching the app, clicking or dragging the pet, and its own walking earn nothing.</value></data>
   <data name="PetGrowthGuide_TipNoPenalty" xml:space="preserve"><value>Days away never reduce experience or drop a stage. Only fullness, cleanliness, and mood fall with time.</value></data>
   <data name="PetGrowthGuide_TipDragon" xml:space="preserve"><value>The dragon unlocks once the rabbit, cat, dog, fennec fox, otter, and monkey are all fully grown.</value></data>
+  <data name="Settings_TabCharacter" xml:space="preserve"><value>Character</value></data>
+  <data name="Settings_TabAi" xml:space="preserve"><value>AI</value></data>
+  <data name="Settings_TabGeneral" xml:space="preserve"><value>General</value></data>
+  <data name="Settings_AiHeader" xml:space="preserve"><value>Local AI</value></data>
+  <data name="Settings_AiDescription" xml:space="preserve"><value>Summaries, tidying and questions run through Ollama on this PC. Turning AI off changes nothing about the notes themselves.</value></data>
+  <data name="Settings_AiEnabled" xml:space="preserve"><value>Use AI</value></data>
+  <data name="Settings_AiEnabledDescription" xml:space="preserve"><value>When off, DeskNote never opens a connection to the inference server.</value></data>
+  <data name="Settings_AiEndpoint" xml:space="preserve"><value>Inference server address</value></data>
+  <data name="Settings_AiEndpointPlaceholder" xml:space="preserve"><value>http://localhost:11434</value></data>
+  <data name="Settings_AiEndpointInvalid" xml:space="preserve"><value>The address must be a full URL beginning with http:// or https://.</value></data>
+  <data name="Settings_AiRemoteWarning" xml:space="preserve"><value>This address is not on this PC. Every AI action will send the note body over the network.</value></data>
+  <data name="Settings_AiModel" xml:space="preserve"><value>Chat model</value></data>
+  <data name="Settings_AiModelPlaceholder" xml:space="preserve"><value>gemma4:e2b</value></data>
+  <data name="Settings_AiEmbeddingModel" xml:space="preserve"><value>Embedding model</value></data>
+  <data name="Settings_AiEmbeddingModelPlaceholder" xml:space="preserve"><value>bge-m3:latest</value></data>
+  <data name="Settings_AiEmbeddingHint" xml:space="preserve"><value>Used for semantic search and related notes. The index is stored per model, so a change takes effect after a restart.</value></data>
+  <data name="Settings_AiKeepAlive" xml:space="preserve"><value>Keep the model in memory</value></data>
+  <data name="Settings_AiKeepAliveFormat" xml:space="preserve"><value>{0} min</value></data>
+  <data name="Settings_AiKeepAliveOff" xml:space="preserve"><value>Unload as soon as it is done</value></data>
+  <data name="Settings_AiConnectedFormat" xml:space="preserve"><value>Connected · {0}</value></data>
+  <data name="Settings_GeneralHeader" xml:space="preserve"><value>General</value></data>
+  <data name="Settings_Language" xml:space="preserve"><value>Display language</value></data>
+  <data name="Settings_LanguageSystem" xml:space="preserve"><value>System</value></data>
+  <data name="Settings_LanguageKorean" xml:space="preserve"><value>한국어</value></data>
+  <data name="Settings_LanguageEnglish" xml:space="preserve"><value>English</value></data>
+  <data name="Settings_LanguageHint" xml:space="preserve"><value>Windows already open keep the language they were drawn in; new ones use the new language. Restart to change all of them.</value></data>
+  <data name="Settings_DataLocation" xml:space="preserve"><value>Where notes are stored</value></data>
+  <data name="Settings_NewNote" xml:space="preserve"><value>New notes</value></data>
+  <data name="Settings_NoteColor" xml:space="preserve"><value>Default colour</value></data>
+  <data name="Settings_NoteSize" xml:space="preserve"><value>Default size</value></data>
+  <data name="Settings_NoteSizeSmall" xml:space="preserve"><value>Small</value></data>
+  <data name="Settings_NoteSizeMedium" xml:space="preserve"><value>Medium</value></data>
+  <data name="Settings_NoteSizeLarge" xml:space="preserve"><value>Large</value></data>
 </root>
