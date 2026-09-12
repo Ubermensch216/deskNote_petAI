@@ -91,12 +91,25 @@ public class AttachmentPolicyTests
         Assert.EndsWith(")", markdown, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A decision carries what to do and nothing else.
+    /// </summary>
+    /// <remarks>
+    /// It used to carry a sentence explaining itself, written for a screen that was never built —
+    /// so nothing ever read it, and the only thing it did was put Korean prose in a project that
+    /// is meant to hold no user-facing text at all. If a future screen wants to explain the
+    /// decision, it can say it in the language the user is reading.
+    /// </remarks>
     [Fact]
-    public void Every_decision_carries_a_reason_the_ui_can_show()
+    public void A_decision_is_only_what_to_do()
     {
-        Assert.NotEmpty(AttachmentPolicy.ForFile("shot.png", 1024).Reason);
-        Assert.NotEmpty(AttachmentPolicy.ForFile("big.png", AttachmentPolicy.EmbedSizeLimitBytes * 2).Reason);
-        Assert.NotEmpty(AttachmentPolicy.ForClipboardImage().Reason);
+        Assert.Equal(
+            AttachmentKind.Embedded,
+            AttachmentPolicy.ForFile("shot.png", 1024).Kind);
+        Assert.Equal(
+            AttachmentKind.Link,
+            AttachmentPolicy.ForFile("big.png", AttachmentPolicy.EmbedSizeLimitBytes * 2).Kind);
+        Assert.Equal(AttachmentKind.Embedded, AttachmentPolicy.ForClipboardImage().Kind);
     }
 
     /// <summary>

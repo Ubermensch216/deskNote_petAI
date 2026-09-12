@@ -87,21 +87,49 @@ public partial class LocalizationGuardTests
         return directory;
     }
 
+    /// <summary>
+    /// The one project allowed to hold Korean text.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>DeskNote.Ai</c> holds the instructions sent to the model, and those are Korean on
+    /// purpose: the AI features are written for Korean notes, and the rest of the product does not
+    /// pretend otherwise. They are not UI — no user ever sees them — so putting them through the
+    /// resource system would buy nothing and cost the one thing that matters here, which is being
+    /// able to read a prompt and its rules as one piece of text.
+    /// </para>
+    /// <para>
+    /// If English AI ever ships, this exception is where that work starts: delete the entry, run
+    /// the test, and the list of offenders is the list of prompts to translate.
+    /// </para>
+    /// </remarks>
+    private const string PromptProject = "DeskNote.Ai";
+
+    /// <summary>
+    /// Every shipping source file, not just the UI project.
+    /// </summary>
+    /// <remarks>
+    /// Scoped to <c>DeskNote.App</c> once, which is where UI text is supposed to live — and so the
+    /// guard never looked at the places it is not supposed to live. Korean strings reached
+    /// <c>DeskNote.Core</c> that way and sat there unnoticed because nothing rendered them.
+    /// </remarks>
     private static IEnumerable<string> UiSourceFiles()
     {
-        var app = Path.Combine(RepositoryRoot().FullName, "src", "DeskNote.App");
+        var source = Path.Combine(RepositoryRoot().FullName, "src");
+        var separator = Path.DirectorySeparatorChar;
 
         return Directory
-            .EnumerateFiles(app, "*.*", SearchOption.AllDirectories)
+            .EnumerateFiles(source, "*.*", SearchOption.AllDirectories)
             .Where(path => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
                         || path.EndsWith(".xaml", StringComparison.OrdinalIgnoreCase))
-            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                        && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                        && !path.Contains($"{Path.DirectorySeparatorChar}Strings{Path.DirectorySeparatorChar}", StringComparison.Ordinal));
+            .Where(path => !path.Contains($"{separator}obj{separator}", StringComparison.Ordinal)
+                        && !path.Contains($"{separator}bin{separator}", StringComparison.Ordinal)
+                        && !path.Contains($"{separator}Strings{separator}", StringComparison.Ordinal)
+                        && !path.Contains($"{separator}{PromptProject}{separator}", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void No_user_facing_korean_text_is_hardcoded_in_the_app()
+    public void No_user_facing_korean_text_is_hardcoded_outside_the_resources()
     {
         var offenders = new List<string>();
 

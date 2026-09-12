@@ -5,8 +5,7 @@ namespace DeskNote.Core.Services;
 
 /// <summary>What should be done with a file the user dropped or pasted onto a note.</summary>
 /// <param name="Kind">Copy it into the app's own store, or reference it where it is.</param>
-/// <param name="Reason">Why, in a form the UI can show if the user asks.</param>
-public readonly record struct AttachmentDecision(AttachmentKind Kind, string Reason);
+public readonly record struct AttachmentDecision(AttachmentKind Kind);
 
 /// <summary>
 /// Decides whether an attachment is copied into the note store or merely linked.
@@ -35,14 +34,11 @@ public static class AttachmentPolicy
     {
         if (sizeBytes > EmbedSizeLimitBytes)
         {
-            return new AttachmentDecision(
-                AttachmentKind.Link,
-                $"{sizeBytes / (1024 * 1024)} MB — 링크로 연결");
+            return new AttachmentDecision(AttachmentKind.Link);
         }
 
-        return IsImage(fileName)
-            ? new AttachmentDecision(AttachmentKind.Embedded, "이미지 — 메모에 복사")
-            : new AttachmentDecision(AttachmentKind.Link, "파일 — 링크로 연결");
+        return new AttachmentDecision(
+            IsImage(fileName) ? AttachmentKind.Embedded : AttachmentKind.Link);
     }
 
     /// <summary>
@@ -52,8 +48,7 @@ public static class AttachmentPolicy
     /// Always embedded, whatever the size: clipboard content has no path to link to, so the choice
     /// is copy it or lose it.
     /// </remarks>
-    public static AttachmentDecision ForClipboardImage() =>
-        new(AttachmentKind.Embedded, "붙여넣은 이미지 — 메모에 복사");
+    public static AttachmentDecision ForClipboardImage() => new(AttachmentKind.Embedded);
 
     /// <summary>
     /// The Markdown to insert for an attachment.
