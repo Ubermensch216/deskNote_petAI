@@ -24,6 +24,12 @@ public sealed partial class DesktopPetWindow : Window
     private const int FrameCount = 4;
     private const double WalkSpeed = 58;
     private const double CarePropSeconds = 2.6;
+    private const double WalkLegMinimumSeconds = 3.2;
+    private const double WalkLegMaximumSeconds = 9.5;
+    private const double OrnamentMinimumScale = 0.5;
+    private const double HeadTopFraction = 0.78;
+    private const double RestEffectFraction = 0.68;
+    private const double RestEffectSideOffset = 18;
     private const double SpeechBubbleGap = 2;
     private const double SpeechBubbleReserve = 58;
     private const int IdleChatterMinimumSeconds = 45;
@@ -50,6 +56,12 @@ public sealed partial class DesktopPetWindow : Window
     private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _carePropTimer;
     private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _idleChatterTimer;
     private readonly Random _chatter = new();
+
+    /// <summary>
+    /// Kept apart from <see cref="_chatter"/> so a change to how often the pet speaks cannot
+    /// silently reshuffle how it moves.
+    /// </summary>
+    private readonly Random _behaviour = new();
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     [ThreadStatic]
     private static object? _systemDispatcherQueueController;
@@ -77,7 +89,14 @@ public sealed partial class DesktopPetWindow : Window
     private double _carePropElapsed;
     private PetAnimation _animation = PetAnimation.Walk;
     private PetMotionState _motionState = PetMotionState.Walking;
+    private PetRestPose _restPose = PetRestPose.Sit;
+    private CompanionGrowthMark _growthMark = CompanionGrowthMark.None;
+    private double _restElapsed;
+    private double _restDuration;
+    private double _poseScaleX = 1;
+    private double _poseScaleY = 1;
     private TimeSpan _restUntil;
+    private TimeSpan _walkUntil;
     private TimeSpan _lastTopmostCheck;
     private NativePoint _dragStartCursor;
     private PointInt32 _dragStartWindow;
@@ -146,7 +165,11 @@ public sealed partial class DesktopPetWindow : Window
         _bubbleTimer = DispatcherQueue.CreateTimer();
         _bubbleTimer.Interval = TimeSpan.FromSeconds(4);
         _bubbleTimer.IsRepeating = false;
-        _bubbleTimer.Tick += (_, _) => SpeechBubble.Visibility = Visibility.Collapsed;
+        _bubbleTimer.Tick += (_, _) =>
+        {
+            SpeechBubble.Visibility = Visibility.Collapsed;
+            UpdateOrnamentVisibility();
+        };
 
         _clickTimer = DispatcherQueue.CreateTimer();
         _clickTimer.Interval = TimeSpan.FromMilliseconds(GetDoubleClickTime());
@@ -255,6 +278,7 @@ public sealed partial class DesktopPetWindow : Window
 
         SpeechText.Text = line;
         SpeechBubble.Visibility = Visibility.Visible;
+        UpdateOrnamentVisibility();
         _bubbleTimer.Stop();
         _bubbleTimer.Start();
 
@@ -356,7 +380,16 @@ public sealed partial class DesktopPetWindow : Window
         RestProp.Visibility = Collapsed(request.Action == CompanionCareAction.Rest);
 
         Say($"Companion_CareReaction{request.Action}");
-        BeginRest(_clock.Elapsed, seconds: CarePropSeconds);
+
+        // Being put to bed is the one care action with a pose of its own; the rest are acted out
+        // by the prop beside the pet, and a pet that curled up and slept through being fed would
+        // be answering a different request.
+        BeginRest(
+            _clock.Elapsed,
+            seconds: CarePropSeconds,
+            pose: request.Action == CompanionCareAction.Rest
+                ? PetRestPose.Sleep
+                : PetRestPose.Sit);
 
         _carePropElapsed = 0;
         CareProp.Opacity = 1;
@@ -417,6 +450,7 @@ public sealed partial class DesktopPetWindow : Window
         AssertAlwaysOnTop();
         _lastTick = _clock.Elapsed;
         _lastTopmostCheck = _lastTick;
+        ScheduleNextRest(_lastTick);
     }
 
     /// <summary>
@@ -477,6 +511,7 @@ public sealed partial class DesktopPetWindow : Window
         var elapsed = Math.Min(0.05, (now - _lastTick).TotalSeconds);
         _lastTick = now;
         EnsureStillTopmost(now);
+        AnimateGrowthMark(now);
 
         if (_motionState == PetMotionState.Resting)
         {
@@ -486,7 +521,7 @@ public sealed partial class DesktopPetWindow : Window
             }
             else
             {
-                AdvanceFrame(elapsed, 0.32);
+                AdvanceRest(elapsed);
                 return;
             }
         }
@@ -496,7 +531,7 @@ public sealed partial class DesktopPetWindow : Window
         var horizontalInset = (WindowWidth - visibleFrameWidth) / 2;
         var left = area.X - horizontalInset;
         var right = area.X + area.Width - WindowWidth + horizontalInset;
-        _x += _direction * WalkSpeed * MoodSpeedFactor() * elapsed;
+        _x += _direction * WalkSpeed * MoodSpeedFactor() * GrowthSpeedFactor() * elapsed;
 
         if (_x <= left)
         {
@@ -510,8 +545,16 @@ public sealed partial class DesktopPetWindow : Window
             _direction = -1;
             BeginRest(now);
         }
+        else if (now >= _walkUntil)
+        {
+            // Resting only at the two edges turned the pet into a pendulum: the same two stops,
+            // in the same two places, for as long as the machine was on. A leg of random length
+            // means it also sits down in the middle of the screen, which is where the user
+            // actually is.
+            BeginRest(now);
+        }
 
-        AdvanceFrame(elapsed, 0.13);
+        AdvanceFrame(elapsed, WalkFrameSeconds());
         ApplyFacingTransform();
         AppWindow.Move(new PointInt32((int)Math.Round(_x), (int)Math.Round(_y)));
     }
@@ -523,13 +566,16 @@ public sealed partial class DesktopPetWindow : Window
             _animationTimer.Stop();
             _motionState = PetMotionState.Walking;
             SetAnimation(PetAnimation.Walk);
-            _frame = 0;
-            Canvas.SetLeft(SpriteStrip, 0);
+            SetFrame(0);
+            SetPoseScale(1, 1);
+            GrowthMarkLift.Y = 0;
             ApplyFacingTransform(forceRight: true);
+            UpdateOrnamentVisibility();
             return;
         }
 
         _lastTick = _clock.Elapsed;
+        ScheduleNextRest(_lastTick);
         _animationTimer.Start();
     }
 
@@ -547,21 +593,197 @@ public sealed partial class DesktopPetWindow : Window
         SpriteStrip.Height = _frameHeight;
         Canvas.SetLeft(SpriteStrip, -_frame * _frameWidth);
         PositionSpeechBubble();
+        PositionOrnaments();
     }
 
-    private void BeginRest(TimeSpan now, double? seconds = null)
+    private void BeginRest(TimeSpan now, double? seconds = null, PetRestPose? pose = null)
     {
         _motionState = PetMotionState.Resting;
-        _restUntil = now + TimeSpan.FromSeconds(seconds ?? RestDurationSeconds());
+        _restPose = pose ?? ChooseRestPose();
+        _restElapsed = 0;
+        _restDuration = seconds ?? (RestDurationSeconds() * RestPoseFactor(_restPose));
+        _restUntil = now + TimeSpan.FromSeconds(_restDuration);
         SetAnimation(PetAnimation.Rest);
+
+        // A sleeping animal is still, so the strip is parked on one frame rather than cycling;
+        // everything that says "asleep" is then carried by the breathing and the drifting Zs.
+        if (_restPose == PetRestPose.Sleep)
+        {
+            SetFrame(0);
+        }
+
+        ShowRestEffect();
+
+        // Set rather than eased: the pose the pet is leaving may have left the sprite mid-squash,
+        // and the facing is re-applied here because an edge turn flips the direction one line
+        // before this call - a pet that sat down still facing the wall it just reached read as a
+        // missed frame.
+        _poseScaleX = 1;
+        _poseScaleY = 1;
         ApplyFacingTransform();
     }
 
     private void BeginWalking()
     {
         _motionState = PetMotionState.Walking;
+
+        // The pose is deliberately left as it was. It is the only memory of what the pet did
+        // last, and ChooseRestPose uses it to avoid dealing the same pose twice running; clearing
+        // it here would have compared every roll against a pose the pet had not held for minutes.
         SetAnimation(PetAnimation.Walk);
+        _poseScaleX = 1;
+        _poseScaleY = 1;
+        ApplyFacingTransform();
+        ShowRestEffect();
         _lastTick = _clock.Elapsed;
+        ScheduleNextRest(_lastTick);
+    }
+
+    /// <summary>Decides how far the pet gets before it next sits down.</summary>
+    private void ScheduleNextRest(TimeSpan now) =>
+        _walkUntil = now + TimeSpan.FromSeconds(
+            WalkLegMinimumSeconds
+            + (_behaviour.NextDouble() * (WalkLegMaximumSeconds - WalkLegMinimumSeconds)));
+
+    /// <summary>
+    /// Picks what the pet does while it is sitting still.
+    /// </summary>
+    /// <remarks>
+    /// Four poses rather than one, because a single rest loop seen a hundred times a day is the
+    /// part of the pet that most obviously repeats. A bored pet is nudged toward staring into
+    /// space and away from stretching; the nudge moves the odds rather than replacing them, so no
+    /// pose ever vanishes. The same pose twice running is re-rolled once - true randomness reads
+    /// as a stuck animation when it repeats, and one re-roll costs nothing.
+    /// </remarks>
+    private PetRestPose ChooseRestPose()
+    {
+        var pose = RollRestPose();
+        return pose == _restPose ? RollRestPose() : pose;
+    }
+
+    private PetRestPose RollRestPose()
+    {
+        var listless = _needs.Mood <= CompanionCareRules.PlayThreshold;
+        var roll = _behaviour.Next(100);
+
+        if (roll < (listless ? 24 : 34))
+        {
+            return PetRestPose.Sit;
+        }
+
+        if (roll < (listless ? 60 : 58))
+        {
+            return PetRestPose.Daydream;
+        }
+
+        return roll < (listless ? 88 : 82) ? PetRestPose.Sleep : PetRestPose.Stretch;
+    }
+
+    /// <summary>How long each pose holds, against the species' own base rest.</summary>
+    private static double RestPoseFactor(PetRestPose pose) => pose switch
+    {
+        PetRestPose.Sleep => 2.2,
+        PetRestPose.Daydream => 1.5,
+        PetRestPose.Stretch => 0.7,
+        _ => 1,
+    };
+
+    /// <summary>
+    /// Moves whichever rest pose is running along by one frame's worth of time.
+    /// </summary>
+    /// <remarks>
+    /// The poses are separated by how they move, not by new artwork. Seven species times four
+    /// poses is twenty-eight strips nobody is going to draw; a held frame under a breathing
+    /// squash, a near-frozen frame under a slow sway, and a squash-and-stretch pulse are read as
+    /// three different things by anyone watching, and they cost three lines each.
+    /// </remarks>
+    private void AdvanceRest(double elapsed)
+    {
+        _restElapsed += elapsed;
+
+        switch (_restPose)
+        {
+            case PetRestPose.Sleep:
+                var breath = Math.Sin(_restElapsed * 1.7);
+                SetPoseScale(1 - (0.018 * breath), 1 + (0.032 * breath));
+                AnimateSleep();
+                break;
+
+            case PetRestPose.Daydream:
+                AdvanceFrame(elapsed, 1.1);
+                var sway = Math.Sin(_restElapsed * 0.85);
+                SetPoseScale(1 + (0.014 * sway), 1 - (0.014 * sway));
+                AnimateDaydream();
+                break;
+
+            case PetRestPose.Stretch:
+                AdvanceFrame(elapsed, 0.18);
+                // One full cycle over the pose: up onto the toes, down into a slump, back to rest.
+                var pulse = Math.Sin(
+                    (_restDuration <= 0 ? 1 : _restElapsed / _restDuration) * Math.PI * 2);
+                SetPoseScale(1 - (0.10 * pulse), 1 + (0.17 * pulse));
+                break;
+
+            default:
+                AdvanceFrame(elapsed, 0.32);
+                break;
+        }
+    }
+
+    private void SetPoseScale(double x, double y)
+    {
+        if (Math.Abs(_poseScaleX - x) < 0.0005 && Math.Abs(_poseScaleY - y) < 0.0005)
+        {
+            return;
+        }
+
+        _poseScaleX = x;
+        _poseScaleY = y;
+        ApplyFacingTransform();
+    }
+
+    /// <summary>Shows the glyphs that belong to the pose now running, and hides the rest.</summary>
+    private void ShowRestEffect()
+    {
+        SleepMark.Visibility = Collapsed(_restPose == PetRestPose.Sleep);
+        DaydreamMark.Visibility = Collapsed(_restPose == PetRestPose.Daydream);
+        UpdateOrnamentVisibility();
+    }
+
+    /// <summary>
+    /// Sends three Zs up and away on staggered phases.
+    /// </summary>
+    /// <remarks>
+    /// One shared phase would make the three move as a single object, which reads as a decal
+    /// sliding rather than as breath leaving an animal.
+    /// </remarks>
+    private void AnimateSleep()
+    {
+        Drift(SleepZSmallDrift, SleepZSmall, _restElapsed, 0);
+        Drift(SleepZMediumDrift, SleepZMedium, _restElapsed, 0.9);
+        Drift(SleepZLargeDrift, SleepZLarge, _restElapsed, 1.8);
+
+        static void Drift(TranslateTransform transform, UIElement glyph, double elapsed, double phase)
+        {
+            var cycle = ((elapsed - phase) % 2.7 + 2.7) % 2.7;
+            transform.Y = -10 * cycle;
+            transform.X = 4 * cycle;
+            glyph.Opacity = elapsed < phase ? 0 : Math.Clamp(1 - (cycle / 2.7), 0, 1);
+        }
+    }
+
+    /// <summary>Fades the three thought dots in one after another, then starts over.</summary>
+    private void AnimateDaydream()
+    {
+        DaydreamDotSmall.Opacity = DotOpacity(_restElapsed, 0);
+        DaydreamDotMedium.Opacity = DotOpacity(_restElapsed, 0.75);
+        DaydreamDotLarge.Opacity = DotOpacity(_restElapsed, 1.5);
+
+        static double DotOpacity(double elapsed, double phase)
+        {
+            var cycle = ((elapsed - phase) % 3.6 + 3.6) % 3.6;
+            return elapsed < phase ? 0 : Math.Clamp(Math.Sin(cycle / 3.6 * Math.PI), 0, 1);
+        }
     }
 
     private void ApplyGrowthAppearance(CompanionPetKind pet, int appearanceStage)
@@ -580,19 +802,118 @@ public sealed partial class DesktopPetWindow : Window
         var appearance = CompanionGrowthAppearanceCatalog.For(pet, normalizedStage);
         _growthScaleX = appearance.WidthScale;
         _growthScaleY = appearance.HeightScale;
+        _growthMark = appearance.Mark;
+        ApplyGrowthMark();
         ApplyFacingTransform(_settings.ReduceMotion);
         PositionSpeechBubble();
+        PositionOrnaments();
+    }
+
+    /// <summary>Hangs the ornament this stage has earned over the pet.</summary>
+    private void ApplyGrowthMark()
+    {
+        SproutMark.Visibility = Collapsed(_growthMark == CompanionGrowthMark.Sprout);
+        SparklesMark.Visibility = Collapsed(_growthMark == CompanionGrowthMark.Sparkles);
+        HaloMark.Visibility = Collapsed(_growthMark == CompanionGrowthMark.Halo);
+        CrownMark.Visibility = Collapsed(_growthMark == CompanionGrowthMark.Crown);
+        UpdateOrnamentVisibility();
+    }
+
+    /// <summary>
+    /// Puts both overlays where the pet's head actually is.
+    /// </summary>
+    /// <remarks>
+    /// The sprite sits between roughly a fifth and four fifths of its frame, so the head top is a
+    /// fraction of the drawn height rather than the window's. Both layers shrink with the pet but
+    /// stop at half scale: a newborn at the small size setting is about thirty pixels tall, and an
+    /// ornament that shrank with it in full would be a smudge.
+    /// </remarks>
+    private void PositionOrnaments()
+    {
+        var drawnHeight = _frameHeight * _growthScaleY;
+        var scale = Math.Clamp(drawnHeight / BaseFrameHeight, OrnamentMinimumScale, 1);
+
+        GrowthMarkScale.ScaleX = scale;
+        GrowthMarkScale.ScaleY = scale;
+        GrowthMark.Margin = new Thickness(0, 0, 0, drawnHeight * HeadTopFraction);
+
+        RestEffectScale.ScaleX = scale;
+        RestEffectScale.ScaleY = scale;
+
+        // A centred child is centred in what is left after its own margins, so twice the wanted
+        // offset on the left shifts it by the offset itself. The Zs rise beside the head rather
+        // than through the ornament already sitting on top of it.
+        RestEffect.Margin = new Thickness(
+            2 * RestEffectSideOffset * scale,
+            0,
+            0,
+            drawnHeight * RestEffectFraction);
+    }
+
+    /// <summary>
+    /// Keeps the overlays out of the way of the pet's own words.
+    /// </summary>
+    /// <remarks>
+    /// A small pet's bubble lands in the same band as its ornament, and an opaque bubble with a
+    /// crown poking through it looks like a drawing error rather than a pet. The bubble lasts four
+    /// seconds; the ornament comes back after it.
+    /// </remarks>
+    private void UpdateOrnamentVisibility()
+    {
+        var talking = SpeechBubble.Visibility == Visibility.Visible;
+        GrowthMark.Visibility =
+            Collapsed(_growthMark != CompanionGrowthMark.None && !talking);
+        RestEffect.Visibility = Collapsed(
+            !talking
+            && !_settings.ReduceMotion
+            && _motionState == PetMotionState.Resting
+            && _restPose is PetRestPose.Sleep or PetRestPose.Daydream);
+    }
+
+    /// <summary>Gives the ornament a slow bob, and the stage-three pair its twinkle.</summary>
+    private void AnimateGrowthMark(TimeSpan now)
+    {
+        if (_growthMark == CompanionGrowthMark.None)
+        {
+            return;
+        }
+
+        var seconds = now.TotalSeconds;
+        GrowthMarkLift.Y = -2.5 * Math.Sin(seconds * 1.9);
+
+        if (_growthMark != CompanionGrowthMark.Sparkles)
+        {
+            return;
+        }
+
+        SparkleLeft.Opacity = 0.55 + (0.45 * Math.Sin(seconds * 2.6));
+        SparkleRight.Opacity = 0.55 + (0.45 * Math.Sin((seconds * 2.6) + Math.PI));
     }
 
     private void ApplyFacingTransform(bool forceRight = false)
     {
-        FacingTransform.ScaleX = (forceRight ? 1 : _direction) * _growthScaleX;
-        FacingTransform.ScaleY = _growthScaleY;
+        FacingTransform.ScaleX = (forceRight ? 1 : _direction) * _growthScaleX * _poseScaleX;
+        FacingTransform.ScaleY = _growthScaleY * _poseScaleY;
     }
 
     /// <summary>A hungry, bored pet plods; a happy one trots. Never fully stops, which would
     /// read as the app having frozen.</summary>
     private double MoodSpeedFactor() => 0.6 + (0.4 * (_needs.Mood / 100d));
+
+    /// <summary>
+    /// A newborn toddles and a full-grown pet strides.
+    /// </summary>
+    /// <remarks>
+    /// Size alone is only legible next to another pet. Gait is legible on its own: short quick
+    /// steps that cover little ground are what "young" looks like from across the desk, and it
+    /// costs two numbers.
+    /// </remarks>
+    private double GrowthSpeedFactor() =>
+        0.72 + (0.07 * Math.Max(0, _appearanceStage));
+
+    private double WalkFrameSeconds() =>
+        0.13 - (0.0075 * (CompanionGrowthAppearanceCatalog.FinalStage
+                          - Math.Clamp(_appearanceStage, 0, CompanionGrowthAppearanceCatalog.FinalStage)));
 
     private double RestDurationSeconds() => _settings.SelectedPet switch
     {
@@ -614,7 +935,12 @@ public sealed partial class DesktopPetWindow : Window
         }
 
         _frameTime %= frameDuration;
-        _frame = (_frame + 1) % FrameCount;
+        SetFrame((_frame + 1) % FrameCount);
+    }
+
+    private void SetFrame(int frame)
+    {
+        _frame = frame;
         Canvas.SetLeft(SpriteStrip, -_frame * _frameWidth);
     }
 
@@ -775,9 +1101,8 @@ public sealed partial class DesktopPetWindow : Window
         }
 
         _animation = animation;
-        _frame = 0;
         _frameTime = 0;
-        Canvas.SetLeft(SpriteStrip, 0);
+        SetFrame(0);
         var suffix = animation == PetAnimation.Rest ? "rest" : "walk";
         SpriteStrip.Source = new BitmapImage(
             new Uri($"ms-appx:///Assets/Companion/{_assetKey}-{suffix}.png"));
@@ -905,6 +1230,22 @@ public sealed partial class DesktopPetWindow : Window
     {
         Walk,
         Rest,
+    }
+
+    /// <summary>What the pet is doing while it is not walking.</summary>
+    private enum PetRestPose
+    {
+        /// <summary>The original: the rest strip looping at its own pace.</summary>
+        Sit,
+
+        /// <summary>One held frame, breathing, with Zs drifting off the head.</summary>
+        Sleep,
+
+        /// <summary>Barely moving, swaying, with a trail of thought dots.</summary>
+        Daydream,
+
+        /// <summary>A squash-and-stretch pulse, over quickly.</summary>
+        Stretch,
     }
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]

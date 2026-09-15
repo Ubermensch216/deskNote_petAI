@@ -77,46 +77,98 @@ public static class CompanionPetCatalog
     };
 }
 
-public readonly record struct CompanionGrowthAppearance(double WidthScale, double HeightScale);
+/// <summary>
+/// The ornament a pet wears once it has been raised far enough to earn it.
+/// </summary>
+/// <remarks>
+/// The same ladder for every species, on purpose. A mark that differed by pet would be one more
+/// thing to learn per animal; the point of the mark is that a glance at any pet on any desktop
+/// says how far it has come. It is the same trade the care props already make - a vector ornament
+/// rather than five more sprite sheets per species, which is thirty-five strips nobody would draw.
+/// </remarks>
+public enum CompanionGrowthMark
+{
+    /// <summary>Stage one. A newborn wears nothing; being tiny is the whole look.</summary>
+    None = 0,
+
+    /// <summary>Stage two. A two-leaf sprout, for something that has just started growing.</summary>
+    Sprout = 1,
+
+    /// <summary>Stage three. A pair of twinkling stars.</summary>
+    Sparkles = 2,
+
+    /// <summary>Stage four. A halo, one step short of the crown.</summary>
+    Halo = 3,
+
+    /// <summary>Stage five. The crown, and the only gold on the desktop.</summary>
+    Crown = 4,
+}
+
+public readonly record struct CompanionGrowthAppearance(
+    double WidthScale,
+    double HeightScale,
+    CompanionGrowthMark Mark);
 
 /// <summary>
-/// Keeps the original species artwork while changing its silhouette from a compact juvenile
-/// body at stage one to the full adult proportions at stage five.
+/// Keeps the original species artwork while changing its silhouette from a small, round newborn
+/// at stage one to the full adult proportions at stage five, and hangs a per-stage ornament over
+/// it.
 /// </summary>
+/// <remarks>
+/// The silhouette used to run from about 0.75 of full size up to 1.0, which is under 7% per rung.
+/// Nobody sees 7% across the days it takes to earn a rung: five stages that all looked the same
+/// meant the growth ladder only existed as a number in the dashboard. The newborn now starts near
+/// half size, so each promotion is a visible 15% step, and the ornament makes the stage readable
+/// even when there is no earlier pet to compare against.
+/// </remarks>
 public static class CompanionGrowthAppearanceCatalog
 {
     public const int FinalStage = 4;
 
     public static CompanionGrowthAppearance For(CompanionPetKind pet, int appearanceStage)
     {
-        var juvenile = pet switch
+        var stage = Math.Clamp(appearanceStage, 0, FinalStage);
+        var newborn = pet switch
         {
-            // Taller juvenile silhouettes preserve the signature ears.
-            CompanionPetKind.Rabbit => new CompanionGrowthAppearance(0.70, 0.68),
-            CompanionPetKind.FennecFox => new CompanionGrowthAppearance(0.72, 0.70),
+            // Taller newborn silhouettes preserve the signature ears.
+            CompanionPetKind.Rabbit => (Width: 0.50, Height: 0.50),
+            CompanionPetKind.FennecFox => (Width: 0.52, Height: 0.52),
 
             // Broader, shorter silhouettes read as round-faced puppies and kittens.
-            CompanionPetKind.Cat => new CompanionGrowthAppearance(0.76, 0.64),
-            CompanionPetKind.Dog => new CompanionGrowthAppearance(0.78, 0.66),
+            CompanionPetKind.Cat => (Width: 0.56, Height: 0.46),
+            CompanionPetKind.Dog => (Width: 0.58, Height: 0.48),
 
             // Otter pups keep their characteristically low, rounded body.
-            CompanionPetKind.Otter => new CompanionGrowthAppearance(0.80, 0.62),
-            CompanionPetKind.Dragon => new CompanionGrowthAppearance(0.72, 0.64),
-            CompanionPetKind.Monkey => new CompanionGrowthAppearance(0.76, 0.66),
-            _ => new CompanionGrowthAppearance(0.74, 0.66),
+            CompanionPetKind.Otter => (Width: 0.60, Height: 0.44),
+            CompanionPetKind.Dragon => (Width: 0.52, Height: 0.46),
+            CompanionPetKind.Monkey => (Width: 0.56, Height: 0.48),
+            _ => (Width: 0.54, Height: 0.48),
         };
 
-        var progress = Math.Clamp(appearanceStage, 0, FinalStage) switch
+        // Even steps rather than an ease-out. The old curve spent most of its travel on the first
+        // two rungs, which left the last three - the ones that cost care days - looking alike.
+        var progress = stage switch
         {
             0 => 0d,
-            1 => 0.34d,
-            2 => 0.61d,
-            3 => 0.83d,
+            1 => 0.30d,
+            2 => 0.55d,
+            3 => 0.79d,
             _ => 1d,
         };
 
         return new CompanionGrowthAppearance(
-            juvenile.WidthScale + ((1d - juvenile.WidthScale) * progress),
-            juvenile.HeightScale + ((1d - juvenile.HeightScale) * progress));
+            newborn.Width + ((1d - newborn.Width) * progress),
+            newborn.Height + ((1d - newborn.Height) * progress),
+            MarkFor(stage));
     }
+
+    public static CompanionGrowthMark MarkFor(int appearanceStage) =>
+        Math.Clamp(appearanceStage, 0, FinalStage) switch
+        {
+            0 => CompanionGrowthMark.None,
+            1 => CompanionGrowthMark.Sprout,
+            2 => CompanionGrowthMark.Sparkles,
+            3 => CompanionGrowthMark.Halo,
+            _ => CompanionGrowthMark.Crown,
+        };
 }

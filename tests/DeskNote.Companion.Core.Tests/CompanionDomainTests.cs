@@ -23,8 +23,77 @@ public class CompanionDomainTests
                 previous = current;
             }
 
-            Assert.Equal(new CompanionGrowthAppearance(1, 1), previous);
+            Assert.Equal(
+                new CompanionGrowthAppearance(1, 1, CompanionGrowthMark.Crown),
+                previous);
         }
+    }
+
+    /// <summary>
+    /// Every promotion has to be visible without a second pet to compare against.
+    /// </summary>
+    /// <remarks>
+    /// The silhouette once ran from 0.75 to 1.0 across four rungs, under 7% a rung, and a rung
+    /// costs days of care. Users reported that the five stages looked identical, which they
+    /// effectively did. Ten percent is the floor this pins; the catalogue currently clears it with
+    /// room to spare.
+    /// </remarks>
+    [Fact]
+    public void Each_stage_is_at_least_a_tenth_larger_than_the_one_below_it()
+    {
+        foreach (var pet in CompanionPetCatalog.All)
+        {
+            for (var stage = 1; stage <= CompanionGrowthAppearanceCatalog.FinalStage; stage++)
+            {
+                var below = CompanionGrowthAppearanceCatalog.For(pet, stage - 1);
+                var current = CompanionGrowthAppearanceCatalog.For(pet, stage);
+
+                Assert.True(
+                    current.HeightScale / below.HeightScale >= 1.10,
+                    $"{pet} stage {stage} is only "
+                    + $"{current.HeightScale / below.HeightScale:P0} of the stage below it.");
+            }
+        }
+    }
+
+    /// <summary>
+    /// The ornament is what makes a stage readable on its own, so no two stages may share one,
+    /// and it must not depend on the species: the same mark has to mean the same thing on every
+    /// desktop.
+    /// </summary>
+    [Fact]
+    public void Every_stage_wears_a_different_mark_and_every_pet_wears_the_same_ladder()
+    {
+        var ladder = Enumerable
+            .Range(0, CompanionGrowthAppearanceCatalog.FinalStage + 1)
+            .Select(CompanionGrowthAppearanceCatalog.MarkFor)
+            .ToList();
+
+        Assert.Equal(ladder.Count, ladder.Distinct().Count());
+        Assert.Equal(CompanionGrowthMark.None, ladder[0]);
+        Assert.Equal(CompanionGrowthMark.Crown, ladder[^1]);
+
+        foreach (var pet in CompanionPetCatalog.All)
+        {
+            for (var stage = 0; stage <= CompanionGrowthAppearanceCatalog.FinalStage; stage++)
+            {
+                Assert.Equal(ladder[stage], CompanionGrowthAppearanceCatalog.For(pet, stage).Mark);
+            }
+        }
+    }
+
+    /// <summary>A stage outside the ladder must clamp rather than throw or go unmarked.</summary>
+    [Theory]
+    [InlineData(-3)]
+    [InlineData(99)]
+    public void An_out_of_range_stage_clamps_onto_the_ladder(int stage)
+    {
+        var appearance = CompanionGrowthAppearanceCatalog.For(CompanionPetKind.Cat, stage);
+        var expected = CompanionGrowthAppearanceCatalog.For(
+            CompanionPetKind.Cat,
+            stage < 0 ? 0 : CompanionGrowthAppearanceCatalog.FinalStage);
+
+        Assert.Equal(expected, appearance);
     }
 
     /// <summary>
