@@ -54,6 +54,7 @@
     <Content Include="Assets\logo.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\Companion\*-walk.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\Companion\*-rest.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Companion\*-sleep.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

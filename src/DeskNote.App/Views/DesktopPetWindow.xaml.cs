@@ -29,6 +29,13 @@ public sealed partial class DesktopPetWindow : Window
     private const double OrnamentMinimumScale = 0.5;
     private const double HeadTopFraction = 0.78;
     private const double RestEffectFraction = 0.68;
+
+    // The sleeping artwork is the same frame with the animal lying down in it, so everything
+    // that hangs off the pet's head has to come down with it. Measured off the generated sheets
+    // by assets/companion/build_sleep_sprites.py, which prints the content bounds it produced.
+    private const double SleepHeadTopFraction = 0.58;
+    private const double SleepRestEffectFraction = 0.50;
+    private const double SleepSpeechFraction = 0.66;
     private const double RestEffectSideOffset = 18;
     private const double SpeechBubbleGap = 2;
     private const double SpeechBubbleReserve = 58;
@@ -304,8 +311,12 @@ public sealed partial class DesktopPetWindow : Window
             0,
             0,
             Math.Min(
-                (_frameHeight * _growthScaleY) + SpeechBubbleGap,
+                (_frameHeight * _growthScaleY * SpeechAnchorFraction()) + SpeechBubbleGap,
                 WindowHeight - SpeechBubbleReserve));
+
+    /// <summary>How much of the frame the pet currently fills, from the floor up.</summary>
+    private double SpeechAnchorFraction() =>
+        _animation == PetAnimation.Sleep ? SleepSpeechFraction : 1;
 
     /// <summary>
     /// Waits a while, then lets the pet think out loud.
@@ -603,16 +614,19 @@ public sealed partial class DesktopPetWindow : Window
         _restElapsed = 0;
         _restDuration = seconds ?? (RestDurationSeconds() * RestPoseFactor(_restPose));
         _restUntil = now + TimeSpan.FromSeconds(_restDuration);
-        SetAnimation(PetAnimation.Rest);
+        SetAnimation(_restPose == PetRestPose.Sleep ? PetAnimation.Sleep : PetAnimation.Rest);
 
         // A sleeping animal is still, so the strip is parked on one frame rather than cycling;
-        // everything that says "asleep" is then carried by the breathing and the drifting Zs.
+        // the sheet holds four copies of the same pose anyway. What says "asleep" beyond the
+        // drawing itself is the breathing and the drifting Zs.
         if (_restPose == PetRestPose.Sleep)
         {
             SetFrame(0);
         }
 
         ShowRestEffect();
+        PositionSpeechBubble();
+        PositionOrnaments();
 
         // Set rather than eased: the pose the pet is leaving may have left the sprite mid-squash,
         // and the facing is re-applied here because an edge turn flips the direction one line
@@ -635,6 +649,8 @@ public sealed partial class DesktopPetWindow : Window
         _poseScaleY = 1;
         ApplyFacingTransform();
         ShowRestEffect();
+        PositionSpeechBubble();
+        PositionOrnaments();
         _lastTick = _clock.Elapsed;
         ScheduleNextRest(_lastTick);
     }
@@ -704,6 +720,8 @@ public sealed partial class DesktopPetWindow : Window
         switch (_restPose)
         {
             case PetRestPose.Sleep:
+                // No frame advance: the sheet is one held pose, and the only motion a sleeping
+                // animal has is its breathing.
                 var breath = Math.Sin(_restElapsed * 1.7);
                 SetPoseScale(1 - (0.018 * breath), 1 + (0.032 * breath));
                 AnimateSleep();
@@ -835,7 +853,13 @@ public sealed partial class DesktopPetWindow : Window
 
         GrowthMarkScale.ScaleX = scale;
         GrowthMarkScale.ScaleY = scale;
-        GrowthMark.Margin = new Thickness(0, 0, 0, drawnHeight * HeadTopFraction);
+        GrowthMark.Margin = new Thickness(
+            0,
+            0,
+            0,
+            drawnHeight * (_animation == PetAnimation.Sleep
+                ? SleepHeadTopFraction
+                : HeadTopFraction));
 
         RestEffectScale.ScaleX = scale;
         RestEffectScale.ScaleY = scale;
@@ -847,7 +871,9 @@ public sealed partial class DesktopPetWindow : Window
             2 * RestEffectSideOffset * scale,
             0,
             0,
-            drawnHeight * RestEffectFraction);
+            drawnHeight * (_animation == PetAnimation.Sleep
+                ? SleepRestEffectFraction
+                : RestEffectFraction));
     }
 
     /// <summary>
@@ -1088,9 +1114,7 @@ public sealed partial class DesktopPetWindow : Window
         }
 
         _assetKey = assetKey;
-        SetAnimation(_motionState == PetMotionState.Resting
-            ? PetAnimation.Rest
-            : PetAnimation.Walk, force: true);
+        SetAnimation(_animation, force: true);
     }
 
     private void SetAnimation(PetAnimation animation, bool force = false)
@@ -1103,7 +1127,12 @@ public sealed partial class DesktopPetWindow : Window
         _animation = animation;
         _frameTime = 0;
         SetFrame(0);
-        var suffix = animation == PetAnimation.Rest ? "rest" : "walk";
+        var suffix = animation switch
+        {
+            PetAnimation.Sleep => "sleep",
+            PetAnimation.Rest => "rest",
+            _ => "walk",
+        };
         SpriteStrip.Source = new BitmapImage(
             new Uri($"ms-appx:///Assets/Companion/{_assetKey}-{suffix}.png"));
     }
@@ -1226,10 +1255,18 @@ public sealed partial class DesktopPetWindow : Window
         Resting,
     }
 
+    /// <summary>Which sprite sheet is loaded.</summary>
+    /// <remarks>
+    /// Sleeping earns a sheet of its own because it cannot be faked from the sitting one: a
+    /// uniform squash flattens the face, and an eye drawn open cannot be shut from the outside.
+    /// The sheets are derived from the rest artwork rather than drawn - see
+    /// <c>assets/companion/build_sleep_sprites.py</c>.
+    /// </remarks>
     private enum PetAnimation
     {
         Walk,
         Rest,
+        Sleep,
     }
 
     /// <summary>What the pet is doing while it is not walking.</summary>

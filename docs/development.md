@@ -106,6 +106,23 @@ python assets/icon/build_icon.py
 `AppIcon` 은 디스크 경로가 아니라 **실행 중인 모듈의 아이콘 리소스**(ordinal 32512)에서 읽는다.
 빌드 산출물과 사용자 PC 사이에서 파일이 사라질 여지를 없애기 위해서다.
 
+## 펫 수면 스프라이트
+
+자는 자세도 그림 파일이 아니라 스크립트다.
+
+```bash
+python assets/companion/build_sleep_sprites.py
+```
+
+`src/DeskNote.App/Assets/Companion/{종}-sleep.png` 일곱 장을 각 종의 `-rest.png` 에서 다시
+만든다. 눈을 감기고 몸을 눕히는 두 가지 연산이며, 근거는
+[docs/companion.md](companion.md#바탕화면-행동)에 있다. Pillow와 NumPy가 필요하다. 결과물은
+커밋되므로 앱을 빌드하는 사람이 이것을 돌릴 일은 없고, `-rest.png` 를 바꿨을 때만 다시 돌린다.
+
+스크립트는 만들어 낸 그림의 위·아래 경계를 출력한다. 그 값이 `DesktopPetWindow` 의
+`SleepHeadTopFraction` 계열 상수의 출처이므로, 자세를 조정했으면 출력된 값으로 상수도 맞춰야
+성장 표식과 말풍선이 누운 펫의 머리를 따라간다.
+
 ## 문서 이미지
 
 `docs/images/` 의 화면 사진은 데모용 메모를 넣은 별도 데이터베이스로 앱을 띄우고, 창 단위로
