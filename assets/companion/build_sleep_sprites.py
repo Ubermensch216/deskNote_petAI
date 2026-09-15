@@ -33,12 +33,16 @@ SPRITES = ROOT / "src" / "DeskNote.App" / "Assets" / "Companion"
 SPECIES = ["rabbit", "cat", "dog", "fennec", "otter", "monkey", "dragon"]
 FRAME_COUNT = 4
 
-# How much of its own height each band keeps. The head barely compresses; the body carries the
-# whole descent. Tuned by eye against all seven species - past about 0.35 on the body the animals
-# stop reading as lying down and start reading as run over.
-HEAD_SCALE = 0.86
-BODY_SCALE = 0.42
-WIDEN = 1.16
+# How much of its own height each band keeps, and how much wider it spreads.
+#
+# The head is left at its exact drawn proportions. An earlier cut squeezed it to 0.86 while
+# widening the whole figure by 1.16, which is a 35% change to the shape of the face - the one
+# part of the drawing anybody looks at, and quite visibly squashed. The descent is carried
+# entirely by the body, and the spread is applied per row on the same ramp, so the body broadens
+# the way a lying animal does while the head keeps the width it was drawn with.
+HEAD_SCALE = 1.0
+BODY_SCALE = 0.38
+BODY_WIDEN = 1.12
 
 
 def _luminance(pixels):
@@ -318,14 +322,36 @@ def settle(frame, eye_box):
     blended = pixels[low].astype(np.float64) * (1 - fraction) \
         + pixels[high].astype(np.float64) * fraction
 
-    settled = Image.fromarray(blended.astype(np.uint8), "RGBA")
-    settled = settled.resize(
-        (max(1, int(round(settled.width * WIDEN))), settled.height), Image.LANCZOS)
+    # Spread, per row, on the ramp the compression used. A single resize of the whole figure
+    # would widen the head too, which is what made the face look squashed.
+    spread = 1.0 + (BODY_WIDEN - 1.0) * np.interp(source, y, ramp)
+    blended = _stretch_rows(blended, spread)
+
+    settled = Image.fromarray(np.clip(blended, 0, 255).astype(np.uint8), "RGBA")
 
     # The feet stay on the same line they stood on, so the pet does not hop when it lies down.
     out = Image.new("RGBA", frame.size, (0, 0, 0, 0))
     out.paste(settled, ((frame.width - settled.width) // 2, bottom - settled.height), settled)
     return out
+
+
+def _stretch_rows(rows, spread):
+    """Scales every row horizontally about the centre by its own factor."""
+    height, width = rows.shape[:2]
+    centre = (width - 1) / 2.0
+    columns = np.arange(width, dtype=np.float64)
+    source_x = (columns[None, :] - centre) / spread[:, None] + centre
+
+    left = np.floor(source_x)
+    fraction = (source_x - left)[:, :, None]
+    left = left.astype(int)
+    right = left + 1
+    inside = (left >= 0) & (right < width)
+
+    rows_index = np.arange(height)[:, None]
+    gathered = (rows[rows_index, np.clip(left, 0, width - 1)] * (1 - fraction)
+                + rows[rows_index, np.clip(right, 0, width - 1)] * fraction)
+    return np.where(inside[:, :, None], gathered, 0.0)
 
 
 def build(species):

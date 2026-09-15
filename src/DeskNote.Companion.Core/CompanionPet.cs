@@ -105,22 +105,9 @@ public enum CompanionGrowthMark
 }
 
 public readonly record struct CompanionGrowthAppearance(
-    double WidthScale,
-    double HeightScale,
+    double Scale,
     CompanionGrowthMark Mark);
 
-/// <summary>
-/// Keeps the original species artwork while changing its silhouette from a small, round newborn
-/// at stage one to the full adult proportions at stage five, and hangs a per-stage ornament over
-/// it.
-/// </summary>
-/// <remarks>
-/// The silhouette used to run from about 0.75 of full size up to 1.0, which is under 7% per rung.
-/// Nobody sees 7% across the days it takes to earn a rung: five stages that all looked the same
-/// meant the growth ladder only existed as a number in the dashboard. The newborn now starts near
-/// half size, so each promotion is a visible 15% step, and the ornament makes the stage readable
-/// even when there is no earlier pet to compare against.
-/// </remarks>
 public static class CompanionGrowthAppearanceCatalog
 {
     public const int FinalStage = 4;
@@ -128,21 +115,19 @@ public static class CompanionGrowthAppearanceCatalog
     public static CompanionGrowthAppearance For(CompanionPetKind pet, int appearanceStage)
     {
         var stage = Math.Clamp(appearanceStage, 0, FinalStage);
+
+        // How small each species starts. The differences are small and deliberate - a newborn
+        // dragon is not a newborn dog - but they are differences in size only.
         var newborn = pet switch
         {
-            // Taller newborn silhouettes preserve the signature ears.
-            CompanionPetKind.Rabbit => (Width: 0.50, Height: 0.50),
-            CompanionPetKind.FennecFox => (Width: 0.52, Height: 0.52),
-
-            // Broader, shorter silhouettes read as round-faced puppies and kittens.
-            CompanionPetKind.Cat => (Width: 0.56, Height: 0.46),
-            CompanionPetKind.Dog => (Width: 0.58, Height: 0.48),
-
-            // Otter pups keep their characteristically low, rounded body.
-            CompanionPetKind.Otter => (Width: 0.60, Height: 0.44),
-            CompanionPetKind.Dragon => (Width: 0.52, Height: 0.46),
-            CompanionPetKind.Monkey => (Width: 0.56, Height: 0.48),
-            _ => (Width: 0.54, Height: 0.48),
+            CompanionPetKind.Rabbit => 0.50,
+            CompanionPetKind.Cat => 0.51,
+            CompanionPetKind.Dog => 0.53,
+            CompanionPetKind.FennecFox => 0.52,
+            CompanionPetKind.Otter => 0.51,
+            CompanionPetKind.Monkey => 0.52,
+            CompanionPetKind.Dragon => 0.49,
+            _ => 0.51,
         };
 
         // Even steps rather than an ease-out. The old curve spent most of its travel on the first
@@ -157,8 +142,7 @@ public static class CompanionGrowthAppearanceCatalog
         };
 
         return new CompanionGrowthAppearance(
-            newborn.Width + ((1d - newborn.Width) * progress),
-            newborn.Height + ((1d - newborn.Height) * progress),
+            newborn + ((1d - newborn) * progress),
             MarkFor(stage));
     }
 

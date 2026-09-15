@@ -933,8 +933,8 @@ public sealed partial class CompanionWindow : Window
         _avatarPet = pet;
         _avatarStage = normalizedStage;
         var appearance = CompanionGrowthAppearanceCatalog.For(pet, normalizedStage);
-        AvatarGrowthTransform.ScaleX = appearance.WidthScale;
-        AvatarGrowthTransform.ScaleY = appearance.HeightScale;
+        AvatarGrowthTransform.ScaleX = appearance.Scale;
+        AvatarGrowthTransform.ScaleY = appearance.Scale;
     }
 
     public void ShowSuggestion(CompanionSuggestion suggestion)

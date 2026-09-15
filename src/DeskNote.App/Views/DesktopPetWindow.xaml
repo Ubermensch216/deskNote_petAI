@@ -123,8 +123,14 @@
             PointerMoved="OnPetPointerMoved"
             PointerReleased="OnPetPointerReleased"
             PointerCaptureLost="OnPetPointerCaptureLost">
+            <!-- Rotation first, so a sway happens in the pet's own space and mirrors with it
+                 when it turns around. Both scale factors are always equal: see
+                 ApplyFacingTransform. -->
             <Grid.RenderTransform>
-                <ScaleTransform x:Name="FacingTransform" ScaleX="-1" ScaleY="1" />
+                <TransformGroup>
+                    <RotateTransform x:Name="PoseRotation" />
+                    <ScaleTransform x:Name="FacingTransform" ScaleX="-1" ScaleY="1" />
+                </TransformGroup>
             </Grid.RenderTransform>
             <Grid.Clip>
                 <RectangleGeometry x:Name="SpriteClip" Rect="0,0,150,200" />

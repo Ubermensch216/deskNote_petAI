@@ -33,9 +33,9 @@ public sealed partial class DesktopPetWindow : Window
     // The sleeping artwork is the same frame with the animal lying down in it, so everything
     // that hangs off the pet's head has to come down with it. Measured off the generated sheets
     // by assets/companion/build_sleep_sprites.py, which prints the content bounds it produced.
-    private const double SleepHeadTopFraction = 0.58;
-    private const double SleepRestEffectFraction = 0.50;
-    private const double SleepSpeechFraction = 0.66;
+    private const double SleepHeadTopFraction = 0.62;
+    private const double SleepRestEffectFraction = 0.54;
+    private const double SleepSpeechFraction = 0.80;
     private const double RestEffectSideOffset = 18;
     private const double SpeechBubbleGap = 2;
     private const double SpeechBubbleReserve = 58;
@@ -81,8 +81,7 @@ public sealed partial class DesktopPetWindow : Window
     private double _y;
     private double _frameWidth = BaseFrameWidth;
     private double _frameHeight = BaseFrameHeight;
-    private double _growthScaleX = 1;
-    private double _growthScaleY = 1;
+    private double _growthScale = 1;
     private double _frameTime;
     private int _frame;
     private int _direction = -1;
@@ -100,8 +99,8 @@ public sealed partial class DesktopPetWindow : Window
     private CompanionGrowthMark _growthMark = CompanionGrowthMark.None;
     private double _restElapsed;
     private double _restDuration;
-    private double _poseScaleX = 1;
-    private double _poseScaleY = 1;
+    private double _poseScale = 1;
+    private double _poseAngle;
     private TimeSpan _restUntil;
     private TimeSpan _walkUntil;
     private TimeSpan _lastTopmostCheck;
@@ -311,7 +310,7 @@ public sealed partial class DesktopPetWindow : Window
             0,
             0,
             Math.Min(
-                (_frameHeight * _growthScaleY * SpeechAnchorFraction()) + SpeechBubbleGap,
+                (_frameHeight * _growthScale * SpeechAnchorFraction()) + SpeechBubbleGap,
                 WindowHeight - SpeechBubbleReserve));
 
     /// <summary>How much of the frame the pet currently fills, from the floor up.</summary>
@@ -538,7 +537,7 @@ public sealed partial class DesktopPetWindow : Window
         }
 
         var area = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
-        var visibleFrameWidth = _frameWidth * _growthScaleX;
+        var visibleFrameWidth = _frameWidth * _growthScale;
         var horizontalInset = (WindowWidth - visibleFrameWidth) / 2;
         var left = area.X - horizontalInset;
         var right = area.X + area.Width - WindowWidth + horizontalInset;
@@ -578,7 +577,7 @@ public sealed partial class DesktopPetWindow : Window
             _motionState = PetMotionState.Walking;
             SetAnimation(PetAnimation.Walk);
             SetFrame(0);
-            SetPoseScale(1, 1);
+            SetPose(1, angle: 0);
             GrowthMarkLift.Y = 0;
             ApplyFacingTransform(forceRight: true);
             UpdateOrnamentVisibility();
@@ -632,8 +631,8 @@ public sealed partial class DesktopPetWindow : Window
         // and the facing is re-applied here because an edge turn flips the direction one line
         // before this call - a pet that sat down still facing the wall it just reached read as a
         // missed frame.
-        _poseScaleX = 1;
-        _poseScaleY = 1;
+        _poseScale = 1;
+        _poseAngle = 0;
         ApplyFacingTransform();
     }
 
@@ -645,8 +644,8 @@ public sealed partial class DesktopPetWindow : Window
         // last, and ChooseRestPose uses it to avoid dealing the same pose twice running; clearing
         // it here would have compared every roll against a pose the pet had not held for minutes.
         SetAnimation(PetAnimation.Walk);
-        _poseScaleX = 1;
-        _poseScaleY = 1;
+        _poseScale = 1;
+        _poseAngle = 0;
         ApplyFacingTransform();
         ShowRestEffect();
         PositionSpeechBubble();
@@ -722,24 +721,22 @@ public sealed partial class DesktopPetWindow : Window
             case PetRestPose.Sleep:
                 // No frame advance: the sheet is one held pose, and the only motion a sleeping
                 // animal has is its breathing.
-                var breath = Math.Sin(_restElapsed * 1.7);
-                SetPoseScale(1 - (0.018 * breath), 1 + (0.032 * breath));
+                SetPose(1 + (0.015 * Math.Sin(_restElapsed * 1.7)), angle: 0);
                 AnimateSleep();
                 break;
 
             case PetRestPose.Daydream:
                 AdvanceFrame(elapsed, 1.1);
-                var sway = Math.Sin(_restElapsed * 0.85);
-                SetPoseScale(1 + (0.014 * sway), 1 - (0.014 * sway));
+                SetPose(1, angle: 1.6 * Math.Sin(_restElapsed * 0.85));
                 AnimateDaydream();
                 break;
 
             case PetRestPose.Stretch:
                 AdvanceFrame(elapsed, 0.18);
-                // One full cycle over the pose: up onto the toes, down into a slump, back to rest.
+                // One cycle over the pose: up and out of the slouch, then back down into it.
                 var pulse = Math.Sin(
                     (_restDuration <= 0 ? 1 : _restElapsed / _restDuration) * Math.PI * 2);
-                SetPoseScale(1 - (0.10 * pulse), 1 + (0.17 * pulse));
+                SetPose(1 + (0.055 * pulse), angle: -2.4 * pulse);
                 break;
 
             default:
@@ -748,15 +745,25 @@ public sealed partial class DesktopPetWindow : Window
         }
     }
 
-    private void SetPoseScale(double x, double y)
+    /// <summary>
+    /// Moves the pet without reshaping it.
+    /// </summary>
+    /// <remarks>
+    /// The three moving poses used to squash one axis while stretching the other - the classic
+    /// squash and stretch, which on a drawing this soft just looks like the pet is rippling, and
+    /// which was reported as exactly that. A uniform scale and a rotation about the feet carry
+    /// the same three ideas - breathing, swaying, reaching - and neither one can change the
+    /// proportions of the artwork.
+    /// </remarks>
+    private void SetPose(double scale, double angle)
     {
-        if (Math.Abs(_poseScaleX - x) < 0.0005 && Math.Abs(_poseScaleY - y) < 0.0005)
+        if (Math.Abs(_poseScale - scale) < 0.0005 && Math.Abs(_poseAngle - angle) < 0.01)
         {
             return;
         }
 
-        _poseScaleX = x;
-        _poseScaleY = y;
+        _poseScale = scale;
+        _poseAngle = angle;
         ApplyFacingTransform();
     }
 
@@ -818,8 +825,7 @@ public sealed partial class DesktopPetWindow : Window
         _appearancePet = pet;
         _appearanceStage = normalizedStage;
         var appearance = CompanionGrowthAppearanceCatalog.For(pet, normalizedStage);
-        _growthScaleX = appearance.WidthScale;
-        _growthScaleY = appearance.HeightScale;
+        _growthScale = appearance.Scale;
         _growthMark = appearance.Mark;
         ApplyGrowthMark();
         ApplyFacingTransform(_settings.ReduceMotion);
@@ -848,7 +854,7 @@ public sealed partial class DesktopPetWindow : Window
     /// </remarks>
     private void PositionOrnaments()
     {
-        var drawnHeight = _frameHeight * _growthScaleY;
+        var drawnHeight = _frameHeight * _growthScale;
         var scale = Math.Clamp(drawnHeight / BaseFrameHeight, OrnamentMinimumScale, 1);
 
         GrowthMarkScale.ScaleX = scale;
@@ -916,10 +922,20 @@ public sealed partial class DesktopPetWindow : Window
         SparkleRight.Opacity = 0.55 + (0.45 * Math.Sin((seconds * 2.6) + Math.PI));
     }
 
+    /// <summary>
+    /// Puts the pet at the size, facing and pose it should currently have.
+    /// </summary>
+    /// <remarks>
+    /// Both axes always carry the same factor. Anything that scales one differently from the
+    /// other is redrawing somebody's artwork to the wrong proportions, and on a pose that
+    /// animates it reads as the pet rippling.
+    /// </remarks>
     private void ApplyFacingTransform(bool forceRight = false)
     {
-        FacingTransform.ScaleX = (forceRight ? 1 : _direction) * _growthScaleX * _poseScaleX;
-        FacingTransform.ScaleY = _growthScaleY * _poseScaleY;
+        var scale = _growthScale * _poseScale;
+        FacingTransform.ScaleX = (forceRight ? 1 : _direction) * scale;
+        FacingTransform.ScaleY = scale;
+        PoseRotation.Angle = _poseAngle;
     }
 
     /// <summary>A hungry, bored pet plods; a happy one trots. Never fully stops, which would

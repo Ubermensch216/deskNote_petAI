@@ -7,24 +7,22 @@ public class CompanionDomainTests
     private static readonly DateTimeOffset Morning = new(2026, 8, 31, 10, 0, 0, TimeSpan.FromHours(9));
 
     [Fact]
-    public void Every_pet_grows_from_a_distinct_juvenile_silhouette_to_full_size()
+    public void Every_pet_grows_from_a_small_newborn_to_full_size()
     {
         foreach (var pet in CompanionPetCatalog.All)
         {
             var previous = CompanionGrowthAppearanceCatalog.For(pet, 0);
-            Assert.True(previous.WidthScale < 1);
-            Assert.True(previous.HeightScale < 1);
+            Assert.True(previous.Scale < 1);
 
             for (var stage = 1; stage <= CompanionGrowthAppearanceCatalog.FinalStage; stage++)
             {
                 var current = CompanionGrowthAppearanceCatalog.For(pet, stage);
-                Assert.True(current.WidthScale > previous.WidthScale);
-                Assert.True(current.HeightScale > previous.HeightScale);
+                Assert.True(current.Scale > previous.Scale);
                 previous = current;
             }
 
             Assert.Equal(
-                new CompanionGrowthAppearance(1, 1, CompanionGrowthMark.Crown),
+                new CompanionGrowthAppearance(1, CompanionGrowthMark.Crown),
                 previous);
         }
     }
@@ -49,9 +47,9 @@ public class CompanionDomainTests
                 var current = CompanionGrowthAppearanceCatalog.For(pet, stage);
 
                 Assert.True(
-                    current.HeightScale / below.HeightScale >= 1.10,
+                    current.Scale / below.Scale >= 1.10,
                     $"{pet} stage {stage} is only "
-                    + $"{current.HeightScale / below.HeightScale:P0} of the stage below it.");
+                    + $"{current.Scale / below.Scale:P0} of the stage below it.");
             }
         }
     }
