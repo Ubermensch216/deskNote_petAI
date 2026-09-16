@@ -16,6 +16,7 @@ public enum CompanionActivityType
 /// <summary>A cheap candidate emitted only after the underlying DeskNote action succeeded.</summary>
 public sealed record CompanionActivityCandidate
 {
+    public CompanionPetKind? Pet { get; init; }
     public required string SourceEventId { get; init; }
 
     public required CompanionActivityType Type { get; init; }
@@ -48,7 +49,10 @@ public sealed record CompanionActivity(
     DateTimeOffset OccurredAt,
     DateOnly LocalDate,
     Guid? NoteId,
-    string? SourceEntityId);
+    string? SourceEntityId)
+{
+    public CompanionPetKind? Pet { get; init; }
+}
 
 public sealed class ActivityClassifier
 {
@@ -93,6 +97,7 @@ public sealed class ActivityClassifier
                 DateOnly.FromDateTime(candidate.OccurredAt.LocalDateTime),
                 candidate.NoteId,
                 candidate.SourceEntityId)
+            { Pet = candidate.Pet }
             : null;
     }
 

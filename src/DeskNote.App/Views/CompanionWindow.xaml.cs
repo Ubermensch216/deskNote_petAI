@@ -64,6 +64,8 @@ public sealed partial class CompanionWindow : Window
     private readonly Func<CompanionSuggestion, Task> _actOnSuggestion;
     private readonly Func<CompanionSuggestion, Task> _dismissSuggestion;
     private readonly Func<Task> _refreshSnapshot;
+    private readonly Func<CompanionMemoryQuery, Task<IReadOnlyList<CompanionMemory>>> _readMemories;
+    private readonly Action<string> _playUnlock;
     private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _refreshTimer;
     private readonly List<CareTile> _tiles = [];
     private CompanionSettings _settings;
@@ -81,7 +83,9 @@ public sealed partial class CompanionWindow : Window
         Func<CareRequest, Task<CompanionCareResult?>> performCare,
         Func<CompanionSuggestion, Task> actOnSuggestion,
         Func<CompanionSuggestion, Task> dismissSuggestion,
-        Func<Task> refreshSnapshot)
+        Func<Task> refreshSnapshot,
+        Func<CompanionMemoryQuery, Task<IReadOnlyList<CompanionMemory>>> readMemories,
+        Action<string> playUnlock)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(settings);
@@ -99,6 +103,8 @@ public sealed partial class CompanionWindow : Window
         _actOnSuggestion = actOnSuggestion;
         _dismissSuggestion = dismissSuggestion;
         _refreshSnapshot = refreshSnapshot;
+        _readMemories = readMemories;
+        _playUnlock = playUnlock;
 
         AppWindow.Title = Strings.Get("Companion_Title");
         AppIcon.Apply(this);
@@ -134,6 +140,7 @@ public sealed partial class CompanionWindow : Window
         {
             _refreshTimer.Stop();
             _growthGuideWindow?.Close();
+            _albumWindow?.Close();
         };
     }
 
@@ -245,6 +252,7 @@ public sealed partial class CompanionWindow : Window
         ShowGrowth(snapshot.Growth);
         ShowToday(snapshot);
         ShowCareTiles(snapshot);
+        ShowMemories(snapshot);
 
         CuriosityValue.Text = Count(snapshot.Growth.Curiosity);
         InsightValue.Text = Count(snapshot.Growth.Insight);
@@ -384,7 +392,6 @@ public sealed partial class CompanionWindow : Window
     {
         var dark = IsDark;
         var today = snapshot.Today;
-        var mission = snapshot.Mission;
 
         DayScoreValue.Text = Strings.Format(
             "Companion_ScoreFormat",
@@ -405,10 +412,8 @@ public sealed partial class CompanionWindow : Window
             today.CareScore,
             CompanionBalanceV2.DailyCareMaximum);
 
-        var appDone = today.Count(mission.App) > 0;
-        var done = (appDone ? 1 : 0)
-            + (today.Count(mission.FirstCare) > 0 ? 1 : 0)
-            + (today.Count(mission.SecondCare) > 0 ? 1 : 0);
+        var appDone = snapshot.MissionProgress.AppDone;
+        var done = snapshot.MissionProgress.CompletedTasks;
 
         MissionProgressValue.Text = Strings.Format("Companion_MissionProgressFormat", done, MissionTaskCount);
         MissionProgressValue.Foreground = new SolidColorBrush(
@@ -423,7 +428,7 @@ public sealed partial class CompanionWindow : Window
             pips[index].Background = index < done ? filled : empty;
         }
 
-        ShowAppTask(mission.App, appDone, dark);
+        ShowAppTask(appDone, dark);
     }
 
     /// <summary>
@@ -435,7 +440,7 @@ public sealed partial class CompanionWindow : Window
     /// payoff, and it is painted in the same gold as the care tiles so the three mission tasks are
     /// recognisably one set.
     /// </remarks>
-    private void ShowAppTask(AppScoreCategory category, bool done, bool dark)
+    private void ShowAppTask(bool done, bool dark)
     {
         var surface = CompanionPalette.Tile(
             done ? CompanionTileState.Spent : CompanionTileState.Mission,
@@ -447,10 +452,11 @@ public sealed partial class CompanionWindow : Window
         AppTaskHint.Foreground = new SolidColorBrush(surface.Subtle);
         AppTaskIcon.Opacity = done ? 0.55 : 1;
 
-        AppTaskText.Text = Strings.Get($"Companion_Task{category}");
+        AppTaskText.Text = Strings.Get("Companion_MissionAnyApp");
+        AppTaskHint.Text = Strings.Get("Companion_MissionAnyCare");
         AppTaskState.Text = done
             ? $"✓ {Strings.Get("Companion_TaskDone")}"
-            : Strings.Format("Companion_PointsFormat", CompanionBalanceV2.AppPoints(category));
+            : Strings.Get("Companion_MissionOptionalApp");
         AppTaskState.Foreground = new SolidColorBrush(
             done ? surface.Subtle : CompanionPalette.Mission(dark));
     }
@@ -666,8 +672,7 @@ public sealed partial class CompanionWindow : Window
             return CompanionTileState.NotNeeded;
         }
 
-        var mission = snapshot.Mission;
-        return mission.FirstCare == tile.Action || mission.SecondCare == tile.Action
+        return snapshot.MissionProgress.CareKinds.Count < 2 && !snapshot.MissionProgress.CareKinds.Contains(tile.Action)
             ? CompanionTileState.Mission
             : CompanionTileState.Ready;
     }
@@ -772,7 +777,7 @@ public sealed partial class CompanionWindow : Window
             panel.BorderBrush = cardBorder;
         }
 
-        foreach (var header in new[] { TodayHeader, NeedsHeader, TraitHeader })
+        foreach (var header in new[] { TodayHeader, NeedsHeader, TraitHeader, UnlockHeader, MemoryPreview, MissionRewardStatus })
         {
             header.Foreground = ink;
         }
@@ -847,7 +852,7 @@ public sealed partial class CompanionWindow : Window
         SetCareEnabled(false);
         try
         {
-            var result = await _performCare(request).ConfigureAwait(true);
+            var result = await _performCare(request with { Pet = SelectedPet(_snapshot) }).ConfigureAwait(true);
             ShowCareOutcome(result);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -874,6 +879,7 @@ public sealed partial class CompanionWindow : Window
         {
             CareRefusal.DailyLimitReached => Strings.Get("Companion_CareDone"),
             CareRefusal.NotNeededYet => Strings.Get("Companion_CareNotNeeded"),
+            CareRefusal.AlreadyProcessed => Strings.Get("Companion_CareDone"),
             _ => Strings.Get("Companion_CareThanks"),
         };
     }

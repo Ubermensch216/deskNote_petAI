@@ -42,7 +42,7 @@ public sealed record DailyProgress
         Count(action) >= CompanionBalanceV2.CareDailyLimit(action);
 }
 
-/// <summary>One app task and two care tasks, offered for a single day.</summary>
+/// <summary>Optional daily suggestions; any accepted app task and two distinct care kinds qualify.</summary>
 public sealed record DailyMission(
     AppScoreCategory App,
     CompanionCareAction FirstCare,
@@ -52,20 +52,17 @@ public sealed record DailyMission(
     {
         ArgumentNullException.ThrowIfNull(progress);
 
-        return progress.Count(App) > 0
-            && progress.Count(FirstCare) > 0
-            && progress.Count(SecondCare) > 0;
+        return progress.AppCounts.Values.Any(count => count > 0)
+            && progress.CareCounts.Count(pair => pair.Value > 0) >= 2;
     }
 }
 
 /// <summary>
-/// Picks the day's mission from the date alone.
+/// Picks optional suggestions from the date alone, not prerequisites for the memory reward.
 /// </summary>
 /// <remarks>
-/// Deriving the mission rather than storing it means a mission never disagrees with what the
-/// ledger says was done, and a user who changes their clock cannot roll for an easier one.
-/// Completing a mission deliberately pays no growth: the 30:70 split is the whole balance, and a
-/// bonus large enough to notice would quietly break it.
+/// Suggestions are stable on a given date. The profile-wide mission accepts any app category
+/// and two different kinds of care, and awards a memory card without additional growth.
 /// </remarks>
 public static class DailyMissionPlanner
 {
@@ -112,6 +109,11 @@ public sealed record CompanionSnapshot(
     CompanionActivityType? LastActivityType,
     DateTimeOffset? LastActivityAt)
 {
+    public CompanionMissionProgress MissionProgress { get; init; } = CompanionMissionProgress.Empty;
+    public bool MissionRewardGranted { get; init; }
+    public CompanionMemory? LatestMemory { get; init; }
+    public IReadOnlyList<string> Unlocks { get; init; } = [];
+
     public DailyMission Mission => DailyMissionPlanner.For(Today.LocalDate);
 
     /// <summary>Whether this care action would be paid right now.</summary>

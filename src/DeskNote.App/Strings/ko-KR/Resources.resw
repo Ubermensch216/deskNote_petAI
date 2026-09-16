@@ -331,7 +331,7 @@
   <data name="Companion_TaskAiApplied" xml:space="preserve"><value>AI 결과를 메모에 적용하기</value></data>
   <data name="Companion_TraitHeader" xml:space="preserve"><value>성향 기록</value></data>
   <data name="Companion_TodayHeader" xml:space="preserve"><value>오늘 할 일</value></data>
-  <data name="Companion_DayScoreLabel" xml:space="preserve"><value>오늘의 성장 점수</value></data>
+  <data name="Companion_DayScoreLabel" xml:space="preserve"><value>선택한 펫의 오늘 점수</value></data>
   <data name="Companion_MissionProgressFormat" xml:space="preserve"><value>미션 {0}/{1}</value></data>
   <data name="Companion_AppBudgetFormat" xml:space="preserve"><value>앱 {0}/{1}</value></data>
   <data name="Companion_CareBudgetFormat" xml:space="preserve"><value>돌봄 {0}/{1}</value></data>
@@ -408,4 +408,49 @@
   <data name="Settings_NoteSizeSmall" xml:space="preserve"><value>작게</value></data>
   <data name="Settings_NoteSizeMedium" xml:space="preserve"><value>중간</value></data>
   <data name="Settings_NoteSizeLarge" xml:space="preserve"><value>크게</value></data>
+  <data name="Companion_AlbumTitle" xml:space="preserve"><value>기억 앨범</value></data>
+  <data name="Companion_AlbumPet" xml:space="preserve"><value>함께한 펫</value></data>
+  <data name="Companion_AlbumAllPets" xml:space="preserve"><value>모든 펫</value></data>
+  <data name="Companion_AlbumDate" xml:space="preserve"><value>기억한 날짜</value></data>
+  <data name="Companion_AlbumAllDates" xml:space="preserve"><value>모든 날짜</value></data>
+  <data name="Companion_AlbumClearDate" xml:space="preserve"><value>날짜 지우기</value></data>
+  <data name="Companion_AlbumMore" xml:space="preserve"><value>더 보기</value></data>
+  <data name="Companion_AlbumPrivacy" xml:space="preserve"><value>메모 내용 대신 함께한 활동만 간직해요.</value></data>
+  <data name="Companion_AlbumLoading" xml:space="preserve"><value>추억을 불러오는 중…</value></data>
+  <data name="Companion_AlbumEmpty" xml:space="preserve"><value>메모를 쓰고 함께 돌보며 첫 추억을 만들어 보세요.</value></data>
+  <data name="Companion_AlbumError" xml:space="preserve"><value>앨범을 불러오지 못했어요. 새로 고침으로 다시 시도해 주세요.</value></data>
+  <data name="Companion_MissionRewardGranted" xml:space="preserve"><value>오늘의 기억 카드가 앨범에 보관되었어요.</value></data>
+  <data name="Companion_MissionRewardHint" xml:space="preserve"><value>앱 활동 1개와 서로 다른 돌봄 2종을 하면 오늘의 기억 카드를 받아요. 모든 펫의 활동을 함께 셉니다.</value></data>
+  <data name="Companion_MissionAnyApp" xml:space="preserve"><value>메모 활동 중 한 가지 하기</value></data>
+  <data name="Companion_MissionAnyCare" xml:space="preserve"><value>메모 작성·수정·재활용 등 한 가지와 서로 다른 돌봄 두 가지</value></data>
+  <data name="Companion_MissionOptionalApp" xml:space="preserve"><value>AI 없이도 가능해요</value></data>
+  <data name="Companion_UnlockHeader" xml:space="preserve"><value>성장하며 배운 반응 · 경험치와 무관해요</value></data>
+  <data name="Companion_UnlockFormat" xml:space="preserve"><value>{0}단계 · {1}</value></data>
+  <data name="Companion_UnlockGreeting" xml:space="preserve"><value>반가운 인사</value></data>
+  <data name="Companion_UnlockSpecialCare" xml:space="preserve"><value>종별 자랑</value></data>
+  <data name="Companion_UnlockRest" xml:space="preserve"><value>함께 꿈꾸기</value></data>
+  <data name="Companion_UnlockCelebration" xml:space="preserve"><value>성장 축하</value></data>
+  <data name="Companion_UnlockedGreeting" xml:space="preserve"><value>네가 오면 귀가 먼저 알아봐!</value></data>
+  <data name="Companion_UnlockedRest" xml:space="preserve"><value>오늘의 추억으로 꿈을 꾸자.</value></data>
+  <data name="Companion_UnlockedCelebration" xml:space="preserve"><value>이만큼 자랐어. 함께라서 좋았어!</value></data>
+  <data name="Companion_UnlockedSpecialRabbit" xml:space="preserve"><value>반짝이는 털, 너에게 먼저 자랑할래!</value></data>
+  <data name="Companion_UnlockedSpecialCat" xml:space="preserve"><value>오늘의 털 윤기, 꽤 근사하지?</value></data>
+  <data name="Companion_UnlockedSpecialDog" xml:space="preserve"><value>함께 걸었던 길이 제일 좋아!</value></data>
+  <data name="Companion_UnlockedSpecialFennecFox" xml:space="preserve"><value>모래보다 포근한 추억이 쌓였어!</value></data>
+  <data name="Companion_UnlockedSpecialOtter" xml:space="preserve"><value>소중한 조개처럼 간직할게!</value></data>
+  <data name="Companion_UnlockedSpecialMonkey" xml:space="preserve"><value>오늘은 내 자랑도 들어줄래?</value></data>
+  <data name="Companion_UnlockedSpecialDragon" xml:space="preserve"><value>내 보물은 함께 보낸 시간이야.</value></data>
+  <data name="Companion_MemoryMission" xml:space="preserve"><value>오늘의 작은 약속을 함께 마쳤어요.</value></data>
+  <data name="Companion_MemoryRecall" xml:space="preserve"><value>함께 메모를 다시 살펴본 날이에요.</value></data>
+  <data name="Companion_MemoryChecklist" xml:space="preserve"><value>할 일 하나를 마치고 함께 기뻐했어요.</value></data>
+  <data name="Companion_MemoryCapture" xml:space="preserve"><value>새로운 생각을 기록하며 하루를 나눴어요.</value></data>
+  <data name="Companion_MemoryRefine" xml:space="preserve"><value>기록을 조금 더 다듬으며 함께했어요.</value></data>
+  <data name="Companion_MemoryOrganize" xml:space="preserve"><value>오래된 기록에 자리를 마련해 줬어요.</value></data>
+  <data name="Companion_MemoryAiApplied" xml:space="preserve"><value>도움을 받아 기록을 다듬은 날이에요.</value></data>
+  <data name="Companion_MemoryReminder" xml:space="preserve"><value>알림을 확인하고 한 가지 일을 챙겼어요.</value></data>
+  <data name="Companion_MemoryStage2" xml:space="preserve"><value>어린 펫으로 자라 반가운 인사를 배웠어요.</value></data>
+  <data name="Companion_MemoryStage3" xml:space="preserve"><value>성장기에 접어들어 나만의 자랑이 생겼어요.</value></data>
+  <data name="Companion_MemoryStage4" xml:space="preserve"><value>성숙해진 우리는 함께 꿈꾸는 법을 배웠어요.</value></data>
+  <data name="Companion_MemoryStage5" xml:space="preserve"><value>완전체가 된 날! 함께 보낸 시간을 축하해요.</value></data>
+  <data name="Companion_MemoryWelcomeBack" xml:space="preserve"><value>지금까지의 성장을 기념해 반응을 앨범과 함께 간직해요.</value></data>
 </root>

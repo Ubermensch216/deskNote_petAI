@@ -11,7 +11,7 @@ namespace DeskNote.Data;
 /// care in <c>companion_care_ledger</c>. Care days and the current needs are both derived from the
 /// care ledger rather than stored, so they cannot drift away from the events that caused them.
 /// </remarks>
-public sealed class SqliteCompanionRepository(
+public sealed partial class SqliteCompanionRepository(
     SqliteConnectionFactory connectionFactory,
     RewardPolicy rewardPolicy,
     CarePolicy carePolicy) : ICompanionRepository
@@ -22,12 +22,17 @@ public sealed class SqliteCompanionRepository(
     public async Task<CompanionSnapshot> GetOrCreateAsync(CancellationToken cancellationToken = default)
     {
         await using var connection = await connectionFactory.OpenAsync(cancellationToken).ConfigureAwait(false);
-        await EnsureProfileAsync(connection, transaction: null, cancellationToken).ConfigureAwait(false);
-        return await ReadSnapshotAsync(
-            connection,
-            transaction: null,
-            DateTimeOffset.Now,
-            cancellationToken).ConfigureAwait(false);
+        await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken)
+            .ConfigureAwait(false);
+        await EnsureProfileAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
+        await EnsureMetaAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
+        var now = DateTimeOffset.Now;
+        var pet = await ReadSelectedPetAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
+        await ReconcileMetaAsync(connection, transaction, pet, now, DateOnly.FromDateTime(now.LocalDateTime),
+            null, cancellationToken).ConfigureAwait(false);
+        var snapshot = await ReadSnapshotAsync(connection, transaction, now, cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        return snapshot;
     }
 
     public async Task<CompanionRecordResult> RecordAsync(
@@ -43,7 +48,8 @@ public sealed class SqliteCompanionRepository(
 
         // This harmless write serializes concurrent reward decisions before the daily count read.
         await EnsureProfileAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
-        var selectedPet = await ReadSelectedPetAsync(connection, transaction, cancellationToken)
+        await EnsureMetaAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
+        var selectedPet = await ReadSelectedPetAsync(connection, transaction, cancellationToken, activity.Pet)
             .ConfigureAwait(false);
 
         if (await EventExistsAsync(connection, transaction, activity, cancellationToken).ConfigureAwait(false))
@@ -67,6 +73,9 @@ public sealed class SqliteCompanionRepository(
             .ConfigureAwait(false);
         await UpdateDragonUnlockAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
 
+        await ReconcileMetaAsync(connection, transaction, selectedPet, activity.OccurredAt, activity.LocalDate,
+            reward.HasGrowth ? activity : null, cancellationToken).ConfigureAwait(false);
+
         var snapshot = await ReadSnapshotAsync(connection, transaction, activity.OccurredAt, cancellationToken)
             .ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
@@ -84,7 +93,20 @@ public sealed class SqliteCompanionRepository(
             .ConfigureAwait(false);
 
         await EnsureProfileAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
-        var pet = await ReadSelectedPetAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
+        await EnsureMetaAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
+        if (request.RequestId == Guid.Empty)
+        {
+            throw new ArgumentException("A care request must have an identity.", nameof(request));
+        }
+
+        if (await CareRequestExistsAsync(connection, transaction, request.RequestId, cancellationToken).ConfigureAwait(false))
+        {
+            var duplicate = await ReadSnapshotAsync(connection, transaction, occurredAt, cancellationToken).ConfigureAwait(false);
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            return new CompanionCareResult(false, CareRefusal.AlreadyProcessed, duplicate);
+        }
+
+        var pet = await ReadSelectedPetAsync(connection, transaction, cancellationToken, request.Pet).ConfigureAwait(false);
         var localDate = DateOnly.FromDateTime(occurredAt.LocalDateTime);
 
         var needs = await ProjectNeedsAsync(connection, transaction, pet, occurredAt, cancellationToken)
@@ -112,6 +134,8 @@ public sealed class SqliteCompanionRepository(
             .ConfigureAwait(false);
         await RecountCareDaysAsync(connection, transaction, pet, cancellationToken).ConfigureAwait(false);
         await UpdateDragonUnlockAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
+        await ReconcileMetaAsync(connection, transaction, pet, occurredAt, localDate, null, cancellationToken)
+            .ConfigureAwait(false);
 
         var snapshot = await ReadSnapshotAsync(connection, transaction, occurredAt, cancellationToken)
             .ConfigureAwait(false);
@@ -246,13 +270,14 @@ public sealed class SqliteCompanionRepository(
         command.CommandText = """
             INSERT INTO companion_care_ledger(
                 id, companion_id, pet_kind, care_action, play_kind, points,
-                occurred_at, local_date, rule_version)
-            VALUES ($id, $companion, $pet, $action, $play, $points, $occurred, $date, $ruleVersion);
+                occurred_at, local_date, rule_version, request_id)
+            VALUES ($id, $companion, $pet, $action, $play, $points, $occurred, $date, $ruleVersion, $request);
             """;
         command.Parameters.AddWithValue("$id", Guid.NewGuid().ToString());
         command.Parameters.AddWithValue("$companion", DefaultProfileId.ToString());
         command.Parameters.AddWithValue("$pet", pet.ToString());
         command.Parameters.AddWithValue("$action", (int)request.Action);
+        command.Parameters.AddWithValue("$request", request.RequestId.ToString());
         command.Parameters.AddWithValue(
             "$play",
             request.PlayKind is { } kind ? (int)kind : (object)DBNull.Value);
@@ -425,7 +450,10 @@ public sealed class SqliteCompanionRepository(
         await using var lastReader = await latest.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         if (!await lastReader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
-            return new CompanionSnapshot(profile, growth, needs, today, RewardDelta.None, null, null);
+            await lastReader.DisposeAsync().ConfigureAwait(false);
+            return await EnrichSnapshotAsync(connection, transaction,
+                new CompanionSnapshot(profile, growth, needs, today, RewardDelta.None, null, null), cancellationToken)
+                .ConfigureAwait(false);
         }
 
         var lastReward = new RewardDelta(
@@ -435,7 +463,10 @@ public sealed class SqliteCompanionRepository(
             lastReader.GetInt32(4));
         var lastType = (CompanionActivityType)lastReader.GetInt32(0);
         var lastAt = SqliteTime.FromDb(lastReader.GetString(5));
-        return new CompanionSnapshot(profile, growth, needs, today, lastReward, lastType, lastAt);
+        await lastReader.DisposeAsync().ConfigureAwait(false);
+        return await EnrichSnapshotAsync(connection, transaction,
+            new CompanionSnapshot(profile, growth, needs, today, lastReward, lastType, lastAt), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static async Task<CompanionNeeds> ProjectNeedsAsync(
@@ -521,7 +552,8 @@ public sealed class SqliteCompanionRepository(
     private static async Task<CompanionPetKind> ReadSelectedPetAsync(
         SqliteConnection connection,
         SqliteTransaction? transaction,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        CompanionPetKind? requestedPet = null)
     {
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
@@ -532,6 +564,11 @@ public sealed class SqliteCompanionRepository(
             && Enum.IsDefined(parsed)
                 ? parsed
                 : CompanionPetKind.Rabbit;
+
+        if (requestedPet is { } requested && Enum.IsDefined(requested))
+        {
+            selected = requested;
+        }
 
         if (selected != CompanionPetKind.Dragon)
         {
