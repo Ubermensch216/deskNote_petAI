@@ -47,7 +47,9 @@ public sealed partial class DesktopPetWindow : Window
     private const long WsExTopmost = 0x0000_0008;
     private const nint HwndTopmost = -1;
     private const uint SwpKeepTopmost = 0x0001 | 0x0002 | 0x0010;
-    private const double TopmostRecheckSeconds = 2;
+    private const double TopmostRecheckSeconds = 1;
+    private const uint GwHwndPrev = 3;
+    private const int DwmwaCloaked = 14;
     private const uint DwmBbEnable = 0x0000_0001;
     private const uint DwmBbBlurRegion = 0x0000_0002;
     private const int DwmwaWindowCornerPreference = 33;
@@ -62,6 +64,17 @@ public sealed partial class DesktopPetWindow : Window
     private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _clickTimer;
     private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _carePropTimer;
     private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _idleChatterTimer;
+
+    /// <summary>
+    /// Keeps the pet in the topmost band, on its own clock.
+    /// </summary>
+    /// <remarks>
+    /// The check used to ride on the animation tick, which meant it stopped entirely whenever the
+    /// animation did: with 모션 줄이기 on, <see cref="ApplyMotionPreference"/> stops that timer, and
+    /// the pet was then left under whatever had covered it for the rest of the session. Staying on
+    /// top is not an animation, so it no longer depends on one.
+    /// </remarks>
+    private readonly Microsoft.UI.Dispatching.DispatcherQueueTimer _topmostTimer;
     private readonly Random _chatter = new();
 
     /// <summary>
@@ -103,7 +116,6 @@ public sealed partial class DesktopPetWindow : Window
     private double _poseAngle;
     private TimeSpan _restUntil;
     private TimeSpan _walkUntil;
-    private TimeSpan _lastTopmostCheck;
     private NativePoint _dragStartCursor;
     private PointInt32 _dragStartWindow;
 
@@ -189,6 +201,10 @@ public sealed partial class DesktopPetWindow : Window
         _idleChatterTimer = DispatcherQueue.CreateTimer();
         _idleChatterTimer.IsRepeating = false;
         _idleChatterTimer.Tick += OnIdleChatterTick;
+
+        _topmostTimer = DispatcherQueue.CreateTimer();
+        _topmostTimer.Interval = TimeSpan.FromSeconds(TopmostRecheckSeconds);
+        _topmostTimer.Tick += (_, _) => EnsureStillTopmostSafely();
 
         ScheduleIdleChatter();
         UpdateSnapshot(snapshot);
@@ -458,8 +474,8 @@ public sealed partial class DesktopPetWindow : Window
         _y = Math.Clamp(requested.Y, area.Y, Math.Max(area.Y, area.Y + area.Height - WindowHeight));
         AppWindow.Move(new PointInt32((int)_x, (int)_y));
         AssertAlwaysOnTop();
+        _topmostTimer.Start();
         _lastTick = _clock.Elapsed;
-        _lastTopmostCheck = _lastTick;
         ScheduleNextRest(_lastTick);
     }
 
@@ -485,28 +501,175 @@ public sealed partial class DesktopPetWindow : Window
     }
 
     /// <summary>
-    /// Re-promotes the pet if something demoted it out of the topmost band.
+    /// Runs the z-order check without letting it end the process.
     /// </summary>
     /// <remarks>
-    /// Full-screen apps and shell transitions strip WS_EX_TOPMOST from windows they cover, and the
-    /// pet has no way of hearing about it. The style word is read rather than the promotion simply
-    /// being repeated on a timer, so a pet that is still on top is left exactly where the user's
-    /// own pinned windows put it.
+    /// A timer tick is the same trap <see cref="SafeHandler"/> exists for: nothing is left to catch
+    /// what it throws, so a window that vanishes between two of these calls would take the app down
+    /// with it. The timer stops on the first failure rather than logging once a second — the pet
+    /// falls back to the promotion it already got, which is where it was before this check existed.
     /// </remarks>
-    private void EnsureStillTopmost(TimeSpan now)
+    private void EnsureStillTopmostSafely()
     {
-        if ((now - _lastTopmostCheck).TotalSeconds < TopmostRecheckSeconds)
+        try
+        {
+            EnsureStillTopmost();
+        }
+        catch (Exception ex)
+        {
+            _topmostTimer.Stop();
+            CrashLog.Write("Keeping the desktop pet on top failed", ex);
+        }
+    }
+
+    /// <summary>
+    /// Re-promotes the pet whenever something has come to sit above it.
+    /// </summary>
+    /// <remarks>
+    /// Reading WS_EX_TOPMOST alone was not enough, and that is what let the pet disappear under
+    /// other windows. Windows only clears that bit in the rarer cases; the ordinary way a topmost
+    /// window gets buried is that another topmost window — a media player pinned on top, a meeting
+    /// or capture toolbar, an installer, a second monitor's overlay — is shown after it and lands
+    /// higher inside the same band. The pet keeps its bit throughout, so the old check saw nothing
+    /// wrong while the pet was plainly covered.
+    ///
+    /// So the question asked is the one the user actually cares about: is anything drawn over me?
+    /// The z-order above the window is walked instead, and the promotion happens only when a real
+    /// window overlaps the pet. A pet that nothing covers is still left alone, which keeps the
+    /// original promise that the ordering of the user's own pinned windows is not reshuffled.
+    /// </remarks>
+    private void EnsureStillTopmost()
+    {
+        var window = Microsoft.UI.Win32Interop.GetWindowFromWindowId(AppWindow.Id);
+        var covering = FindCoveringWindow(window);
+
+        // A full-screen app owns the screen, and a pet drawn over a game or a slideshow is a bug
+        // in the other direction. Standing down also avoids the promotion war that would otherwise
+        // flip such an app out of its exclusive mode every second; the pet comes back on top by
+        // itself on the first tick after the window shrinks.
+        if (covering != 0 && FillsItsDisplay(covering))
         {
             return;
         }
 
-        _lastTopmostCheck = now;
-        var window = Microsoft.UI.Win32Interop.GetWindowFromWindowId(AppWindow.Id);
-        if ((GetWindowLongPtr(window, GwlExStyle).ToInt64() & WsExTopmost) == 0)
+        if (covering == 0 && (GetWindowLongPtr(window, GwlExStyle).ToInt64() & WsExTopmost) != 0)
         {
-            AssertAlwaysOnTop();
+            return;
         }
+
+        AssertAlwaysOnTop();
     }
+
+    /// <summary>
+    /// The nearest window sitting above the pet and overlapping it, or 0 when the pet is clear.
+    /// </summary>
+    /// <remarks>
+    /// GW_HWNDPREV walks towards the front of the z-order, so the loop only ever visits the handful
+    /// of windows that are already above the pet rather than enumerating the desktop.
+    ///
+    /// Two kinds of window are passed over. The shell's own surfaces — taskbar, Start, Alt+Tab,
+    /// Task View, the IME bar — are meant to be above everything, and fighting them would put the
+    /// pet over the Start menu. DeskNote's own windows are skipped too: the pet dashboard opens
+    /// because the user clicked the pet, and a pet that jumped back over the card it had just
+    /// opened would be covering the answer to the question that was asked.
+    /// </remarks>
+    private static nint FindCoveringWindow(nint self)
+    {
+        if (!GetWindowRect(self, out var pet))
+        {
+            return 0;
+        }
+
+        _ = GetWindowThreadProcessId(self, out var ownProcess);
+
+        for (var above = GetWindow(self, GwHwndPrev); above != 0; above = GetWindow(above, GwHwndPrev))
+        {
+            if (!IsWindowVisible(above) || IsIconic(above) || IsCloaked(above))
+            {
+                continue;
+            }
+
+            _ = GetWindowThreadProcessId(above, out var process);
+            if (process == ownProcess || IsShellSurface(above))
+            {
+                continue;
+            }
+
+            if (!GetWindowRect(above, out var other) || !Overlaps(pet, other))
+            {
+                continue;
+            }
+
+            return above;
+        }
+
+        return 0;
+    }
+
+    private static bool Overlaps(NativeRect left, NativeRect right) =>
+        left.Left < right.Right
+        && right.Left < left.Right
+        && left.Top < right.Bottom
+        && right.Top < left.Bottom;
+
+    /// <summary>Whether a window covers its whole display, taskbar included — the full-screen tell.</summary>
+    /// <remarks>
+    /// Maximised is not full-screen: a maximised window stops at the work area, so it leaves the
+    /// taskbar strip uncovered and fails this test, which is what keeps the pet on top of ordinary
+    /// maximised documents.
+    /// </remarks>
+    private static bool FillsItsDisplay(nint window)
+    {
+        if (!GetWindowRect(window, out var rect))
+        {
+            return false;
+        }
+
+        var id = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(window);
+        var bounds = DisplayArea.GetFromWindowId(id, DisplayAreaFallback.Nearest).OuterBounds;
+        return rect.Left <= bounds.X
+            && rect.Top <= bounds.Y
+            && rect.Right >= bounds.X + bounds.Width
+            && rect.Bottom >= bounds.Y + bounds.Height;
+    }
+
+    /// <summary>
+    /// Whether the window is one the shell puts above everything on purpose.
+    /// </summary>
+    private static bool IsShellSurface(nint window)
+    {
+        var name = new char[64];
+        var length = GetClassName(window, name, name.Length);
+        if (length <= 0)
+        {
+            return false;
+        }
+
+        var className = new string(name, 0, length);
+        return className is "Shell_TrayWnd"
+            or "Shell_SecondaryTrayWnd"
+            or "Shell_InputSwitchTopLevelWindow"
+            or "TopLevelWindowForOverflowXamlIsland"
+            or "Progman"
+            or "WorkerW"
+            or "ForegroundStaging"
+            or "MultitaskingViewFrame"
+            or "XamlExplorerHostIslandWindow"
+            or "TaskSwitcherWnd"
+            or "TaskSwitcherOverlayWnd"
+            or "Windows.UI.Core.CoreWindow";
+    }
+
+    /// <summary>
+    /// Whether DWM is hiding the window although Win32 still calls it visible.
+    /// </summary>
+    /// <remarks>
+    /// Store apps and windows parked on another virtual desktop stay visible to
+    /// <c>IsWindowVisible</c> long after they stop being drawn. Without this the pet would find a
+    /// phantom over itself and re-promote on every tick.
+    /// </remarks>
+    private static bool IsCloaked(nint window) =>
+        DwmGetWindowAttribute(window, DwmwaCloaked, out var cloaked, sizeof(int)) == 0 && cloaked != 0;
 
     private void OnAnimationTick(
         Microsoft.UI.Dispatching.DispatcherQueueTimer sender,
@@ -520,7 +683,6 @@ public sealed partial class DesktopPetWindow : Window
         var now = _clock.Elapsed;
         var elapsed = Math.Min(0.05, (now - _lastTick).TotalSeconds);
         _lastTick = now;
-        EnsureStillTopmost(now);
         AnimateGrowthMark(now);
 
         if (_motionState == PetMotionState.Resting)
@@ -1160,6 +1322,7 @@ public sealed partial class DesktopPetWindow : Window
         _clickTimer.Stop();
         _carePropTimer.Stop();
         _idleChatterTimer.Stop();
+        _topmostTimer.Stop();
         _transparentBackdrop?.Dispose();
         _transparentBackdrop = null;
         _backdropCompositor?.Dispose();
@@ -1258,6 +1421,15 @@ public sealed partial class DesktopPetWindow : Window
     }
 
     [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
     private struct DispatcherQueueOptions
     {
         public int Size;
@@ -1319,6 +1491,27 @@ public sealed partial class DesktopPetWindow : Window
     [DllImport("user32.dll")]
     private static extern uint GetDoubleClickTime();
 
+    [DllImport("user32.dll")]
+    private static extern nint GetWindow(nint window, uint command);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(nint window, out NativeRect rect);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsWindowVisible(nint window);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsIconic(nint window);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "GetClassNameW")]
+    private static extern int GetClassName(nint window, [Out] char[] className, int capacity);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(nint window, out uint processId);
+
     [DllImport("gdi32.dll")]
     private static extern nint CreateRectRgn(int left, int top, int right, int bottom);
 
@@ -1331,6 +1524,13 @@ public sealed partial class DesktopPetWindow : Window
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmExtendFrameIntoClientArea(nint window, ref Margins margins);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmGetWindowAttribute(
+        nint window,
+        int attribute,
+        out int value,
+        int size);
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(
