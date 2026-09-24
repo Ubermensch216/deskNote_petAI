@@ -49,8 +49,17 @@ public sealed partial class AiPreviewWindow : Window
             presenter.PreferredMinimumHeight = 380;
         }
 
-        Closed += (_, _) => _cancellation.Cancel();
+        ThemeService.ApplyThemeToWindow(this);
+        ThemeService.ThemeChanged += OnThemeChanged;
+
+        Closed += (_, _) =>
+        {
+            ThemeService.ThemeChanged -= OnThemeChanged;
+            _cancellation.Cancel();
+        };
     }
+
+    private void OnThemeChanged(object? sender, bool isDark) => ThemeService.ApplyThemeToWindow(this);
 
     /// <summary>Raised when the user accepts the proposal. Carries the text to write into the note.</summary>
     public event EventHandler<string>? Applied;

@@ -70,9 +70,18 @@ public sealed partial class AiChatWindow : Window
             presenter.PreferredMinimumHeight = 360;
         }
 
+        ThemeService.ApplyThemeToWindow(this);
+        ThemeService.ThemeChanged += OnThemeChanged;
+
         Activated += OnFirstActivated;
-        Closed += (_, _) => _answering?.Cancel();
+        Closed += (_, _) =>
+        {
+            ThemeService.ThemeChanged -= OnThemeChanged;
+            _answering?.Cancel();
+        };
     }
+
+    private void OnThemeChanged(object? sender, bool isDark) => ThemeService.ApplyThemeToWindow(this);
 
     /// <summary>Places the sidecar beside the note it was opened from, rather than on top of it.</summary>
     public void PlaceNear(AppWindow owner)

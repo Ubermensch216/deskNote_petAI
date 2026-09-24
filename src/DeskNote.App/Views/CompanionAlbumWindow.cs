@@ -69,13 +69,31 @@ public sealed class CompanionAlbumWindow : Window
         panel.Children.Add(_cards);
         panel.Children.Add(_more);
         var scroll = new ScrollViewer { Content = panel };
-        void ApplyTheme() => scroll.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-            DeskNote.App.Theming.CompanionPalette.Board(panel.ActualTheme == ElementTheme.Dark));
+        void ApplyTheme()
+        {
+            ThemeService.ApplyThemeToWindow(this);
+            scroll.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(
+                DeskNote.App.Theming.CompanionPalette.Board(ThemeService.IsDarkTheme));
+        }
+
+        ThemeService.ApplyThemeToWindow(this);
+        ThemeService.ThemeChanged += OnThemeChanged;
+        void OnThemeChanged(object? sender, bool isDark)
+        {
+            ApplyTheme();
+            _ = LoadAsync(true);
+        }
+
         panel.ActualThemeChanged += (_, _) => ApplyTheme();
         Content = scroll;
         ApplyTheme();
         panel.Loaded += async (_, _) => await LoadAsync(true);
-        Closed += (_, _) => { _closed = true; _generation++; };
+        Closed += (_, _) =>
+        {
+            ThemeService.ThemeChanged -= OnThemeChanged;
+            _closed = true;
+            _generation++;
+        };
     }
 
     private async Task LoadAsync(bool reset)
@@ -127,8 +145,8 @@ public sealed class CompanionAlbumWindow : Window
                     Padding = new Thickness(16),
                     CornerRadius = new CornerRadius(12),
                     BorderThickness = new Thickness(1),
-                    BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
-                    Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
+                    BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(DeskNote.App.Theming.CompanionPalette.CardBorder(ThemeService.IsDarkTheme)),
+                    Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(DeskNote.App.Theming.CompanionPalette.Card(ThemeService.IsDarkTheme)),
                 });
             }
 

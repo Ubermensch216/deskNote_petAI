@@ -65,27 +65,53 @@ public static class NotePalette
 
     private static Color DarkBackground(string key) => key switch
     {
-        NoteColors.Yellow => Rgb(0x46, 0x3E, 0x1E),
-        NoteColors.Amber => Rgb(0x47, 0x35, 0x1D),
-        NoteColors.Green => Rgb(0x25, 0x3C, 0x28),
-        NoteColors.Teal => Rgb(0x1E, 0x3B, 0x3A),
-        NoteColors.Blue => Rgb(0x21, 0x31, 0x43),
-        NoteColors.Purple => Rgb(0x30, 0x28, 0x42),
-        NoteColors.Pink => Rgb(0x40, 0x24, 0x37),
-        _ => Rgb(0x2C, 0x2C, 0x2A),
+        NoteColors.Yellow => Rgb(0x52, 0x45, 0x1C),
+        NoteColors.Amber => Rgb(0x54, 0x38, 0x1C),
+        NoteColors.Green => Rgb(0x23, 0x48, 0x2A),
+        NoteColors.Teal => Rgb(0x1B, 0x47, 0x45),
+        NoteColors.Blue => Rgb(0x20, 0x3C, 0x60),
+        NoteColors.Purple => Rgb(0x3C, 0x2C, 0x54),
+        NoteColors.Pink => Rgb(0x52, 0x28, 0x42),
+        _ => Rgb(0x2E, 0x30, 0x35),
     };
 
     private static Color DarkBorder(string key) => key switch
     {
-        NoteColors.Yellow => Rgb(0x62, 0x57, 0x2C),
-        NoteColors.Amber => Rgb(0x63, 0x4B, 0x2A),
-        NoteColors.Green => Rgb(0x37, 0x54, 0x3A),
-        NoteColors.Teal => Rgb(0x2C, 0x53, 0x51),
-        NoteColors.Blue => Rgb(0x31, 0x46, 0x5E),
-        NoteColors.Purple => Rgb(0x45, 0x3A, 0x5D),
-        NoteColors.Pink => Rgb(0x5A, 0x36, 0x4D),
-        _ => Rgb(0x41, 0x41, 0x3E),
+        NoteColors.Yellow => Rgb(0x73, 0x5F, 0x28),
+        NoteColors.Amber => Rgb(0x75, 0x4E, 0x26),
+        NoteColors.Green => Rgb(0x33, 0x63, 0x3A),
+        NoteColors.Teal => Rgb(0x27, 0x63, 0x60),
+        NoteColors.Blue => Rgb(0x2E, 0x54, 0x85),
+        NoteColors.Purple => Rgb(0x55, 0x3F, 0x77),
+        NoteColors.Pink => Rgb(0x73, 0x38, 0x5C),
+        _ => Rgb(0x45, 0x48, 0x50),
     };
+
+    /// <summary>
+    /// Distinct indicator color for small badges, swatches, and list chips.
+    /// In dark mode, provides vibrant chromatic identity that stands out against dark backgrounds.
+    /// </summary>
+    public static Color Swatch(string colorKey, bool isDarkTheme)
+    {
+        var key = NoteColors.Normalize(colorKey);
+
+        if (!isDarkTheme)
+        {
+            return LightBackground(key);
+        }
+
+        return key switch
+        {
+            NoteColors.Yellow => Rgb(0xF2, 0xC9, 0x4C),
+            NoteColors.Amber => Rgb(0xF2, 0x99, 0x4A),
+            NoteColors.Green => Rgb(0x6F, 0xCF, 0x97),
+            NoteColors.Teal => Rgb(0x4E, 0xCD, 0xC4),
+            NoteColors.Blue => Rgb(0x5D, 0xAD, 0xE2),
+            NoteColors.Purple => Rgb(0xBB, 0x6B, 0xD9),
+            NoteColors.Pink => Rgb(0xF0, 0x62, 0x92),
+            _ => Rgb(0xA0, 0xA4, 0xB0),
+        };
+    }
 
     /// <summary>
     /// The color a destructive command is written in.

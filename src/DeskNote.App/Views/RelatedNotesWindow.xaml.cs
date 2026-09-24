@@ -42,6 +42,7 @@ public sealed partial class RelatedNotesWindow : Window
     private readonly Func<Guid, IReadOnlyList<Guid>, Task<string?>>? _group;
 
     private IReadOnlyList<Guid> _groupable = [];
+    private IReadOnlyList<RelatedNote>? _lastRelated;
 
     public RelatedNotesWindow(
         Guid noteId,
@@ -75,7 +76,20 @@ public sealed partial class RelatedNotesWindow : Window
             presenter.PreferredMinimumHeight = 320;
         }
 
+        ThemeService.ApplyThemeToWindow(this);
+        ThemeService.ThemeChanged += OnThemeChanged;
+
         Activated += OnFirstActivated;
+        Closed += (_, _) => ThemeService.ThemeChanged -= OnThemeChanged;
+    }
+
+    private void OnThemeChanged(object? sender, bool isDark)
+    {
+        ThemeService.ApplyThemeToWindow(this);
+        if (_lastRelated is not null)
+        {
+            RelatedList.ItemsSource = _lastRelated.Select(RelatedRow.From).ToList();
+        }
     }
 
     /// <summary>Places the window beside the note it belongs to, rather than over it.</summary>
@@ -112,6 +126,7 @@ public sealed partial class RelatedNotesWindow : Window
                 return;
             }
 
+            _lastRelated = related;
             RelatedList.ItemsSource = related.Select(RelatedRow.From).ToList();
             RelatedList.Visibility = Visibility.Visible;
 
@@ -227,7 +242,7 @@ public sealed record RelatedRow(
     {
         ArgumentNullException.ThrowIfNull(related);
 
-        var isDark = Application.Current.RequestedTheme == ApplicationTheme.Dark;
+        var isDark = ThemeService.IsDarkTheme;
         var note = related.Note;
 
         // A near-duplicate says something a percentage does not, so it gets the word and the

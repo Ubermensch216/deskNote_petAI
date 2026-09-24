@@ -109,7 +109,25 @@ public sealed partial class NotesExplorerWindow : Window
         // available for the moment before the first load.
         UpdateNotebookCommands();
 
+        ThemeService.ApplyThemeToWindow(this);
+        ThemeService.ThemeChanged += OnThemeChanged;
+        Closed += OnWindowClosed;
+
         Activated += OnFirstActivated;
+    }
+
+    private void OnThemeChanged(object? sender, bool isDark)
+    {
+        ThemeService.ApplyThemeToWindow(this);
+        var current = Results.ItemsSource;
+        Results.ItemsSource = null;
+        Results.ItemsSource = current;
+    }
+
+    private void OnWindowClosed(object sender, WindowEventArgs args)
+    {
+        ThemeService.ThemeChanged -= OnThemeChanged;
+        Closed -= OnWindowClosed;
     }
 
     private async void OnFirstActivated(object sender, WindowActivatedEventArgs args)

@@ -123,6 +123,9 @@ public sealed partial class CompanionWindow : Window
         ApplyPalette();
         UpdateSnapshot(snapshot);
 
+        ThemeService.ApplyThemeToWindow(this);
+        ThemeService.ThemeChanged += OnThemeChanged;
+
         // The palette is resolved per theme, and the window can be open when Windows switches.
         Board.ActualThemeChanged += (_, _) =>
         {
@@ -138,10 +141,18 @@ public sealed partial class CompanionWindow : Window
         Activated += OnFirstActivated;
         Closed += (_, _) =>
         {
+            ThemeService.ThemeChanged -= OnThemeChanged;
             _refreshTimer.Stop();
             _growthGuideWindow?.Close();
             _albumWindow?.Close();
         };
+    }
+
+    private void OnThemeChanged(object? sender, bool isDark)
+    {
+        ThemeService.ApplyThemeToWindow(this);
+        ApplyPalette();
+        UpdateSnapshot(_snapshot);
     }
 
     private async void OnRefreshClicked(object sender, RoutedEventArgs e) =>
@@ -829,7 +840,7 @@ public sealed partial class CompanionWindow : Window
     private bool IsDark =>
         Board.ActualTheme == ElementTheme.Dark
         || (Board.ActualTheme == ElementTheme.Default
-            && Application.Current.RequestedTheme == ApplicationTheme.Dark);
+            && ThemeService.IsDarkTheme);
 
     private static string CareName(CompanionCareAction action, CompanionSnapshot snapshot) =>
         action == CompanionCareAction.SpecialCare

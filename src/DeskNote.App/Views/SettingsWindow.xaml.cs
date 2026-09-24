@@ -164,6 +164,10 @@ public sealed partial class SettingsWindow : Window
 
         DataLocationPath.Text = AppPaths.Root;
 
+        ThemeService.ApplyThemeToWindow(this);
+        ThemeService.ThemeChanged += OnThemeChanged;
+        Closed += OnWindowClosed;
+
         Render();
 
         // Tiles and rows are painted as they are built, so a theme switch rebuilds them. The state
@@ -171,6 +175,18 @@ public sealed partial class SettingsWindow : Window
         Board.ActualThemeChanged += (_, _) => Render();
 
         Activated += OnFirstActivated;
+    }
+
+    private void OnThemeChanged(object? sender, bool isDark)
+    {
+        ThemeService.ApplyThemeToWindow(this);
+        Render();
+    }
+
+    private void OnWindowClosed(object sender, WindowEventArgs args)
+    {
+        ThemeService.ThemeChanged -= OnThemeChanged;
+        Closed -= OnWindowClosed;
     }
 
     public event Action<CompanionSettings>? SettingsChanged;
@@ -181,7 +197,7 @@ public sealed partial class SettingsWindow : Window
     private bool IsDark =>
         Board.ActualTheme == ElementTheme.Dark
         || (Board.ActualTheme == ElementTheme.Default
-            && Application.Current.RequestedTheme == ApplicationTheme.Dark);
+            && ThemeService.IsDarkTheme);
 
     private async void OnFirstActivated(object sender, WindowActivatedEventArgs args)
     {

@@ -61,6 +61,7 @@ public sealed partial class CommandPaletteWindow : Window
     private readonly DispatcherTimer _intentTimer = new() { Interval = IntentDebounce };
 
     private CancellationTokenSource? _pass;
+    private IReadOnlyList<NoteSummary>? _lastRows;
 
     public CommandPaletteWindow(
         INoteLibrary library,
@@ -113,8 +114,24 @@ public sealed partial class CommandPaletteWindow : Window
             await ClassifyAsync();
         };
 
+        ThemeService.ApplyThemeToWindow(this);
+        ThemeService.ThemeChanged += OnThemeChanged;
+
         Activated += OnFirstActivated;
-        Closed += (_, _) => _pass?.Cancel();
+        Closed += (_, _) =>
+        {
+            ThemeService.ThemeChanged -= OnThemeChanged;
+            _pass?.Cancel();
+        };
+    }
+
+    private void OnThemeChanged(object? sender, bool isDark)
+    {
+        ThemeService.ApplyThemeToWindow(this);
+        if (_lastRows is not null)
+        {
+            Show(_lastRows);
+        }
     }
 
     /// <summary>Centres the palette on the display it opens on, the way a launcher appears.</summary>
@@ -145,6 +162,7 @@ public sealed partial class CommandPaletteWindow : Window
 
         if (text.Length == 0)
         {
+            _lastRows = null;
             Results.ItemsSource = null;
             Hint.Visibility = Visibility.Visible;
             return;
@@ -225,6 +243,7 @@ public sealed partial class CommandPaletteWindow : Window
 
     private void Show(IReadOnlyList<NoteSummary> rows)
     {
+        _lastRows = rows;
         Results.ItemsSource = rows.Select(PaletteRow.From).ToList();
         Hint.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         Hint.Text = rows.Count == 0 ? Strings.Get("Explorer_NoNotes") : Strings.Get("Palette_Hint");
