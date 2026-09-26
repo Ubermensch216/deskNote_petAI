@@ -51,8 +51,17 @@ public sealed partial class AiProposalWindow : Window
             presenter.PreferredMinimumHeight = 320;
         }
 
-        Closed += (_, _) => _cancellation.Cancel();
+        ThemeService.ApplyThemeToWindow(this);
+        ThemeService.ThemeChanged += OnThemeChanged;
+
+        Closed += (_, _) =>
+        {
+            ThemeService.ThemeChanged -= OnThemeChanged;
+            _cancellation.Cancel();
+        };
     }
+
+    private void OnThemeChanged(object? sender, bool isDark) => ThemeService.ApplyThemeToWindow(this);
 
     /// <summary>Raised with the indexes the user kept, in the order they were proposed.</summary>
     public event EventHandler<IReadOnlyList<int>>? Applied;

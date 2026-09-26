@@ -69,8 +69,14 @@ public sealed partial class NoteHistoryWindow : Window
             presenter.PreferredMinimumHeight = 400;
         }
 
+        ThemeService.ApplyThemeToWindow(this);
+        ThemeService.ThemeChanged += OnThemeChanged;
+
         Activated += OnFirstActivated;
+        Closed += (_, _) => ThemeService.ThemeChanged -= OnThemeChanged;
     }
+
+    private void OnThemeChanged(object? sender, bool isDark) => ThemeService.ApplyThemeToWindow(this);
 
     /// <summary>Places the window beside the note it belongs to, rather than over it.</summary>
     public void PlaceNear(AppWindow owner)

@@ -331,7 +331,7 @@ Try adding a date or a weekday.</value></data>
   <data name="Companion_TaskAiApplied" xml:space="preserve"><value>Apply an AI result to a note</value></data>
   <data name="Companion_TraitHeader" xml:space="preserve"><value>Lifetime traits</value></data>
   <data name="Companion_TodayHeader" xml:space="preserve"><value>Today</value></data>
-  <data name="Companion_DayScoreLabel" xml:space="preserve"><value>Today's growth score</value></data>
+  <data name="Companion_DayScoreLabel" xml:space="preserve"><value>Selected pet today</value></data>
   <data name="Companion_MissionProgressFormat" xml:space="preserve"><value>Mission {0}/{1}</value></data>
   <data name="Companion_AppBudgetFormat" xml:space="preserve"><value>App {0}/{1}</value></data>
   <data name="Companion_CareBudgetFormat" xml:space="preserve"><value>Care {0}/{1}</value></data>
@@ -408,4 +408,49 @@ Try adding a date or a weekday.</value></data>
   <data name="Settings_NoteSizeSmall" xml:space="preserve"><value>Small</value></data>
   <data name="Settings_NoteSizeMedium" xml:space="preserve"><value>Medium</value></data>
   <data name="Settings_NoteSizeLarge" xml:space="preserve"><value>Large</value></data>
+  <data name="Companion_AlbumTitle" xml:space="preserve"><value>Memory album</value></data>
+  <data name="Companion_AlbumPet" xml:space="preserve"><value>Companion</value></data>
+  <data name="Companion_AlbumAllPets" xml:space="preserve"><value>All pets</value></data>
+  <data name="Companion_AlbumDate" xml:space="preserve"><value>Memory date</value></data>
+  <data name="Companion_AlbumAllDates" xml:space="preserve"><value>All dates</value></data>
+  <data name="Companion_AlbumClearDate" xml:space="preserve"><value>Clear date</value></data>
+  <data name="Companion_AlbumMore" xml:space="preserve"><value>Load more</value></data>
+  <data name="Companion_AlbumPrivacy" xml:space="preserve"><value>An album of shared activities, without your note text.</value></data>
+  <data name="Companion_AlbumLoading" xml:space="preserve"><value>Loading memories…</value></data>
+  <data name="Companion_AlbumEmpty" xml:space="preserve"><value>Write a note and spend time together to make your first memory.</value></data>
+  <data name="Companion_AlbumError" xml:space="preserve"><value>Could not load the album. Refresh to try again.</value></data>
+  <data name="Companion_MissionRewardGranted" xml:space="preserve"><value>Today's memory card is saved in your album.</value></data>
+  <data name="Companion_MissionRewardHint" xml:space="preserve"><value>Complete one app activity and two different kinds of care for today's memory card. Activities across all pets count together.</value></data>
+  <data name="Companion_MissionAnyApp" xml:space="preserve"><value>Complete any note activity</value></data>
+  <data name="Companion_MissionAnyCare" xml:space="preserve"><value>One activity such as writing, editing or revisiting a note, plus two different kinds of care</value></data>
+  <data name="Companion_MissionOptionalApp" xml:space="preserve"><value>AI is optional</value></data>
+  <data name="Companion_UnlockHeader" xml:space="preserve"><value>Reactions learned through growth · no XP</value></data>
+  <data name="Companion_UnlockFormat" xml:space="preserve"><value>Stage {0} · {1}</value></data>
+  <data name="Companion_UnlockGreeting" xml:space="preserve"><value>Warm welcome</value></data>
+  <data name="Companion_UnlockSpecialCare" xml:space="preserve"><value>Species pride</value></data>
+  <data name="Companion_UnlockRest" xml:space="preserve"><value>Dream together</value></data>
+  <data name="Companion_UnlockCelebration" xml:space="preserve"><value>Celebrate growing up</value></data>
+  <data name="Companion_UnlockedGreeting" xml:space="preserve"><value>I know your footsteps by heart!</value></data>
+  <data name="Companion_UnlockedRest" xml:space="preserve"><value>Let's dream about today.</value></data>
+  <data name="Companion_UnlockedCelebration" xml:space="preserve"><value>Look how far we have grown together!</value></data>
+  <data name="Companion_UnlockedSpecialRabbit" xml:space="preserve"><value>My softest fluff, just for you!</value></data>
+  <data name="Companion_UnlockedSpecialCat" xml:space="preserve"><value>This coat deserves a little admiration.</value></data>
+  <data name="Companion_UnlockedSpecialDog" xml:space="preserve"><value>Our walks are my favourite adventures!</value></data>
+  <data name="Companion_UnlockedSpecialFennecFox" xml:space="preserve"><value>Our memories are softer than sand!</value></data>
+  <data name="Companion_UnlockedSpecialOtter" xml:space="preserve"><value>I'll treasure this like my best shell!</value></data>
+  <data name="Companion_UnlockedSpecialMonkey" xml:space="preserve"><value>Want to hear what I'm proud of today?</value></data>
+  <data name="Companion_UnlockedSpecialDragon" xml:space="preserve"><value>Our time together is my treasure.</value></data>
+  <data name="Companion_MemoryMission" xml:space="preserve"><value>We finished today's little promise together.</value></data>
+  <data name="Companion_MemoryRecall" xml:space="preserve"><value>We revisited a note together.</value></data>
+  <data name="Companion_MemoryChecklist" xml:space="preserve"><value>We celebrated completing a checklist item.</value></data>
+  <data name="Companion_MemoryCapture" xml:space="preserve"><value>We shared a moment while capturing a new thought.</value></data>
+  <data name="Companion_MemoryRefine" xml:space="preserve"><value>We spent a moment refining a note.</value></data>
+  <data name="Companion_MemoryOrganize" xml:space="preserve"><value>We helped an older note find its place.</value></data>
+  <data name="Companion_MemoryAiApplied" xml:space="preserve"><value>We applied a helpful suggestion to a note.</value></data>
+  <data name="Companion_MemoryReminder" xml:space="preserve"><value>We handled a reminder together.</value></data>
+  <data name="Companion_MemoryStage2" xml:space="preserve"><value>Growing into a young pet, I learned a warm welcome.</value></data>
+  <data name="Companion_MemoryStage3" xml:space="preserve"><value>Growing up gave me something special to show you.</value></data>
+  <data name="Companion_MemoryStage4" xml:space="preserve"><value>As we matured, we learned to dream together.</value></data>
+  <data name="Companion_MemoryStage5" xml:space="preserve"><value>Fully grown! Let's celebrate our time together.</value></data>
+  <data name="Companion_MemoryWelcomeBack" xml:space="preserve"><value>Your growth so far is honoured with learned reactions and this album.</value></data>
 </root>

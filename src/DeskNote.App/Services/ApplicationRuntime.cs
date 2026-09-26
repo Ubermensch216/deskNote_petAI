@@ -1,4 +1,4 @@
-﻿using DeskNote.Core.Abstractions;
+using DeskNote.Core.Abstractions;
 using DeskNote.Core.Ai;
 using DeskNote.Core.Models;
 using DeskNote.Core.Services;
@@ -377,7 +377,9 @@ public sealed class ApplicationRuntime : IAsyncDisposable
             PerformCareAsync,
             ActOnSuggestionAsync,
             DismissSuggestionAsync,
-            RefreshCompanionAsync);
+            RefreshCompanionAsync,
+            _companionQueue.ReadMemoriesAsync,
+            key => _desktopPetWindow?.PlayUnlockedReaction(key));
         _companionWindow = window;
         window.Closed += (_, _) => _companionWindow = null;
         window.Activate();
@@ -453,11 +455,15 @@ public sealed class ApplicationRuntime : IAsyncDisposable
     /// <summary>Runs one care action and lets the desktop pet act it out when it was paid.</summary>
     private async Task<CompanionCareResult?> PerformCareAsync(CareRequest request)
     {
+        var previousMemory = _companionSnapshot?.LatestMemory?.Id;
         var result = await _companionQueue
             .PerformCareAsync(request, DateTimeOffset.Now)
             .ConfigureAwait(true);
 
-        if (result is { Accepted: true })
+        if (result is { Accepted: true }
+            && (request.Pet is null || request.Pet == CompanionPetCatalog.FromAssetKey(result.Snapshot.Profile.AppearanceKey))
+            && !(result.Snapshot.LatestMemory is { } memory && memory.Id != previousMemory
+                && memory.TemplateId.StartsWith("Stage", StringComparison.Ordinal)))
         {
             _desktopPetWindow?.PlayCareReaction(request);
         }
@@ -487,6 +493,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
         // which of the two this save actually was.
         _companionQueue.TryEnqueue(new CompanionActivityCandidate
         {
+            Pet = _companionSettings.SelectedPet,
             SourceEventId = $"capture:{result.NoteId:N}:{result.SavedAt.UtcTicks}",
             Type = CompanionActivityType.MeaningfulCapture,
             OccurredAt = savedAt,
@@ -497,6 +504,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
 
         _companionQueue.TryEnqueue(new CompanionActivityCandidate
         {
+            Pet = _companionSettings.SelectedPet,
             SourceEventId = $"refine:{result.NoteId:N}:{result.SavedAt.UtcTicks}",
             Type = CompanionActivityType.NoteRefined,
             OccurredAt = savedAt,
@@ -512,6 +520,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
         {
             _companionQueue.TryEnqueue(new CompanionActivityCandidate
             {
+                Pet = _companionSettings.SelectedPet,
                 SourceEventId = $"organize:{result.NoteId:N}:{savedAt:yyyy-MM-dd}",
                 Type = CompanionActivityType.NoteOrganized,
                 OccurredAt = savedAt,
@@ -528,6 +537,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
         {
             _companionQueue.TryEnqueue(new CompanionActivityCandidate
             {
+                Pet = _companionSettings.SelectedPet,
                 SourceEventId = $"checklist:{key}",
                 Type = CompanionActivityType.ChecklistCompleted,
                 OccurredAt = result.SavedAt.ToLocalTime(),
@@ -540,6 +550,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
         {
             _companionQueue.TryEnqueue(new CompanionActivityCandidate
             {
+                Pet = _companionSettings.SelectedPet,
                 SourceEventId = $"ai:{result.NoteId:N}:{result.SavedAt.UtcTicks}",
                 Type = CompanionActivityType.AiSuggestionAccepted,
                 OccurredAt = result.SavedAt.ToLocalTime(),
@@ -574,6 +585,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
             var local = opened.OpenedAt.ToLocalTime();
             _companionQueue.TryEnqueue(new CompanionActivityCandidate
             {
+                Pet = _companionSettings.SelectedPet,
                 SourceEventId = isBriefing
                     ? $"briefing:{local:yyyy-MM-dd}:{opened.NoteId:N}"
                     : $"recall:{opened.Context.Origin}:{opened.NoteId:N}:{opened.OpenedAt.UtcTicks}",
@@ -609,6 +621,7 @@ public sealed class ApplicationRuntime : IAsyncDisposable
             {
                 _companionQueue.TryEnqueue(new CompanionActivityCandidate
                 {
+                    Pet = _companionSettings.SelectedPet,
                     SourceEventId = $"reminder:{reminderId:N}:{DateTimeOffset.Now:yyyy-MM-ddTHH}",
                     Type = CompanionActivityType.ReminderHandled,
                     OccurredAt = DateTimeOffset.Now,

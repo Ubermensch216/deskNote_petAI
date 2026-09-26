@@ -24,6 +24,11 @@ public sealed class CompanionActivityQueue(
 
     public bool IsStarted => _worker is not null;
 
+    public Task<IReadOnlyList<CompanionMemory>> ReadMemoriesAsync(CompanionMemoryQuery query) =>
+        repository is ICompanionMemoryRepository memories
+            ? memories.ReadMemoriesAsync(query)
+            : throw new NotSupportedException("This repository does not provide a memory album.");
+
     public async Task StartAsync(bool enabled, CancellationToken cancellationToken = default)
     {
         _enabled = enabled;

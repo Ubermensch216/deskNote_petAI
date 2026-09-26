@@ -6,7 +6,76 @@ namespace DeskNote.Data.Tests;
 public class MigrationTests
 {
     /// <summary>Highest migration in <c>Migrations/</c>; bump when one is added.</summary>
-    private const int LatestVersion = 5;
+    private const int LatestVersion = 6;
+
+    [Fact]
+    public async Task Meta_upgrade_preserves_every_growth_stage_and_takes_a_v5_backup()
+    {
+        var factory = new SqliteConnectionFactory(Path.Combine(NewDirectory(), "notes.db"));
+        var assembly = typeof(MigrationRunner).Assembly;
+        var now = DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ");
+        await using (var connection = await factory.OpenAsync())
+        {
+            await connection.ExecuteAsync("""
+                CREATE TABLE schema_version(version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL);
+                """);
+            var resources = assembly.GetManifestResourceNames()
+                .Where(name => name.Contains(".Migrations.", StringComparison.Ordinal) && !name.EndsWith("006_companion_meta.sql", StringComparison.Ordinal))
+                .OrderBy(name => name).ToArray();
+            Assert.Equal(5, resources.Length);
+            for (var index = 0; index < resources.Length; index++)
+            {
+                using var reader = new StreamReader(assembly.GetManifestResourceStream(resources[index])!);
+                await connection.ExecuteAsync(await reader.ReadToEndAsync());
+                await connection.ExecuteAsync("INSERT INTO schema_version VALUES (@version, @name, @now);",
+                    new { version = index + 1, name = resources[index], now });
+            }
+
+            await connection.ExecuteAsync("""
+                INSERT INTO companion_profiles(id, name, appearance_key, created_at, enabled, rule_version)
+                VALUES (@id, 'Mori', 'rabbit', @now, 1, 2);
+                INSERT INTO notes(id, content, created_at, updated_at) VALUES ('kept-note', 'keep this note', @now, @now);
+                """, new { id = SqliteCompanionRepository.DefaultProfileId.ToString(), now });
+            for (var index = 0; index < 5; index++)
+            {
+                var rung = CompanionGrowthLadder.Rung(index + 1);
+                await connection.ExecuteAsync("""
+                    INSERT INTO companion_pet_progress(companion_id, pet_kind, experience, care_days)
+                    VALUES (@id, @pet, @experience, @careDays);
+                    """, new
+                {
+                    id = SqliteCompanionRepository.DefaultProfileId.ToString(),
+                    pet = CompanionPetCatalog.RequiredForDragon[index].ToString(),
+                    experience = rung.Experience,
+                    careDays = rung.CareDays,
+                });
+            }
+        }
+
+        var upgrade = await new MigrationRunner(factory).MigrateAsync();
+        Assert.Equal(5, upgrade.FromVersion);
+        Assert.Equal(6, upgrade.ToVersion);
+        Assert.NotNull(upgrade.BackupPath);
+        Assert.True(File.Exists(upgrade.BackupPath));
+        var repository = new SqliteCompanionRepository(factory, new RewardPolicy(), new CarePolicy());
+        await repository.GetOrCreateAsync();
+        var cards = await repository.ReadMemoriesAsync(new());
+        Assert.Equal(4, cards.Count);
+        Assert.All(cards, card => Assert.Equal("WelcomeBack", card.TemplateId));
+        await using var upgraded = await factory.OpenAsync();
+        Assert.Equal("keep this note", await upgraded.ExecuteScalarAsync<string>("SELECT content FROM notes WHERE id = 'kept-note';"));
+        Assert.Equal(10, await upgraded.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM companion_unlocks;"));
+        for (var index = 0; index < 5; index++)
+        {
+            var row = await upgraded.QuerySingleAsync<(int Experience, int CareDays)>(
+                "SELECT experience, care_days FROM companion_pet_progress WHERE pet_kind = @pet;",
+                new { pet = CompanionPetCatalog.RequiredForDragon[index].ToString() });
+            Assert.Equal(index + 1, CompanionGrowthLadder.StageFor(row.Experience, row.CareDays));
+        }
+
+        await using var backup = await new SqliteConnectionFactory(upgrade.BackupPath).OpenAsync();
+        Assert.Equal(5, await backup.ExecuteScalarAsync<int>("SELECT MAX(version) FROM schema_version;"));
+    }
 
     private static string NewDirectory()
     {

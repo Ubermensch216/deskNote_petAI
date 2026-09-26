@@ -179,12 +179,17 @@ public enum CareRefusal
     None = 0,
     DailyLimitReached = 1,
     NotNeededYet = 2,
+    AlreadyProcessed = 3,
 }
 
 public readonly record struct CareOutcome(bool Accepted, RewardDelta Reward, CareRefusal Refusal);
 
 /// <summary>One requested care action. The play kind is set only for play.</summary>
-public readonly record struct CareRequest(CompanionCareAction Action, CompanionPlayKind? PlayKind = null);
+public readonly record struct CareRequest(CompanionCareAction Action, CompanionPlayKind? PlayKind = null)
+{
+    public Guid RequestId { get; init; } = Guid.NewGuid();
+    public CompanionPetKind? Pet { get; init; }
+}
 
 /// <summary>
 /// Converts a V1 axis total into V2 experience and care days.

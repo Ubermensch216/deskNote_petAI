@@ -245,11 +245,17 @@ public sealed partial class DesktopPetWindow : Window
             return;
         }
 
+        _unlocks = snapshot.Unlocks;
         SetPetAsset(snapshot.Profile.AppearanceKey);
         ApplyGrowthAppearance(
             CompanionPetCatalog.FromAssetKey(snapshot.Profile.AppearanceKey),
             snapshot.Growth.AppearanceStage);
         _needs = snapshot.Needs;
+
+        if (CelebrateNewStage(snapshot))
+        {
+            return;
+        }
 
         // Growth is the news worth interrupting for; an unmet need only speaks up when there is
         // nothing better to say, so the pet never nags over its own good news.

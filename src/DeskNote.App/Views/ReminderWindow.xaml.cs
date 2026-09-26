@@ -71,9 +71,18 @@ public sealed partial class ReminderWindow : Window
             presenter.PreferredMinimumHeight = 300;
         }
 
+        ThemeService.ApplyThemeToWindow(this);
+        ThemeService.ThemeChanged += OnThemeChanged;
+
         Activated += OnFirstActivated;
-        Closed += (_, _) => _reading?.Cancel();
+        Closed += (_, _) =>
+        {
+            ThemeService.ThemeChanged -= OnThemeChanged;
+            _reading?.Cancel();
+        };
     }
+
+    private void OnThemeChanged(object? sender, bool isDark) => ThemeService.ApplyThemeToWindow(this);
 
     /// <summary>Places the window beside the note it belongs to, rather than over it.</summary>
     public void PlaceNear(AppWindow owner)

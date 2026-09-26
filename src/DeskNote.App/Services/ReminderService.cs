@@ -48,13 +48,28 @@ public sealed class ReminderService(
             return;
         }
 
+        AppNotificationManager.Default.NotificationInvoked += OnToastInvoked;
+
+        try
+        {
+            AppNotificationManager.Default.Register();
+        }
+        catch (Exception ex)
+        {
+            // Seen on real machines as a COMException for a Windows App SDK module that could not
+            // be loaded. Reminders are one feature; the notes on the desktop are the product, so
+            // the launch carries on without toasts. Polling stays off as well: a due reminder that
+            // cannot be shown would otherwise fail every half minute, and leaving it due means it
+            // still fires on a later launch where notifications work.
+            AppNotificationManager.Default.NotificationInvoked -= OnToastInvoked;
+            CrashLog.Write("Reminder notifications are unavailable; reminders are paused", ex);
+            return;
+        }
+
         _running = true;
         _timer.Interval = PollInterval;
         _timer.Tick += async (_, _) => await CheckAsync();
         _timer.Start();
-
-        AppNotificationManager.Default.NotificationInvoked += OnToastInvoked;
-        AppNotificationManager.Default.Register();
 
         // Catch anything that came due while the app was closed, without waiting a full interval.
         _ = CheckAsync();

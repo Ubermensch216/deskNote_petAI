@@ -1,4 +1,4 @@
-﻿using DeskNote.Core.Abstractions;
+using DeskNote.Core.Abstractions;
 using DeskNote.Core.Services;
 using DeskNote.Data;
 using DeskNote.Companion.Core;
@@ -23,6 +23,8 @@ public static class CompositionRoot
     {
         ArgumentNullException.ThrowIfNull(dispatcher);
         ArgumentNullException.ThrowIfNull(exitApplication);
+
+        ThemeService.Initialize(dispatcher);
 
         // AppPaths, not SqliteConnectionFactory.DefaultDatabasePath: the data directory can be
         // overridden, and the database has to move with the attachments, journal and log.

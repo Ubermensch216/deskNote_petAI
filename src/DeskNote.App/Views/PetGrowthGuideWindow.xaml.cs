@@ -81,11 +81,27 @@ public sealed partial class PetGrowthGuideWindow : Window
         AvatarSpriteStrip.Source = new BitmapImage(
             new Uri($"ms-appx:///Assets/Companion/{_pet.AssetKey()}-walk.png"));
 
+        ThemeService.ApplyThemeToWindow(this);
+        ThemeService.ThemeChanged += OnThemeChanged;
+        Closed += OnWindowClosed;
+
         Render();
 
         // Every row is painted at build time, so a theme switch rebuilds them. There is no state
         // on this page to lose by doing that.
         Board.ActualThemeChanged += (_, _) => Render();
+    }
+
+    private void OnThemeChanged(object? sender, bool isDark)
+    {
+        ThemeService.ApplyThemeToWindow(this);
+        Render();
+    }
+
+    private void OnWindowClosed(object sender, WindowEventArgs args)
+    {
+        ThemeService.ThemeChanged -= OnThemeChanged;
+        Closed -= OnWindowClosed;
     }
 
     public void PlaceNear(AppWindow source)
@@ -106,7 +122,7 @@ public sealed partial class PetGrowthGuideWindow : Window
     private bool IsDark =>
         Board.ActualTheme == ElementTheme.Dark
         || (Board.ActualTheme == ElementTheme.Default
-            && Application.Current.RequestedTheme == ApplicationTheme.Dark);
+            && ThemeService.IsDarkTheme);
 
     private void Render()
     {

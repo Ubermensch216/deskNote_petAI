@@ -29,8 +29,8 @@ public static class NoteRowFormat
     /// <summary>The note's colour, so a row is recognisable as the note sitting on the desktop.</summary>
     public static Brush ColorBrush(string colorKey)
     {
-        var isDark = Application.Current.RequestedTheme == ApplicationTheme.Dark;
-        return new SolidColorBrush(NotePalette.Resolve(colorKey, isDark).Background);
+        var isDark = ThemeService.IsDarkTheme;
+        return new SolidColorBrush(NotePalette.Swatch(colorKey, isDark));
     }
 
     /// <summary>

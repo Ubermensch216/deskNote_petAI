@@ -109,6 +109,7 @@ public sealed partial class NoteWindow : Window
         // Windows rounds top-level windows itself; without asking DWM for it, a borderless note
         // would render as a hard-edged rectangle behind the rounded surface.
         WindowCorners.Round(this);
+        ThemeService.ApplyThemeToWindow(this);
 
         _suppressChangeEvents = true;
         _editor.Load(note.Content);
@@ -137,6 +138,8 @@ public sealed partial class NoteWindow : Window
         AppWindow.Changed += OnAppWindowChanged;
         Activated += OnFirstActivated;
         Closed += OnClosed;
+        Surface.ActualThemeChanged += OnSurfaceActualThemeChanged;
+        ThemeService.ThemeChanged += OnSystemThemeChanged;
     }
 
     public Guid NoteId { get; }
@@ -241,6 +244,7 @@ public sealed partial class NoteWindow : Window
     {
         _suppressChangeEvents = true;
         _editor.Load(content);
+        _editor.SetInk(NotePalette.Resolve(_colorKey, IsDarkTheme).Ink);
         _editor.Select(_editor.Text.Length, 0);
         _suppressChangeEvents = false;
         ShowTitle();
@@ -1103,11 +1107,31 @@ public sealed partial class NoteWindow : Window
         SetImageChromeVisible(visible);
     }
 
-    private void OnClosed(object sender, WindowEventArgs args) => CloseRequested?.Invoke(this, EventArgs.Empty);
+    private void OnClosed(object sender, WindowEventArgs args)
+    {
+        Surface.ActualThemeChanged -= OnSurfaceActualThemeChanged;
+        ThemeService.ThemeChanged -= OnSystemThemeChanged;
+        CloseRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnSurfaceActualThemeChanged(FrameworkElement sender, object args) => RefreshTheme();
+
+    private void OnSystemThemeChanged(object? sender, bool isDark) => RefreshTheme();
+
+    private void RefreshTheme()
+    {
+        ThemeService.ApplyThemeToWindow(this);
+        ApplySurface();
+        BuildColorChoices();
+    }
 
     private bool IsDarkTheme =>
-        Surface.ActualTheme == ElementTheme.Dark
-        || (Surface.ActualTheme == ElementTheme.Default && Application.Current.RequestedTheme == ApplicationTheme.Dark);
+        Surface.ActualTheme switch
+        {
+            ElementTheme.Dark => true,
+            ElementTheme.Light => false,
+            _ => ThemeService.IsDarkTheme,
+        };
 
     private void ApplySurface()
     {
@@ -1237,11 +1261,12 @@ public sealed partial class NoteWindow : Window
             .Select(key =>
             {
                 var surface = NotePalette.Resolve(key, isDark);
+                var outline = isDark ? NotePalette.Swatch(key, true) : surface.Border;
                 return new NoteColorChoice(
                     key,
                     Strings.Get($"Note_Color{char.ToUpperInvariant(key[0])}{key[1..]}"),
                     new SolidColorBrush(surface.Background),
-                    new SolidColorBrush(surface.Border),
+                    new SolidColorBrush(outline),
                     ink,
                     key == _colorKey);
             })

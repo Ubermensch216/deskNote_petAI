@@ -453,6 +453,16 @@
                     </StackPanel>
                 </Border>
 
+                <StackPanel Spacing="10">
+                    <TextBlock x:Name="MissionRewardStatus" TextWrapping="Wrap" />
+                    <Button x:Name="AlbumButton" Click="OnAlbumClicked" HorizontalAlignment="Stretch" />
+                    <TextBlock x:Name="MemoryPreview" TextWrapping="Wrap" />
+                    <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                        <Expander.Header><TextBlock x:Name="UnlockHeader" /></Expander.Header>
+                        <StackPanel x:Name="UnlockActions" Spacing="8" />
+                    </Expander>
+                </StackPanel>
+
                 <!-- Reference, not action: how the pet has been raised so far. -->
                 <Border x:Name="TraitCard" CornerRadius="16" BorderThickness="1" Padding="14">
                     <StackPanel Spacing="10">
