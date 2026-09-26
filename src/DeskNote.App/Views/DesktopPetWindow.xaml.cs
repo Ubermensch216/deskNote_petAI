@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using DeskNote.App.Services;
 using DeskNote.Companion.Core;
@@ -1000,7 +1000,7 @@ public sealed partial class DesktopPetWindow : Window
     {
         SproutMark.Visibility = Collapsed(_growthMark == CompanionGrowthMark.Sprout);
         SparklesMark.Visibility = Collapsed(_growthMark == CompanionGrowthMark.Sparkles);
-        HaloMark.Visibility = Collapsed(_growthMark == CompanionGrowthMark.Halo);
+        TiaraMark.Visibility = Collapsed(_growthMark == CompanionGrowthMark.Tiara);
         CrownMark.Visibility = Collapsed(_growthMark == CompanionGrowthMark.Crown);
         UpdateOrnamentVisibility();
     }
@@ -1064,7 +1064,7 @@ public sealed partial class DesktopPetWindow : Window
             && _restPose is PetRestPose.Sleep or PetRestPose.Daydream);
     }
 
-    /// <summary>Gives the ornament a slow bob, and the stage-three pair its twinkle.</summary>
+    /// <summary>Gives the ornament a slow bob, the stage-three pair its twinkle, and the tiara its gem shimmer.</summary>
     private void AnimateGrowthMark(TimeSpan now)
     {
         if (_growthMark == CompanionGrowthMark.None)
@@ -1075,13 +1075,15 @@ public sealed partial class DesktopPetWindow : Window
         var seconds = now.TotalSeconds;
         GrowthMarkLift.Y = -2.5 * Math.Sin(seconds * 1.9);
 
-        if (_growthMark != CompanionGrowthMark.Sparkles)
+        if (_growthMark == CompanionGrowthMark.Sparkles)
         {
-            return;
+            SparkleLeft.Opacity = 0.55 + (0.45 * Math.Sin(seconds * 2.6));
+            SparkleRight.Opacity = 0.55 + (0.45 * Math.Sin((seconds * 2.6) + Math.PI));
         }
-
-        SparkleLeft.Opacity = 0.55 + (0.45 * Math.Sin(seconds * 2.6));
-        SparkleRight.Opacity = 0.55 + (0.45 * Math.Sin((seconds * 2.6) + Math.PI));
+        else if (_growthMark == CompanionGrowthMark.Tiara)
+        {
+            TiaraGemShimmer.Opacity = 0.45 + (0.55 * Math.Sin(seconds * 2.4));
+        }
     }
 
     /// <summary>

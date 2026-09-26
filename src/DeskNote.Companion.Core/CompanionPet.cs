@@ -97,8 +97,8 @@ public enum CompanionGrowthMark
     /// <summary>Stage three. A pair of twinkling stars.</summary>
     Sparkles = 2,
 
-    /// <summary>Stage four. A halo, one step short of the crown.</summary>
-    Halo = 3,
+    /// <summary>Stage four. A delicate silver tiara, one step short of the crown.</summary>
+    Tiara = 3,
 
     /// <summary>Stage five. The crown, and the only gold on the desktop.</summary>
     Crown = 4,
@@ -152,7 +152,7 @@ public static class CompanionGrowthAppearanceCatalog
             0 => CompanionGrowthMark.None,
             1 => CompanionGrowthMark.Sprout,
             2 => CompanionGrowthMark.Sparkles,
-            3 => CompanionGrowthMark.Halo,
+            3 => CompanionGrowthMark.Tiara,
             _ => CompanionGrowthMark.Crown,
         };
 }
