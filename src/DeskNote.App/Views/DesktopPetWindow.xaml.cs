@@ -159,7 +159,15 @@ public sealed partial class DesktopPetWindow : Window
         AppWindow.Title = Strings.Get("Companion_Title");
         AppWindow.Resize(new SizeInt32(WindowWidth, WindowHeight));
         AppWindow.TitleBar.ExtendsContentIntoTitleBar = true;
-        AppWindow.IsShownInSwitchers = false;
+        try
+        {
+            AppWindow.IsShownInSwitchers = false;
+        }
+        catch (Exception)
+        {
+            // Unpackaged desktop apps throw NotImplementedException on SetShownInSwitchers.
+            // WsExToolWindow in MakeBackgroundTransparent handles hiding from switchers.
+        }
         if (AppWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.SetBorderAndTitleBar(false, false);
