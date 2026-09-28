@@ -16,6 +16,10 @@ public enum CompanionPetSize
     Small = 1,
     Medium = 2,
     Large = 3,
+
+    // Added after the first three; the setting is stored by name, so the numbers only need to stay unique.
+    MediumSmall = 4,
+    MediumLarge = 5,
 }
 
 public static class CompanionPetSizeExtensions
@@ -23,7 +27,9 @@ public static class CompanionPetSizeExtensions
     public static double Scale(this CompanionPetSize size) => size switch
     {
         CompanionPetSize.Small => 1d / 3d,
+        CompanionPetSize.MediumSmall => 1d / 2d,
         CompanionPetSize.Medium => 2d / 3d,
+        CompanionPetSize.MediumLarge => 5d / 6d,
         _ => 1d,
     };
 }

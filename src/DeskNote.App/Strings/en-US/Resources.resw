@@ -231,7 +231,9 @@ Try adding a date or a weekday.</value></data>
   <data name="Settings_PetLockedFormat" xml:space="preserve"><value>{0} · Locked</value></data>
   <data name="Settings_PetSize" xml:space="preserve"><value>Pet size</value></data>
   <data name="Settings_PetSizeSmall" xml:space="preserve"><value>Small</value></data>
+  <data name="Settings_PetSizeMediumSmall" xml:space="preserve"><value>Small+</value></data>
   <data name="Settings_PetSizeMedium" xml:space="preserve"><value>Medium</value></data>
+  <data name="Settings_PetSizeMediumLarge" xml:space="preserve"><value>Medium+</value></data>
   <data name="Settings_PetSizeLarge" xml:space="preserve"><value>Large</value></data>
   <data name="Settings_DragonUnlockHint" xml:space="preserve"><value>Raise Rabbit, Cat, Dog, Fennec Fox, Otter, and Monkey to their final stages to unlock Dragon.</value></data>
   <data name="Settings_Proactive" xml:space="preserve"><value>Offer timely suggestions</value></data>

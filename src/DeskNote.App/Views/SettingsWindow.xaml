@@ -161,8 +161,10 @@
 
                         <StackPanel Spacing="8">
                             <TextBlock x:Name="PetSizeLabel" FontSize="12" FontWeight="SemiBold" />
-                            <Grid x:Name="PetSizeHost" ColumnSpacing="8">
+                            <Grid x:Name="PetSizeHost" ColumnSpacing="6">
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />

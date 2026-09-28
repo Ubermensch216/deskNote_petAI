@@ -231,7 +231,9 @@
   <data name="Settings_PetLockedFormat" xml:space="preserve"><value>{0} · 잠김</value></data>
   <data name="Settings_PetSize" xml:space="preserve"><value>pet 크기</value></data>
   <data name="Settings_PetSizeSmall" xml:space="preserve"><value>작게</value></data>
+  <data name="Settings_PetSizeMediumSmall" xml:space="preserve"><value>조금 작게</value></data>
   <data name="Settings_PetSizeMedium" xml:space="preserve"><value>중간</value></data>
+  <data name="Settings_PetSizeMediumLarge" xml:space="preserve"><value>조금 크게</value></data>
   <data name="Settings_PetSizeLarge" xml:space="preserve"><value>크게</value></data>
   <data name="Settings_DragonUnlockHint" xml:space="preserve"><value>용은 토끼·고양이·개·사막여우·수달·원숭이를 각각 최종 단계까지 키우면 해제됩니다.</value></data>
   <data name="Settings_Proactive" xml:space="preserve"><value>필요할 때 먼저 제안하기</value></data>

@@ -1078,7 +1078,7 @@ public sealed partial class SettingsWindow : Window
         return button;
     }
 
-    /// <summary>Three sizes, drawn at three sizes. "Small" is a word; this is a size.</summary>
+    /// <summary>Five sizes, drawn at five sizes. "Small" is a word; this is a size.</summary>
     private void BuildSizeChoices()
     {
         var dark = IsDark;
@@ -1089,7 +1089,9 @@ public sealed partial class SettingsWindow : Window
         var sizes = new[]
         {
             (Size: CompanionPetSize.Small, Key: "Settings_PetSizeSmall", Dot: 7d),
+            (Size: CompanionPetSize.MediumSmall, Key: "Settings_PetSizeMediumSmall", Dot: 9d),
             (Size: CompanionPetSize.Medium, Key: "Settings_PetSizeMedium", Dot: 11d),
+            (Size: CompanionPetSize.MediumLarge, Key: "Settings_PetSizeMediumLarge", Dot: 13d),
             (Size: CompanionPetSize.Large, Key: "Settings_PetSizeLarge", Dot: 15d),
         };
 
@@ -1313,11 +1315,13 @@ public sealed partial class SettingsWindow : Window
             $"ms-appx:///Assets/Companion/{_selectedPet.AssetKey()}-walk.png"));
 
         // Not the raw scale — a third-size pet in an 88pt well is a speck. Enough of the difference
-        // to see which one is selected, in the order the three sizes actually are.
+        // to see which one is selected, in the order the five sizes actually are.
         var scale = _petSize switch
         {
             CompanionPetSize.Small => 0.68,
+            CompanionPetSize.MediumSmall => 0.76,
             CompanionPetSize.Medium => 0.84,
+            CompanionPetSize.MediumLarge => 0.92,
             _ => 1.0,
         };
         AvatarSizeTransform.ScaleX = scale;
