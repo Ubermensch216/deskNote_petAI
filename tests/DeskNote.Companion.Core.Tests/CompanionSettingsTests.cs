@@ -100,6 +100,9 @@ public sealed class CompanionSettingsTests
             AlwaysVisible = true,
             ReduceMotion = true,
             RoamScreen = false,
+            ClimbWindows = true,
+            WatchCursor = false,
+            FollowCursor = true,
             SelectedPet = CompanionPetKind.Otter,
             PetName = "  Dori  ",
             PetSize = CompanionPetSize.Small,
@@ -128,6 +131,36 @@ public sealed class CompanionSettingsTests
         Assert.True(empty.RoamScreen);
         Assert.True(garbled.RoamScreen);
         Assert.False(off.RoamScreen);
+    }
+
+    [Fact]
+    public async Task The_livelier_behaviours_start_off_and_watching_the_pointer_starts_on()
+    {
+        var actual = await CompanionSettings.LoadAsync(new MemorySettingsStore(), TestContext.Current.CancellationToken);
+
+        Assert.False(actual.ClimbWindows);
+        Assert.False(actual.FollowCursor);
+        Assert.False(actual.DodgeCursor);
+        Assert.True(actual.WatchCursor);
+        Assert.Equal(PetCursorMode.Watch, actual.CursorMode);
+    }
+
+    [Theory]
+    [InlineData(false, false, false, PetCursorMode.None)]
+    [InlineData(true, false, false, PetCursorMode.Watch)]
+    [InlineData(true, true, false, PetCursorMode.Follow)]
+    [InlineData(false, true, false, PetCursorMode.Follow)]
+    [InlineData(true, false, true, PetCursorMode.Dodge)]
+    [InlineData(true, true, true, PetCursorMode.Dodge)]
+    public void One_reaction_comes_out_of_the_three_switches_and_dodging_wins(
+        bool watch,
+        bool follow,
+        bool dodge,
+        PetCursorMode expected)
+    {
+        var settings = new CompanionSettings { WatchCursor = watch, FollowCursor = follow, DodgeCursor = dodge };
+
+        Assert.Equal(expected, settings.CursorMode);
     }
 
     [Theory]

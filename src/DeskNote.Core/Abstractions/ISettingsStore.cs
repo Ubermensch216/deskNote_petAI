@@ -75,6 +75,18 @@ public static class SettingKeys
     /// <summary>Whether the pet climbs the sides and top of the screen instead of staying on the floor.</summary>
     public const string CompanionRoamScreen = "companion.roamScreen";
 
+    /// <summary>Whether the pet climbs open windows and walks along their tops.</summary>
+    public const string CompanionClimbWindows = "companion.climbWindows";
+
+    /// <summary>Whether a sitting pet turns to look at the pointer.</summary>
+    public const string CompanionWatchCursor = "companion.watchCursor";
+
+    /// <summary>Whether the pet walks over to the pointer.</summary>
+    public const string CompanionFollowCursor = "companion.followCursor";
+
+    /// <summary>Whether the pet slides out of the way of the pointer.</summary>
+    public const string CompanionDodgeCursor = "companion.dodgeCursor";
+
     /// <summary>Local quiet-hours start in 24-hour HH:mm form.</summary>
     public const string CompanionQuietHoursStart = "companion.quietHours.start";
 

@@ -63,6 +63,10 @@ public sealed partial class SettingsWindow : Window
     private readonly ToggleSwitch _alwaysVisible = NewSwitch();
     private readonly ToggleSwitch _petMovement = NewSwitch();
     private readonly ToggleSwitch _petRoam = NewSwitch();
+    private readonly ToggleSwitch _petClimbWindows = NewSwitch();
+    private readonly ToggleSwitch _petWatch = NewSwitch();
+    private readonly ToggleSwitch _petFollow = NewSwitch();
+    private readonly ToggleSwitch _petDodge = NewSwitch();
     private readonly ToggleSwitch _aiEnabled = NewSwitch();
 
     private BehaviorRow? _aiEnabledRow;
@@ -119,7 +123,18 @@ public sealed partial class SettingsWindow : Window
             ClearStatus();
         };
 
-        foreach (var toggle in new[] { _companionEnabled, _proactiveEnabled, _alwaysVisible, _petMovement, _petRoam })
+        foreach (var toggle in new[]
+        {
+            _companionEnabled,
+            _proactiveEnabled,
+            _alwaysVisible,
+            _petMovement,
+            _petRoam,
+            _petClimbWindows,
+            _petWatch,
+            _petFollow,
+            _petDodge,
+        })
         {
             toggle.Toggled += (_, _) =>
             {
@@ -128,6 +143,23 @@ public sealed partial class SettingsWindow : Window
                 ClearStatus();
             };
         }
+
+        // Following and dodging are opposite answers to the same question, so turning one on turns
+        // the other off. Turning a switch off from here raises its own Toggled, which does nothing.
+        _petFollow.Toggled += (_, _) =>
+        {
+            if (_petFollow.IsOn)
+            {
+                _petDodge.IsOn = false;
+            }
+        };
+        _petDodge.Toggled += (_, _) =>
+        {
+            if (_petDodge.IsOn)
+            {
+                _petFollow.IsOn = false;
+            }
+        };
 
         foreach (var picker in new[] { QuietStart, QuietEnd })
         {
@@ -400,6 +432,10 @@ public sealed partial class SettingsWindow : Window
         _alwaysVisible.IsOn = value.AlwaysVisible;
         _petMovement.IsOn = !value.ReduceMotion;
         _petRoam.IsOn = value.RoamScreen;
+        _petClimbWindows.IsOn = value.ClimbWindows;
+        _petWatch.IsOn = value.WatchCursor;
+        _petFollow.IsOn = value.FollowCursor;
+        _petDodge.IsOn = value.DodgeCursor && !value.FollowCursor;
         QuietStart.Time = value.QuietStart.ToTimeSpan();
         QuietEnd.Time = value.QuietEnd.ToTimeSpan();
 
@@ -414,6 +450,10 @@ public sealed partial class SettingsWindow : Window
         AlwaysVisible = _alwaysVisible.IsOn,
         ReduceMotion = !_petMovement.IsOn,
         RoamScreen = _petRoam.IsOn,
+        ClimbWindows = _petClimbWindows.IsOn,
+        WatchCursor = _petWatch.IsOn,
+        FollowCursor = _petFollow.IsOn,
+        DodgeCursor = _petDodge.IsOn,
         SelectedPet = _selectedPet,
         PetName = CompanionSettings.NormalizePetName(PetNameInput.Text),
         PetSize = _petSize,
@@ -1170,6 +1210,14 @@ public sealed partial class SettingsWindow : Window
                 Description: "Settings_ReduceMotionDescription", Switch: _petMovement),
             (Emoji: "🧗", Title: "Settings_RoamScreen",
                 Description: "Settings_RoamScreenDescription", Switch: _petRoam),
+            (Emoji: "\U0001F4BB", Title: "Settings_ClimbWindows",
+                Description: "Settings_ClimbWindowsDescription", Switch: _petClimbWindows),
+            (Emoji: "\U0001F440", Title: "Settings_WatchCursor",
+                Description: "Settings_WatchCursorDescription", Switch: _petWatch),
+            (Emoji: "\U0001F463", Title: "Settings_FollowCursor",
+                Description: "Settings_FollowCursorDescription", Switch: _petFollow),
+            (Emoji: "\U0001F4A8", Title: "Settings_DodgeCursor",
+                Description: "Settings_DodgeCursorDescription", Switch: _petDodge),
         };
 
         foreach (var (emoji, title, description, toggle) in rows)
@@ -1453,10 +1501,14 @@ public sealed partial class SettingsWindow : Window
             row.Root.Opacity = enabled ? 1 : 0.4;
         }
 
-        // Climbing is a way of moving, so it means nothing while the pet is told to stand still.
-        var roams = enabled && _petMovement.IsOn;
-        _petRoam.IsEnabled = roams;
-        _behaviorRows[^1].Root.Opacity = roams ? 1 : 0.4;
+        // Everything after "move the pet" is a way of moving, or a reason to, and means nothing
+        // while the pet is told to stand still.
+        var moves = enabled && _petMovement.IsOn;
+        foreach (var row in _behaviorRows.Skip(4))
+        {
+            row.Switch.IsEnabled = moves;
+            row.Root.Opacity = moves ? 1 : 0.4;
+        }
 
         var quietApplies = enabled && _proactiveEnabled.IsOn;
         QuietStart.IsEnabled = quietApplies;

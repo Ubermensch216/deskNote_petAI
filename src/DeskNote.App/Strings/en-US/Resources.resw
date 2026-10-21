@@ -263,6 +263,14 @@ Try adding a date or a weekday.</value></data>
   <data name="Settings_ReduceMotionDescription" xml:space="preserve"><value>The pet walks around the desktop. Off, it stays where you put it.</value></data>
   <data name="Settings_RoamScreen" xml:space="preserve"><value>Climb the screen edges</value></data>
   <data name="Settings_RoamScreenDescription" xml:space="preserve"><value>The pet climbs the walls and crawls along the ceiling. Off, it stays on the floor.</value></data>
+  <data name="Settings_ClimbWindows" xml:space="preserve"><value>Climb open windows</value></data>
+  <data name="Settings_ClimbWindowsDescription" xml:space="preserve"><value>The pet climbs up the side of other programs' windows and walks along their tops. It follows a window when you move it and comes down when it closes.</value></data>
+  <data name="Settings_WatchCursor" xml:space="preserve"><value>Watch the cursor</value></data>
+  <data name="Settings_WatchCursorDescription" xml:space="preserve"><value>While it sits, the pet turns to look at the mouse cursor.</value></data>
+  <data name="Settings_FollowCursor" xml:space="preserve"><value>Follow the cursor</value></data>
+  <data name="Settings_FollowCursorDescription" xml:space="preserve"><value>The pet walks over to a cursor on its level and sits beside it. Cannot be combined with running away.</value></data>
+  <data name="Settings_DodgeCursor" xml:space="preserve"><value>Run from the cursor</value></data>
+  <data name="Settings_DodgeCursorDescription" xml:space="preserve"><value>The pet slides out of the way when the cursor touches it. It does not run while you are clicking.</value></data>
   <data name="Settings_QuietWindowFormat" xml:space="preserve"><value>Quiet from {0} to {1} · {2}</value></data>
   <data name="Settings_QuietNone" xml:space="preserve"><value>Start and end match, so there are no quiet hours.</value></data>
   <data name="Settings_QuietInactiveHint" xml:space="preserve"><value>Applies only while timely suggestions are on.</value></data>

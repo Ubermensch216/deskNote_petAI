@@ -28,6 +28,33 @@ public sealed record CompanionSettings
     /// </summary>
     public bool RoamScreen { get; init; } = true;
 
+    /// <summary>
+    /// Whether the pet climbs the open windows of other applications and walks along their tops.
+    /// Off by default: a pet that stands on the window being worked in is the livelier behaviour,
+    /// and is for whoever asks for it.
+    /// </summary>
+    public bool ClimbWindows { get; init; }
+
+    /// <summary>Whether a sitting pet turns to look at the pointer. Costs nothing, so on.</summary>
+    public bool WatchCursor { get; init; } = true;
+
+    /// <summary>Whether the pet walks over to the pointer and sits beside it.</summary>
+    public bool FollowCursor { get; init; }
+
+    /// <summary>
+    /// Whether the pet slides out of the way when the pointer gets close. Off by default, and a
+    /// pet that does it cannot also follow: a pet that runs from the pointer and walks to it at
+    /// the same time is just in the way. Dodging wins if both are somehow stored.
+    /// </summary>
+    public bool DodgeCursor { get; init; }
+
+    /// <summary>What the pet does about the pointer: one answer out of the three switches.</summary>
+    public PetCursorMode CursorMode =>
+        DodgeCursor ? PetCursorMode.Dodge
+        : FollowCursor ? PetCursorMode.Follow
+        : WatchCursor ? PetCursorMode.Watch
+        : PetCursorMode.None;
+
     public CompanionPetKind SelectedPet { get; init; } = CompanionPetKind.Rabbit;
 
     public string PetName { get; init; } = DefaultPetName;
@@ -68,6 +95,10 @@ public sealed record CompanionSettings
             AlwaysVisible = Boolean(values, SettingKeys.CompanionAlwaysVisible, fallback: false),
             ReduceMotion = Boolean(values, SettingKeys.CompanionReduceMotion, fallback: false),
             RoamScreen = Boolean(values, SettingKeys.CompanionRoamScreen, fallback: true),
+            ClimbWindows = Boolean(values, SettingKeys.CompanionClimbWindows, fallback: false),
+            WatchCursor = Boolean(values, SettingKeys.CompanionWatchCursor, fallback: true),
+            FollowCursor = Boolean(values, SettingKeys.CompanionFollowCursor, fallback: false),
+            DodgeCursor = Boolean(values, SettingKeys.CompanionDodgeCursor, fallback: false),
             SelectedPet = selectedPet,
             PetName = NormalizePetName(values.GetValueOrDefault(SettingKeys.CompanionPetName)),
             PetSize = ParsePetSize(values, SettingKeys.CompanionPetSize),
@@ -98,6 +129,14 @@ public sealed record CompanionSettings
         await store.SetAsync(SettingKeys.CompanionReduceMotion, Lower(ReduceMotion), cancellationToken)
             .ConfigureAwait(false);
         await store.SetAsync(SettingKeys.CompanionRoamScreen, Lower(RoamScreen), cancellationToken)
+            .ConfigureAwait(false);
+        await store.SetAsync(SettingKeys.CompanionClimbWindows, Lower(ClimbWindows), cancellationToken)
+            .ConfigureAwait(false);
+        await store.SetAsync(SettingKeys.CompanionWatchCursor, Lower(WatchCursor), cancellationToken)
+            .ConfigureAwait(false);
+        await store.SetAsync(SettingKeys.CompanionFollowCursor, Lower(FollowCursor), cancellationToken)
+            .ConfigureAwait(false);
+        await store.SetAsync(SettingKeys.CompanionDodgeCursor, Lower(DodgeCursor), cancellationToken)
             .ConfigureAwait(false);
         var selectedPet = SelectedPet == CompanionPetKind.Dragon && !DragonUnlocked
             ? CompanionPetKind.Rabbit

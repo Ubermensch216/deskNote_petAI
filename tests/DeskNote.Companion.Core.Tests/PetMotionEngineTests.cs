@@ -1,6 +1,6 @@
 namespace DeskNote.Companion.Core.Tests;
 
-public class PetMotionEngineTests
+public partial class PetMotionEngineTests
 {
     // A 1920 x 1080 screen, the floor at 1000: a pet standing 100 wide and 120 tall, 130 wide and
     // 100 tall lying on a wall, 120 wide and 90 tall on the ceiling.

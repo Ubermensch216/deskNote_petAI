@@ -263,6 +263,14 @@
   <data name="Settings_ReduceMotionDescription" xml:space="preserve"><value>펫이 바탕화면을 걸어 다닙니다. 끄면 놓아둔 자리에 머뭅니다.</value></data>
   <data name="Settings_RoamScreen" xml:space="preserve"><value>화면 가장자리 오르기</value></data>
   <data name="Settings_RoamScreenDescription" xml:space="preserve"><value>벽과 천장을 타고 화면 구석구석을 돌아다닙니다. 끄면 바닥에서만 걷습니다.</value></data>
+  <data name="Settings_ClimbWindows" xml:space="preserve"><value>열린 창 위로 올라가기</value></data>
+  <data name="Settings_ClimbWindowsDescription" xml:space="preserve"><value>다른 프로그램의 창 옆을 올라가 창 위를 걷고 쉽니다. 창을 옮기면 같이 움직이고, 창이 닫히면 내려옵니다.</value></data>
+  <data name="Settings_WatchCursor" xml:space="preserve"><value>커서 쳐다보기</value></data>
+  <data name="Settings_WatchCursorDescription" xml:space="preserve"><value>앉아 쉬는 동안 마우스 커서 쪽을 바라봅니다.</value></data>
+  <data name="Settings_FollowCursor" xml:space="preserve"><value>커서 따라다니기</value></data>
+  <data name="Settings_FollowCursorDescription" xml:space="preserve"><value>같은 높이에 있는 마우스 커서 쪽으로 걸어가 옆에 앉습니다. 도망가기와 함께 쓸 수 없습니다.</value></data>
+  <data name="Settings_DodgeCursor" xml:space="preserve"><value>커서에서 도망가기</value></data>
+  <data name="Settings_DodgeCursorDescription" xml:space="preserve"><value>커서가 몸에 닿으면 슬라이딩으로 비킵니다. 클릭하는 중에는 도망가지 않습니다.</value></data>
   <data name="Settings_QuietWindowFormat" xml:space="preserve"><value>{0}부터 {1}까지 · {2} 동안 조용합니다</value></data>
   <data name="Settings_QuietNone" xml:space="preserve"><value>시작과 종료가 같아 방해 금지 시간이 없습니다.</value></data>
   <data name="Settings_QuietInactiveHint" xml:space="preserve"><value>‘필요할 때 먼저 제안하기’가 켜져 있을 때만 적용됩니다.</value></data>
