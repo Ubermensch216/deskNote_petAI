@@ -72,6 +72,9 @@ public static class SettingKeys
     /// <summary>Whether movement is replaced with static state changes.</summary>
     public const string CompanionReduceMotion = "companion.reduceMotion";
 
+    /// <summary>Whether the pet climbs the sides and top of the screen instead of staying on the floor.</summary>
+    public const string CompanionRoamScreen = "companion.roamScreen";
+
     /// <summary>Local quiet-hours start in 24-hour HH:mm form.</summary>
     public const string CompanionQuietHoursStart = "companion.quietHours.start";
 

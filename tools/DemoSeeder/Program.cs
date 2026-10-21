@@ -8,11 +8,18 @@ using DeskNote.Data;
 // tool is that nobody's actual notes end up in the README. Run the app against the same folder
 // with `--data <path>` to photograph it.
 //
-//   dotnet run --project tools/DemoSeeder -- <data directory>
+//   dotnet run --project tools/DemoSeeder -- <data directory> [--motion] [--pet <key>]
+//
+// `--motion` leaves the pet walking, for checking how it moves; `--pet` picks the species by its
+// asset key (rabbit, cat, dog, fennec, otter, dragon, monkey, duck).
 
 var root = args.Length > 0
     ? Path.GetFullPath(args[0])
     : throw new ArgumentException("Pass the data directory to seed, the same one the app gets with --data.");
+
+var motion = args.Contains("--motion");
+var petFlag = Array.IndexOf(args, "--pet");
+var pet = petFlag >= 0 && petFlag + 1 < args.Length ? args[petFlag + 1] : "otter";
 
 Directory.CreateDirectory(root);
 
@@ -27,13 +34,13 @@ var settings = new SqliteSettingsStore(connections);
 
 // The pet is off by default, and the dashboard is one of the things being photographed.
 await settings.SetAsync(SettingKeys.CompanionEnabled, "true");
-await settings.SetAsync(SettingKeys.CompanionSelectedPet, "otter");
+await settings.SetAsync(SettingKeys.CompanionSelectedPet, pet);
 await settings.SetAsync(SettingKeys.CompanionPetName, "Bori");
 
 // A walking pet moves out from under the pointer between reading its position and
 // clicking it, so the demo instance stands still. It is the same still frame a user sees
 // with 움직이기 turned off.
-await settings.SetAsync(SettingKeys.CompanionReduceMotion, "true");
+await settings.SetAsync(SettingKeys.CompanionReduceMotion, motion ? "false" : "true");
 
 var payments = await library.CreateNotebookAsync("결제 시스템");
 var onboarding = await library.CreateNotebookAsync("온보딩");

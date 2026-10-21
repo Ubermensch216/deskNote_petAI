@@ -213,6 +213,15 @@
   <data name="Palette_Placeholder" xml:space="preserve"><value>찾을 말, 물어볼 것, 알림, 적어 둘 것</value></data>
   <data name="Palette_Hint" xml:space="preserve"><value>메모를 찾으려면 그냥 쓰세요. Enter 로 첫 결과를 엽니다.</value></data>
   <data name="Tray_Settings" xml:space="preserve"><value>설정</value></data>
+  <data name="Tray_RecallPet" xml:space="preserve"><value>펫 불러오기</value></data>
+  <data name="Companion_MenuPreview" xml:space="preserve"><value>동작 바로 보기</value></data>
+  <data name="Companion_MenuPoseSit" xml:space="preserve"><value>앉아서 쉬기</value></data>
+  <data name="Companion_MenuPoseSleep" xml:space="preserve"><value>잠자기</value></data>
+  <data name="Companion_MenuPoseDaydream" xml:space="preserve"><value>멍때리기</value></data>
+  <data name="Companion_MenuPoseStretch" xml:space="preserve"><value>기지개</value></data>
+  <data name="Companion_MenuDemoWall" xml:space="preserve"><value>벽 타기</value></data>
+  <data name="Companion_MenuDemoCeiling" xml:space="preserve"><value>천장 타기</value></data>
+  <data name="Companion_MenuDemoFall" xml:space="preserve"><value>프로펠러 낙하</value></data>
   <data name="Settings_Title" xml:space="preserve"><value>DeskNote 설정</value></data>
   <data name="Settings_LocalOnly" xml:space="preserve"><value>동반자 상태와 활동 기록은 이 PC 안에만 저장됩니다.</value></data>
   <data name="Settings_CompanionHeader" xml:space="preserve"><value>데스크톱 동반자</value></data>
@@ -228,6 +237,7 @@
   <data name="Settings_PetOtter" xml:space="preserve"><value>수달</value></data>
   <data name="Settings_PetDragon" xml:space="preserve"><value>용</value></data>
   <data name="Settings_PetMonkey" xml:space="preserve"><value>원숭이</value></data>
+  <data name="Settings_PetDuck" xml:space="preserve"><value>오리</value></data>
   <data name="Settings_PetLockedFormat" xml:space="preserve"><value>{0} · 잠김</value></data>
   <data name="Settings_PetSize" xml:space="preserve"><value>pet 크기</value></data>
   <data name="Settings_PetSizeSmall" xml:space="preserve"><value>작게</value></data>
@@ -251,6 +261,8 @@
   <data name="Settings_ProactiveDescription" xml:space="preserve"><value>일이 멈춰 있거나 처리할 것이 남았을 때 펫이 먼저 한마디 건넵니다.</value></data>
   <data name="Settings_AlwaysVisibleDescription" xml:space="preserve"><value>펫 상세 창을 다른 창 위에 계속 띄워 둡니다.</value></data>
   <data name="Settings_ReduceMotionDescription" xml:space="preserve"><value>펫이 바탕화면을 걸어 다닙니다. 끄면 놓아둔 자리에 머뭅니다.</value></data>
+  <data name="Settings_RoamScreen" xml:space="preserve"><value>화면 가장자리 오르기</value></data>
+  <data name="Settings_RoamScreenDescription" xml:space="preserve"><value>벽과 천장을 타고 화면 구석구석을 돌아다닙니다. 끄면 바닥에서만 걷습니다.</value></data>
   <data name="Settings_QuietWindowFormat" xml:space="preserve"><value>{0}부터 {1}까지 · {2} 동안 조용합니다</value></data>
   <data name="Settings_QuietNone" xml:space="preserve"><value>시작과 종료가 같아 방해 금지 시간이 없습니다.</value></data>
   <data name="Settings_QuietInactiveHint" xml:space="preserve"><value>‘필요할 때 먼저 제안하기’가 켜져 있을 때만 적용됩니다.</value></data>
@@ -313,6 +325,7 @@
   <data name="Companion_SpecialCareWaterPlay" xml:space="preserve"><value>물놀이</value></data>
   <data name="Companion_SpecialCarePreening" xml:space="preserve"><value>털 고르기</value></data>
   <data name="Companion_SpecialCareScalePolish" xml:space="preserve"><value>비늘 닦기</value></data>
+  <data name="Companion_SpecialCarePuddleSplash" xml:space="preserve"><value>물웅덩이 첨벙</value></data>
   <data name="Companion_CareThanks" xml:space="preserve"><value>고마워요!</value></data>
   <data name="Companion_CareDone" xml:space="preserve"><value>오늘은 이미 충분히 했어요.</value></data>
   <data name="Companion_CareNotNeeded" xml:space="preserve"><value>지금은 필요하지 않아요. 조금 뒤에 다시 해주세요.</value></data>
@@ -441,6 +454,7 @@
   <data name="Companion_UnlockedSpecialFennecFox" xml:space="preserve"><value>모래보다 포근한 추억이 쌓였어!</value></data>
   <data name="Companion_UnlockedSpecialOtter" xml:space="preserve"><value>소중한 조개처럼 간직할게!</value></data>
   <data name="Companion_UnlockedSpecialMonkey" xml:space="preserve"><value>오늘은 내 자랑도 들어줄래?</value></data>
+  <data name="Companion_UnlockedSpecialDuck" xml:space="preserve"><value>같이 있으면 웅덩이도 바다 같아!</value></data>
   <data name="Companion_UnlockedSpecialDragon" xml:space="preserve"><value>내 보물은 함께 보낸 시간이야.</value></data>
   <data name="Companion_MemoryMission" xml:space="preserve"><value>오늘의 작은 약속을 함께 마쳤어요.</value></data>
   <data name="Companion_MemoryRecall" xml:space="preserve"><value>함께 메모를 다시 살펴본 날이에요.</value></data>

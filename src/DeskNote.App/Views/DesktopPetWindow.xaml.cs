@@ -48,8 +48,6 @@ public sealed partial class DesktopPetWindow : Window
     private const nint HwndTopmost = -1;
     private const uint SwpKeepTopmost = 0x0001 | 0x0002 | 0x0010;
     private const double TopmostRecheckSeconds = 1;
-    private const uint GwHwndPrev = 3;
-    private const int DwmwaCloaked = 14;
     private const uint DwmBbEnable = 0x0000_0001;
     private const uint DwmBbBlurRegion = 0x0000_0002;
     private const int DwmwaWindowCornerPreference = 33;
@@ -82,6 +80,7 @@ public sealed partial class DesktopPetWindow : Window
     /// silently reshuffle how it moves.
     /// </summary>
     private readonly Random _behaviour = new();
+    private readonly PetMotionEngine _motion;
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     [ThreadStatic]
     private static object? _systemDispatcherQueueController;
@@ -90,14 +89,11 @@ public sealed partial class DesktopPetWindow : Window
     private Windows.UI.Composition.CompositionColorBrush? _transparentBackdrop;
     private CompanionSettings _settings;
     private TimeSpan _lastTick;
-    private double _x;
-    private double _y;
     private double _frameWidth = BaseFrameWidth;
     private double _frameHeight = BaseFrameHeight;
     private double _growthScale = 1;
     private double _frameTime;
     private int _frame;
-    private int _direction = -1;
     private bool _placed;
     private bool _pointerDown;
     private bool _dragMoved;
@@ -107,17 +103,10 @@ public sealed partial class DesktopPetWindow : Window
     private CompanionNeeds _needs = new(100, 100, 100, 0);
     private double _carePropElapsed;
     private PetAnimation _animation = PetAnimation.Walk;
-    private PetMotionState _motionState = PetMotionState.Walking;
-    private PetRestPose _restPose = PetRestPose.Sit;
     private CompanionGrowthMark _growthMark = CompanionGrowthMark.None;
-    private double _restElapsed;
-    private double _restDuration;
     private double _poseScale = 1;
     private double _poseAngle;
-    private TimeSpan _restUntil;
-    private TimeSpan _walkUntil;
     private NativePoint _dragStartCursor;
-    private PointInt32 _dragStartWindow;
 
     /// <summary>
     /// What the pet says to itself when nothing has happened.
@@ -150,6 +139,7 @@ public sealed partial class DesktopPetWindow : Window
 
         InitializeComponent();
         _settings = settings;
+        _motion = new PetMotionEngine(_behaviour);
         _savePosition = savePosition;
         ApplyPetSize(settings.PetSize);
         SetPetAsset(settings.SelectedPet.AssetKey());
@@ -212,8 +202,19 @@ public sealed partial class DesktopPetWindow : Window
 
         _topmostTimer = DispatcherQueue.CreateTimer();
         _topmostTimer.Interval = TimeSpan.FromSeconds(TopmostRecheckSeconds);
-        _topmostTimer.Tick += (_, _) => EnsureStillTopmostSafely();
+        _topmostTimer.Tick += (_, _) =>
+        {
+            EnsureStillTopmostSafely();
 
+            // Same once-a-second housekeeping: a display that was unplugged or resized leaves the
+            // pet standing where there is no longer any screen.
+            if (!_pointerDown)
+            {
+                KeepOnScreen();
+            }
+        };
+
+        WatchSession();
         ScheduleIdleChatter();
         UpdateSnapshot(snapshot);
         ApplyMotionPreference();
@@ -307,6 +308,14 @@ public sealed partial class DesktopPetWindow : Window
     private void SayLine(string line)
     {
         if (string.IsNullOrEmpty(line))
+        {
+            ScheduleIdleChatter();
+            return;
+        }
+
+        // The bubble rests on the head of an upright pet; on a wall or the ceiling the head is
+        // elsewhere, so the line is dropped there rather than shown floating.
+        if (_motion.IsClimbing)
         {
             ScheduleIdleChatter();
             return;
@@ -421,6 +430,13 @@ public sealed partial class DesktopPetWindow : Window
 
         Say($"Companion_CareReaction{request.Action}");
 
+        // A pet clinging to a wall cannot be fed: it comes down first, and the reaction is acted
+        // out when it has landed.
+        if (_motion.IsClimbing)
+        {
+            LetGo();
+        }
+
         // Being put to bed is the one care action with a pose of its own; the rest are acted out
         // by the prop beside the pet, and a pet that curled up and slept through being fed would
         // be answering a different request.
@@ -476,293 +492,41 @@ public sealed partial class DesktopPetWindow : Window
         }
 
         _placed = true;
-        var fallbackArea = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary);
-        var requested = _settings.PetPositionX is int savedX
-                        && _settings.PetPositionY is int savedY
-            ? new PointInt32(savedX, savedY)
-            : new PointInt32(
-                fallbackArea.WorkArea.X + fallbackArea.WorkArea.Width - WindowWidth - 24,
-                fallbackArea.WorkArea.Y + fallbackArea.WorkArea.Height - WindowHeight);
-        var area = DisplayArea.GetFromPoint(requested, DisplayAreaFallback.Nearest).WorkArea;
-        _x = Math.Clamp(requested.X, area.X, Math.Max(area.X, area.X + area.Width - WindowWidth));
-        _y = Math.Clamp(requested.Y, area.Y, Math.Max(area.Y, area.Y + area.Height - WindowHeight));
-        AppWindow.Move(new PointInt32((int)_x, (int)_y));
+        RefreshDisplays(force: true);
+
+        var layout = CurrentLayout();
+        var ink = CurrentInk();
+        var inWindow = PetPoseGeometry.InkBox(layout, ink, TransformFor(PetMotionState.Walking, drawing: false));
+
+        double centerX;
+        double? centerY;
+        if (_settings.PetPositionX is int savedX && _settings.PetPositionY is int savedY)
+        {
+            // A saved position is where the window was; the pet is wherever its drawing sits in it.
+            centerX = savedX + inWindow.CenterX;
+            centerY = savedY + inWindow.CenterY;
+        }
+        else
+        {
+            var primary = DisplayArea.Primary.WorkArea;
+            centerX = primary.X + primary.Width - 24 - (WindowWidth / 2.0);
+            centerY = null;
+        }
+
+        var world = BuildWorld(layout, ink, AreaAt(centerX, centerY ?? DisplayArea.Primary.WorkArea.Y));
+        var floor = world.Area.Bottom - (world.Bodies.FloorHeight / 2);
+
+        // On the floor it starts walking; anywhere above it, it floats down on its rotor, which is
+        // what sorts out a saved position that is no longer where the floor is.
+        _lastTick = _clock.Elapsed;
+        _motion.Place(_lastTick, centerX, centerY ?? floor, world);
+        ApplyStateVisuals();
+        ApplyFacingTransform();
+        PlaceWindow(layout, ink, world.Bodies);
+
         AssertAlwaysOnTop();
         _topmostTimer.Start();
-        _lastTick = _clock.Elapsed;
-        ScheduleNextRest(_lastTick);
-    }
-
-    /// <summary>
-    /// Puts the pet window into the topmost band and keeps it there.
-    /// </summary>
-    /// <remarks>
-    /// The presenter flag alone is not enough on two counts. It is ignored while the window has not
-    /// been shown yet, and re-assigning the value the presenter already holds is not guaranteed to
-    /// reach the window manager, so the explicit HWND_TOPMOST call is what actually does the work.
-    /// It is sent without activating: the pet must never steal focus from the document underneath
-    /// it, which is the whole reason the window is a tool window in the first place.
-    /// </remarks>
-    private void AssertAlwaysOnTop()
-    {
-        if (AppWindow.Presenter is OverlappedPresenter presenter)
-        {
-            presenter.IsAlwaysOnTop = true;
-        }
-
-        var window = Microsoft.UI.Win32Interop.GetWindowFromWindowId(AppWindow.Id);
-        _ = SetWindowPos(window, HwndTopmost, 0, 0, 0, 0, SwpKeepTopmost);
-    }
-
-    /// <summary>
-    /// Runs the z-order check without letting it end the process.
-    /// </summary>
-    /// <remarks>
-    /// A timer tick is the same trap <see cref="SafeHandler"/> exists for: nothing is left to catch
-    /// what it throws, so a window that vanishes between two of these calls would take the app down
-    /// with it. The timer stops on the first failure rather than logging once a second — the pet
-    /// falls back to the promotion it already got, which is where it was before this check existed.
-    /// </remarks>
-    private void EnsureStillTopmostSafely()
-    {
-        try
-        {
-            EnsureStillTopmost();
-        }
-        catch (Exception ex)
-        {
-            _topmostTimer.Stop();
-            CrashLog.Write("Keeping the desktop pet on top failed", ex);
-        }
-    }
-
-    /// <summary>
-    /// Re-promotes the pet whenever something has come to sit above it.
-    /// </summary>
-    /// <remarks>
-    /// Reading WS_EX_TOPMOST alone was not enough, and that is what let the pet disappear under
-    /// other windows. Windows only clears that bit in the rarer cases; the ordinary way a topmost
-    /// window gets buried is that another topmost window — a media player pinned on top, a meeting
-    /// or capture toolbar, an installer, a second monitor's overlay — is shown after it and lands
-    /// higher inside the same band. The pet keeps its bit throughout, so the old check saw nothing
-    /// wrong while the pet was plainly covered.
-    ///
-    /// So the question asked is the one the user actually cares about: is anything drawn over me?
-    /// The z-order above the window is walked instead, and the promotion happens only when a real
-    /// window overlaps the pet. A pet that nothing covers is still left alone, which keeps the
-    /// original promise that the ordering of the user's own pinned windows is not reshuffled.
-    /// </remarks>
-    private void EnsureStillTopmost()
-    {
-        var window = Microsoft.UI.Win32Interop.GetWindowFromWindowId(AppWindow.Id);
-        var covering = FindCoveringWindow(window);
-
-        // A full-screen app owns the screen, and a pet drawn over a game or a slideshow is a bug
-        // in the other direction. Standing down also avoids the promotion war that would otherwise
-        // flip such an app out of its exclusive mode every second; the pet comes back on top by
-        // itself on the first tick after the window shrinks.
-        if (covering != 0 && FillsItsDisplay(covering))
-        {
-            return;
-        }
-
-        if (covering == 0 && (GetWindowLongPtr(window, GwlExStyle).ToInt64() & WsExTopmost) != 0)
-        {
-            return;
-        }
-
-        AssertAlwaysOnTop();
-    }
-
-    /// <summary>
-    /// The nearest window sitting above the pet and overlapping it, or 0 when the pet is clear.
-    /// </summary>
-    /// <remarks>
-    /// GW_HWNDPREV walks towards the front of the z-order, so the loop only ever visits the handful
-    /// of windows that are already above the pet rather than enumerating the desktop.
-    ///
-    /// Two kinds of window are passed over. The shell's own surfaces — taskbar, Start, Alt+Tab,
-    /// Task View, the IME bar — are meant to be above everything, and fighting them would put the
-    /// pet over the Start menu. DeskNote's own windows are skipped too: the pet dashboard opens
-    /// because the user clicked the pet, and a pet that jumped back over the card it had just
-    /// opened would be covering the answer to the question that was asked.
-    /// </remarks>
-    private static nint FindCoveringWindow(nint self)
-    {
-        if (!GetWindowRect(self, out var pet))
-        {
-            return 0;
-        }
-
-        _ = GetWindowThreadProcessId(self, out var ownProcess);
-
-        for (var above = GetWindow(self, GwHwndPrev); above != 0; above = GetWindow(above, GwHwndPrev))
-        {
-            if (!IsWindowVisible(above) || IsIconic(above) || IsCloaked(above))
-            {
-                continue;
-            }
-
-            _ = GetWindowThreadProcessId(above, out var process);
-            if (process == ownProcess || IsShellSurface(above))
-            {
-                continue;
-            }
-
-            if (!GetWindowRect(above, out var other) || !Overlaps(pet, other))
-            {
-                continue;
-            }
-
-            return above;
-        }
-
-        return 0;
-    }
-
-    private static bool Overlaps(NativeRect left, NativeRect right) =>
-        left.Left < right.Right
-        && right.Left < left.Right
-        && left.Top < right.Bottom
-        && right.Top < left.Bottom;
-
-    /// <summary>Whether a window covers its whole display, taskbar included — the full-screen tell.</summary>
-    /// <remarks>
-    /// Maximised is not full-screen: a maximised window stops at the work area, so it leaves the
-    /// taskbar strip uncovered and fails this test, which is what keeps the pet on top of ordinary
-    /// maximised documents.
-    /// </remarks>
-    private static bool FillsItsDisplay(nint window)
-    {
-        if (!GetWindowRect(window, out var rect))
-        {
-            return false;
-        }
-
-        var id = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(window);
-        var bounds = DisplayArea.GetFromWindowId(id, DisplayAreaFallback.Nearest).OuterBounds;
-        return rect.Left <= bounds.X
-            && rect.Top <= bounds.Y
-            && rect.Right >= bounds.X + bounds.Width
-            && rect.Bottom >= bounds.Y + bounds.Height;
-    }
-
-    /// <summary>
-    /// Whether the window is one the shell puts above everything on purpose.
-    /// </summary>
-    private static bool IsShellSurface(nint window)
-    {
-        var name = new char[64];
-        var length = GetClassName(window, name, name.Length);
-        if (length <= 0)
-        {
-            return false;
-        }
-
-        var className = new string(name, 0, length);
-        return className is "Shell_TrayWnd"
-            or "Shell_SecondaryTrayWnd"
-            or "Shell_InputSwitchTopLevelWindow"
-            or "TopLevelWindowForOverflowXamlIsland"
-            or "Progman"
-            or "WorkerW"
-            or "ForegroundStaging"
-            or "MultitaskingViewFrame"
-            or "XamlExplorerHostIslandWindow"
-            or "TaskSwitcherWnd"
-            or "TaskSwitcherOverlayWnd"
-            or "Windows.UI.Core.CoreWindow";
-    }
-
-    /// <summary>
-    /// Whether DWM is hiding the window although Win32 still calls it visible.
-    /// </summary>
-    /// <remarks>
-    /// Store apps and windows parked on another virtual desktop stay visible to
-    /// <c>IsWindowVisible</c> long after they stop being drawn. Without this the pet would find a
-    /// phantom over itself and re-promote on every tick.
-    /// </remarks>
-    private static bool IsCloaked(nint window) =>
-        DwmGetWindowAttribute(window, DwmwaCloaked, out var cloaked, sizeof(int)) == 0 && cloaked != 0;
-
-    private void OnAnimationTick(
-        Microsoft.UI.Dispatching.DispatcherQueueTimer sender,
-        object args)
-    {
-        if (!_placed || _settings.ReduceMotion || _pointerDown)
-        {
-            return;
-        }
-
-        var now = _clock.Elapsed;
-        var elapsed = Math.Min(0.05, (now - _lastTick).TotalSeconds);
-        _lastTick = now;
-        AnimateGrowthMark(now);
-
-        if (_motionState == PetMotionState.Resting)
-        {
-            if (now >= _restUntil)
-            {
-                BeginWalking();
-            }
-            else
-            {
-                AdvanceRest(elapsed);
-                return;
-            }
-        }
-
-        var area = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
-        var visibleFrameWidth = _frameWidth * _growthScale;
-        var horizontalInset = (WindowWidth - visibleFrameWidth) / 2;
-        var left = area.X - horizontalInset;
-        var right = area.X + area.Width - WindowWidth + horizontalInset;
-        _x += _direction * WalkSpeed * MoodSpeedFactor() * GrowthSpeedFactor() * elapsed;
-
-        if (_x <= left)
-        {
-            _x = left;
-            _direction = 1;
-            BeginRest(now);
-        }
-        else if (_x >= right)
-        {
-            _x = right;
-            _direction = -1;
-            BeginRest(now);
-        }
-        else if (now >= _walkUntil)
-        {
-            // Resting only at the two edges turned the pet into a pendulum: the same two stops,
-            // in the same two places, for as long as the machine was on. A leg of random length
-            // means it also sits down in the middle of the screen, which is where the user
-            // actually is.
-            BeginRest(now);
-        }
-
-        AdvanceFrame(elapsed, WalkFrameSeconds());
-        ApplyFacingTransform();
-        AppWindow.Move(new PointInt32((int)Math.Round(_x), (int)Math.Round(_y)));
-    }
-
-    private void ApplyMotionPreference()
-    {
-        if (_settings.ReduceMotion)
-        {
-            _animationTimer.Stop();
-            _motionState = PetMotionState.Walking;
-            SetAnimation(PetAnimation.Walk);
-            SetFrame(0);
-            SetPose(1, angle: 0);
-            GrowthMarkLift.Y = 0;
-            ApplyFacingTransform(forceRight: true);
-            UpdateOrnamentVisibility();
-            return;
-        }
-
-        _lastTick = _clock.Elapsed;
-        ScheduleNextRest(_lastTick);
-        _animationTimer.Start();
+        StartHoverWatch();
     }
 
     private void ApplyPetSize(CompanionPetSize size)
@@ -781,212 +545,6 @@ public sealed partial class DesktopPetWindow : Window
         PositionSpeechBubble();
         PositionOrnaments();
     }
-
-    private void BeginRest(TimeSpan now, double? seconds = null, PetRestPose? pose = null)
-    {
-        _motionState = PetMotionState.Resting;
-        _restPose = pose ?? ChooseRestPose();
-        _restElapsed = 0;
-        _restDuration = seconds ?? (RestDurationSeconds() * RestPoseFactor(_restPose));
-        _restUntil = now + TimeSpan.FromSeconds(_restDuration);
-        SetAnimation(_restPose == PetRestPose.Sleep ? PetAnimation.Sleep : PetAnimation.Rest);
-
-        // A sleeping animal is still, so the strip is parked on one frame rather than cycling;
-        // the sheet holds four copies of the same pose anyway. What says "asleep" beyond the
-        // drawing itself is the breathing and the drifting Zs.
-        if (_restPose == PetRestPose.Sleep)
-        {
-            SetFrame(0);
-        }
-
-        ShowRestEffect();
-        PositionSpeechBubble();
-        PositionOrnaments();
-
-        // Set rather than eased: the pose the pet is leaving may have left the sprite mid-squash,
-        // and the facing is re-applied here because an edge turn flips the direction one line
-        // before this call - a pet that sat down still facing the wall it just reached read as a
-        // missed frame.
-        _poseScale = 1;
-        _poseAngle = 0;
-        ApplyFacingTransform();
-    }
-
-    private void BeginWalking()
-    {
-        _motionState = PetMotionState.Walking;
-
-        // The pose is deliberately left as it was. It is the only memory of what the pet did
-        // last, and ChooseRestPose uses it to avoid dealing the same pose twice running; clearing
-        // it here would have compared every roll against a pose the pet had not held for minutes.
-        SetAnimation(PetAnimation.Walk);
-        _poseScale = 1;
-        _poseAngle = 0;
-        ApplyFacingTransform();
-        ShowRestEffect();
-        PositionSpeechBubble();
-        PositionOrnaments();
-        _lastTick = _clock.Elapsed;
-        ScheduleNextRest(_lastTick);
-    }
-
-    /// <summary>Decides how far the pet gets before it next sits down.</summary>
-    private void ScheduleNextRest(TimeSpan now) =>
-        _walkUntil = now + TimeSpan.FromSeconds(
-            WalkLegMinimumSeconds
-            + (_behaviour.NextDouble() * (WalkLegMaximumSeconds - WalkLegMinimumSeconds)));
-
-    /// <summary>
-    /// Picks what the pet does while it is sitting still.
-    /// </summary>
-    /// <remarks>
-    /// Four poses rather than one, because a single rest loop seen a hundred times a day is the
-    /// part of the pet that most obviously repeats. A bored pet is nudged toward staring into
-    /// space and away from stretching; the nudge moves the odds rather than replacing them, so no
-    /// pose ever vanishes. The same pose twice running is re-rolled once - true randomness reads
-    /// as a stuck animation when it repeats, and one re-roll costs nothing.
-    /// </remarks>
-    private PetRestPose ChooseRestPose()
-    {
-        var pose = RollRestPose();
-        return pose == _restPose ? RollRestPose() : pose;
-    }
-
-    private PetRestPose RollRestPose()
-    {
-        var listless = _needs.Mood <= CompanionCareRules.PlayThreshold;
-        var roll = _behaviour.Next(100);
-
-        if (roll < (listless ? 24 : 34))
-        {
-            return PetRestPose.Sit;
-        }
-
-        if (roll < (listless ? 60 : 58))
-        {
-            return PetRestPose.Daydream;
-        }
-
-        return roll < (listless ? 88 : 82) ? PetRestPose.Sleep : PetRestPose.Stretch;
-    }
-
-    /// <summary>How long each pose holds, against the species' own base rest.</summary>
-    private static double RestPoseFactor(PetRestPose pose) => pose switch
-    {
-        PetRestPose.Sleep => 2.2,
-        PetRestPose.Daydream => 1.5,
-        PetRestPose.Stretch => 0.7,
-        _ => 1,
-    };
-
-    /// <summary>
-    /// Moves whichever rest pose is running along by one frame's worth of time.
-    /// </summary>
-    /// <remarks>
-    /// The poses are separated by how they move, not by new artwork. Seven species times four
-    /// poses is twenty-eight strips nobody is going to draw; a held frame under a breathing
-    /// squash, a near-frozen frame under a slow sway, and a squash-and-stretch pulse are read as
-    /// three different things by anyone watching, and they cost three lines each.
-    /// </remarks>
-    private void AdvanceRest(double elapsed)
-    {
-        _restElapsed += elapsed;
-
-        switch (_restPose)
-        {
-            case PetRestPose.Sleep:
-                // No frame advance: the sheet is one held pose, and the only motion a sleeping
-                // animal has is its breathing.
-                SetPose(1 + (0.015 * Math.Sin(_restElapsed * 1.7)), angle: 0);
-                AnimateSleep();
-                break;
-
-            case PetRestPose.Daydream:
-                AdvanceFrame(elapsed, 1.1);
-                SetPose(1, angle: 1.6 * Math.Sin(_restElapsed * 0.85));
-                AnimateDaydream();
-                break;
-
-            case PetRestPose.Stretch:
-                AdvanceFrame(elapsed, 0.18);
-                // One cycle over the pose: up and out of the slouch, then back down into it.
-                var pulse = Math.Sin(
-                    (_restDuration <= 0 ? 1 : _restElapsed / _restDuration) * Math.PI * 2);
-                SetPose(1 + (0.055 * pulse), angle: -2.4 * pulse);
-                break;
-
-            default:
-                AdvanceFrame(elapsed, 0.32);
-                break;
-        }
-    }
-
-    /// <summary>
-    /// Moves the pet without reshaping it.
-    /// </summary>
-    /// <remarks>
-    /// The three moving poses used to squash one axis while stretching the other - the classic
-    /// squash and stretch, which on a drawing this soft just looks like the pet is rippling, and
-    /// which was reported as exactly that. A uniform scale and a rotation about the feet carry
-    /// the same three ideas - breathing, swaying, reaching - and neither one can change the
-    /// proportions of the artwork.
-    /// </remarks>
-    private void SetPose(double scale, double angle)
-    {
-        if (Math.Abs(_poseScale - scale) < 0.0005 && Math.Abs(_poseAngle - angle) < 0.01)
-        {
-            return;
-        }
-
-        _poseScale = scale;
-        _poseAngle = angle;
-        ApplyFacingTransform();
-    }
-
-    /// <summary>Shows the glyphs that belong to the pose now running, and hides the rest.</summary>
-    private void ShowRestEffect()
-    {
-        SleepMark.Visibility = Collapsed(_restPose == PetRestPose.Sleep);
-        DaydreamMark.Visibility = Collapsed(_restPose == PetRestPose.Daydream);
-        UpdateOrnamentVisibility();
-    }
-
-    /// <summary>
-    /// Sends three Zs up and away on staggered phases.
-    /// </summary>
-    /// <remarks>
-    /// One shared phase would make the three move as a single object, which reads as a decal
-    /// sliding rather than as breath leaving an animal.
-    /// </remarks>
-    private void AnimateSleep()
-    {
-        Drift(SleepZSmallDrift, SleepZSmall, _restElapsed, 0);
-        Drift(SleepZMediumDrift, SleepZMedium, _restElapsed, 0.9);
-        Drift(SleepZLargeDrift, SleepZLarge, _restElapsed, 1.8);
-
-        static void Drift(TranslateTransform transform, UIElement glyph, double elapsed, double phase)
-        {
-            var cycle = ((elapsed - phase) % 2.7 + 2.7) % 2.7;
-            transform.Y = -10 * cycle;
-            transform.X = 4 * cycle;
-            glyph.Opacity = elapsed < phase ? 0 : Math.Clamp(1 - (cycle / 2.7), 0, 1);
-        }
-    }
-
-    /// <summary>Fades the three thought dots in one after another, then starts over.</summary>
-    private void AnimateDaydream()
-    {
-        DaydreamDotSmall.Opacity = DotOpacity(_restElapsed, 0);
-        DaydreamDotMedium.Opacity = DotOpacity(_restElapsed, 0.75);
-        DaydreamDotLarge.Opacity = DotOpacity(_restElapsed, 1.5);
-
-        static double DotOpacity(double elapsed, double phase)
-        {
-            var cycle = ((elapsed - phase) % 3.6 + 3.6) % 3.6;
-            return elapsed < phase ? 0 : Math.Clamp(Math.Sin(cycle / 3.6 * Math.PI), 0, 1);
-        }
-    }
-
     private void ApplyGrowthAppearance(CompanionPetKind pet, int appearanceStage)
     {
         var normalizedStage = Math.Clamp(
@@ -1046,6 +604,11 @@ public sealed partial class DesktopPetWindow : Window
         RestEffectScale.ScaleX = scale;
         RestEffectScale.ScaleY = scale;
 
+        // The rotor stands on the head, above whatever ornament the pet has earned.
+        RotorScale.ScaleX = scale;
+        RotorScale.ScaleY = scale;
+        RotorProp.Margin = new Thickness(0, 0, 0, (drawnHeight * HeadTopFraction) - 2);
+
         // A centred child is centred in what is left after its own margins, so twice the wanted
         // offset on the left shifts it by the offset itself. The Zs rise beside the head rather
         // than through the ornament already sitting on top of it.
@@ -1069,13 +632,17 @@ public sealed partial class DesktopPetWindow : Window
     private void UpdateOrnamentVisibility()
     {
         var talking = SpeechBubble.Visibility == Visibility.Visible;
+
+        // The growth mark sits on the head, so it goes where the head is not free: under a rotor,
+        // or on a pet whose head is pointing along a wall.
+        var headFree = !_motion.IsClimbing && _motion.State != PetMotionState.Falling;
         GrowthMark.Visibility =
-            Collapsed(_growthMark != CompanionGrowthMark.None && !talking);
+            Collapsed(_growthMark != CompanionGrowthMark.None && !talking && headFree);
         RestEffect.Visibility = Collapsed(
             !talking
             && !_settings.ReduceMotion
-            && _motionState == PetMotionState.Resting
-            && _restPose is PetRestPose.Sleep or PetRestPose.Daydream);
+            && _motion.State == PetMotionState.Resting
+            && _motion.RestPose is PetRestPose.Sleep or PetRestPose.Daydream);
     }
 
     /// <summary>Gives the ornament a slow bob, the stage-three pair its twinkle, and the tiara its gem shimmer.</summary>
@@ -1110,58 +677,16 @@ public sealed partial class DesktopPetWindow : Window
     /// </remarks>
     private void ApplyFacingTransform(bool forceRight = false)
     {
-        var scale = _growthScale * _poseScale;
-        FacingTransform.ScaleX = (forceRight ? 1 : _direction) * scale;
-        FacingTransform.ScaleY = scale;
-        PoseRotation.Angle = _poseAngle;
-    }
+        var transform = TransformFor(forceRight ? PetMotionState.Walking : _motion.State, drawing: true);
+        FacingTransform.ScaleX = forceRight ? Math.Abs(transform.ScaleX) : transform.ScaleX;
+        FacingTransform.ScaleY = transform.ScaleY;
+        PoseRotation.Angle = transform.Rotation;
 
-    /// <summary>A hungry, bored pet plods; a happy one trots. Never fully stops, which would
-    /// read as the app having frozen.</summary>
-    private double MoodSpeedFactor() => 0.6 + (0.4 * (_needs.Mood / 100d));
-
-    /// <summary>
-    /// A newborn toddles and a full-grown pet strides.
-    /// </summary>
-    /// <remarks>
-    /// Size alone is only legible next to another pet. Gait is legible on its own: short quick
-    /// steps that cover little ground are what "young" looks like from across the desk, and it
-    /// costs two numbers.
-    /// </remarks>
-    private double GrowthSpeedFactor() =>
-        0.72 + (0.07 * Math.Max(0, _appearanceStage));
-
-    private double WalkFrameSeconds() =>
-        0.13 - (0.0075 * (CompanionGrowthAppearanceCatalog.FinalStage
-                          - Math.Clamp(_appearanceStage, 0, CompanionGrowthAppearanceCatalog.FinalStage)));
-
-    private double RestDurationSeconds() => _settings.SelectedPet switch
-    {
-        CompanionPetKind.Cat => 5.8,
-        CompanionPetKind.Dog => 4.4,
-        CompanionPetKind.FennecFox => 5.0,
-        CompanionPetKind.Otter => 5.4,
-        CompanionPetKind.Monkey => 4.8,
-        CompanionPetKind.Dragon => 6.0,
-        _ => 4.6,
-    };
-
-    private void AdvanceFrame(double elapsed, double frameDuration)
-    {
-        _frameTime += elapsed;
-        if (_frameTime < frameDuration)
-        {
-            return;
-        }
-
-        _frameTime %= frameDuration;
-        SetFrame((_frame + 1) % FrameCount);
-    }
-
-    private void SetFrame(int frame)
-    {
-        _frame = frame;
-        Canvas.SetLeft(SpriteStrip, -_frame * _frameWidth);
+        // Swaying turns about the feet; lying on a wall or hanging from the ceiling turns about the
+        // middle of the frame, which keeps the turned pet inside its window.
+        SpriteViewport.RenderTransformOrigin = new Windows.Foundation.Point(
+            0.5,
+            transform.Pivot == PetPivot.Feet ? 1 : 0.5);
     }
 
     private void OnPetPointerPressed(object sender, PointerRoutedEventArgs e)
@@ -1172,7 +697,6 @@ public sealed partial class DesktopPetWindow : Window
             return;
         }
 
-        _dragStartWindow = AppWindow.Position;
         _pointerDown = true;
         _dragMoved = false;
         _lastTick = _clock.Elapsed;
@@ -1189,25 +713,63 @@ public sealed partial class DesktopPetWindow : Window
             return;
         }
 
-        var deltaX = cursor.X - _dragStartCursor.X;
-        var deltaY = cursor.Y - _dragStartCursor.Y;
-        _dragMoved |= Math.Abs(deltaX) > 3 || Math.Abs(deltaY) > 3;
+        // A press that has not moved is a click; the pet is not picked up until the pointer has
+        // really gone somewhere, so that clicking a pet on the ceiling does not first pull it down
+        // into the hand and set it going from there.
+        if (!_dragMoved
+            && (Math.Abs(cursor.X - _dragStartCursor.X) > 3 || Math.Abs(cursor.Y - _dragStartCursor.Y) > 3))
+        {
+            _dragMoved = true;
+            BeginHold(cursor);
+        }
 
-        var area = DisplayArea.GetFromPoint(
-            new PointInt32(cursor.X, cursor.Y),
-            DisplayAreaFallback.Nearest).WorkArea;
-        var x = Math.Clamp(
-            _dragStartWindow.X + deltaX,
-            area.X,
-            Math.Max(area.X, area.X + area.Width - WindowWidth));
-        var y = Math.Clamp(
-            _dragStartWindow.Y + deltaY,
-            area.Y,
-            Math.Max(area.Y, area.Y + area.Height - WindowHeight));
-        _x = x;
-        _y = y;
-        AppWindow.Move(new PointInt32(x, y));
+        if (_dragMoved)
+        {
+            MoveHeld(cursor);
+        }
+
         e.Handled = true;
+    }
+
+    /// <summary>Takes the pet into the hand, remembering where on it the pointer took hold.</summary>
+    private void BeginHold(NativePoint cursor)
+    {
+        if (!_settings.ReduceMotion)
+        {
+            _motion.Grab();
+            ApplyStateVisuals();
+            ApplyFacingTransform();
+        }
+
+        _grabOffsetX = cursor.X - _motion.CenterX;
+        _grabOffsetY = cursor.Y - _motion.CenterY;
+    }
+
+    private void MoveHeld(NativePoint cursor)
+    {
+        var layout = CurrentLayout();
+        var ink = CurrentInk();
+        var area = AreaAt(cursor.X, cursor.Y);
+        var bodies = CurrentBodies(layout, ink);
+
+        // The pet stays on the screen it is carried to, however far the pointer goes.
+        var halfWidth = bodies.FloorWidth / 2;
+        var halfHeight = bodies.FloorHeight / 2;
+        var x = Math.Clamp(cursor.X - _grabOffsetX, area.Left + halfWidth, Math.Max(area.Left + halfWidth, area.Right - halfWidth));
+        var y = Math.Clamp(cursor.Y - _grabOffsetY, area.Top + halfHeight, Math.Max(area.Top + halfHeight, area.Bottom - halfHeight));
+
+        if (_settings.ReduceMotion)
+        {
+            // Told to stand still, the pet stays wherever it is put down: nothing makes it fall.
+            _motion.CenterX = x;
+            _motion.CenterY = y;
+        }
+        else
+        {
+            _motion.Hold(_clock.Elapsed.TotalSeconds, x, y);
+        }
+
+        PlaceWindow(layout, ink, bodies);
     }
 
     private void OnPetPointerReleased(object sender, PointerRoutedEventArgs e)
@@ -1217,6 +779,13 @@ public sealed partial class DesktopPetWindow : Window
         FinishDrag();
         if (clicked)
         {
+            // A click on a pet that is clinging to something lets it go, as well as doing what a
+            // click does: it is the quickest way to bring one down.
+            if (_motion.IsClimbing)
+            {
+                LetGo();
+            }
+
             RegisterClick();
         }
         e.Handled = true;
@@ -1282,10 +851,17 @@ public sealed partial class DesktopPetWindow : Window
         // A drag that started while a click was still pending reads as neither request, so the
         // pending click is dropped rather than opening a dashboard the user never asked for.
         _clickTimer.Stop();
-        BeginRest(_lastTick, seconds: 2.5);
-        _ = SavePositionSafelyAsync(new PointInt32(
-            (int)Math.Round(_x),
-            (int)Math.Round(_y)));
+
+        if (!_settings.ReduceMotion)
+        {
+            // Let go gently and the pet floats down; let go at speed and it flies first. Either
+            // way it rests a moment once it is down.
+            _motion.Release(CurrentWorld());
+            BeginRest(_lastTick, seconds: 2.5);
+            ApplyStateVisuals();
+        }
+
+        _ = SavePositionSafelyAsync(AppWindow.Position);
     }
 
     private async Task SavePositionSafelyAsync(PointInt32 position)
@@ -1333,6 +909,9 @@ public sealed partial class DesktopPetWindow : Window
 
     private void OnClosed(object sender, WindowEventArgs args)
     {
+        StopWatchingSession();
+        StopHoverWatch();
+        SetFastCadence(false);
         _animationTimer.Stop();
         _bubbleTimer.Stop();
         _clickTimer.Stop();
@@ -1437,26 +1016,11 @@ public sealed partial class DesktopPetWindow : Window
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct NativeRect
-    {
-        public int Left;
-        public int Top;
-        public int Right;
-        public int Bottom;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
     private struct DispatcherQueueOptions
     {
         public int Size;
         public int ThreadType;
         public int ApartmentType;
-    }
-
-    private enum PetMotionState
-    {
-        Walking,
-        Resting,
     }
 
     /// <summary>Which sprite sheet is loaded.</summary>
@@ -1471,22 +1035,6 @@ public sealed partial class DesktopPetWindow : Window
         Walk,
         Rest,
         Sleep,
-    }
-
-    /// <summary>What the pet is doing while it is not walking.</summary>
-    private enum PetRestPose
-    {
-        /// <summary>The original: the rest strip looping at its own pace.</summary>
-        Sit,
-
-        /// <summary>One held frame, breathing, with Zs drifting off the head.</summary>
-        Sleep,
-
-        /// <summary>Barely moving, swaying, with a trail of thought dots.</summary>
-        Daydream,
-
-        /// <summary>A squash-and-stretch pulse, over quickly.</summary>
-        Stretch,
     }
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
@@ -1507,27 +1055,6 @@ public sealed partial class DesktopPetWindow : Window
     [DllImport("user32.dll")]
     private static extern uint GetDoubleClickTime();
 
-    [DllImport("user32.dll")]
-    private static extern nint GetWindow(nint window, uint command);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetWindowRect(nint window, out NativeRect rect);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool IsWindowVisible(nint window);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool IsIconic(nint window);
-
-    [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "GetClassNameW")]
-    private static extern int GetClassName(nint window, [Out] char[] className, int capacity);
-
-    [DllImport("user32.dll")]
-    private static extern uint GetWindowThreadProcessId(nint window, out uint processId);
-
     [DllImport("gdi32.dll")]
     private static extern nint CreateRectRgn(int left, int top, int right, int bottom);
 
@@ -1540,13 +1067,6 @@ public sealed partial class DesktopPetWindow : Window
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmExtendFrameIntoClientArea(nint window, ref Margins margins);
-
-    [DllImport("dwmapi.dll")]
-    private static extern int DwmGetWindowAttribute(
-        nint window,
-        int attribute,
-        out int value,
-        int size);
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(

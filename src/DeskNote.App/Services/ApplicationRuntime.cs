@@ -163,6 +163,8 @@ public sealed class ApplicationRuntime : IAsyncDisposable
             onExit: RequestExit,
             onBriefing: () => _dispatcher.TryEnqueue(async () => await Windows.ShowBriefingAsync()),
             onSettings: () => _dispatcher.TryEnqueue(ShowSettings),
+            onRecallPet: () => _dispatcher.TryEnqueue(() => _desktopPetWindow?.RecallToCenter()),
+            hasPet: () => _desktopPetWindow is not null,
             onStartupChanged: enabled => _dispatcher.TryEnqueue(async () =>
             {
                 if (StartupRegistration.SetEnabled(enabled))

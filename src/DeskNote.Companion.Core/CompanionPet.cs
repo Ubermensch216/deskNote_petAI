@@ -9,6 +9,7 @@ public enum CompanionPetKind
     Otter = 5,
     Dragon = 6,
     Monkey = 7,
+    Duck = 8,
 }
 
 public enum CompanionPetSize
@@ -53,8 +54,14 @@ public static class CompanionPetCatalog
         CompanionPetKind.Otter,
         CompanionPetKind.Dragon,
         CompanionPetKind.Monkey,
+        CompanionPetKind.Duck,
     ];
 
+    /// <remarks>
+    /// The duck is not on this list. The dragon's condition was "the six pets that existed" when
+    /// it was written, and a pet added later must not move a goal that users have already been
+    /// working towards - or take away a dragon somebody has unlocked.
+    /// </remarks>
     public static IReadOnlyList<CompanionPetKind> RequiredForDragon { get; } =
     [
         CompanionPetKind.Rabbit,
@@ -79,6 +86,7 @@ public static class CompanionPetCatalog
         "otter" => CompanionPetKind.Otter,
         "dragon" => CompanionPetKind.Dragon,
         "monkey" => CompanionPetKind.Monkey,
+        "duck" => CompanionPetKind.Duck,
         _ => CompanionPetKind.Rabbit,
     };
 }
@@ -133,6 +141,7 @@ public static class CompanionGrowthAppearanceCatalog
             CompanionPetKind.Otter => 0.51,
             CompanionPetKind.Monkey => 0.52,
             CompanionPetKind.Dragon => 0.49,
+            CompanionPetKind.Duck => 0.51,
             _ => 0.51,
         };
 

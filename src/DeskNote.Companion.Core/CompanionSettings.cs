@@ -22,6 +22,12 @@ public sealed record CompanionSettings
 
     public bool ReduceMotion { get; init; }
 
+    /// <summary>
+    /// Whether the pet may climb the sides of the screen and crawl along the top of it, rather than
+    /// walking the floor and nothing else. Moving at all is <see cref="ReduceMotion"/>'s say.
+    /// </summary>
+    public bool RoamScreen { get; init; } = true;
+
     public CompanionPetKind SelectedPet { get; init; } = CompanionPetKind.Rabbit;
 
     public string PetName { get; init; } = DefaultPetName;
@@ -61,6 +67,7 @@ public sealed record CompanionSettings
             ProactiveEnabled = Boolean(values, SettingKeys.CompanionProactiveEnabled, fallback: true),
             AlwaysVisible = Boolean(values, SettingKeys.CompanionAlwaysVisible, fallback: false),
             ReduceMotion = Boolean(values, SettingKeys.CompanionReduceMotion, fallback: false),
+            RoamScreen = Boolean(values, SettingKeys.CompanionRoamScreen, fallback: true),
             SelectedPet = selectedPet,
             PetName = NormalizePetName(values.GetValueOrDefault(SettingKeys.CompanionPetName)),
             PetSize = ParsePetSize(values, SettingKeys.CompanionPetSize),
@@ -89,6 +96,8 @@ public sealed record CompanionSettings
         await store.SetAsync(SettingKeys.CompanionAlwaysVisible, Lower(AlwaysVisible), cancellationToken)
             .ConfigureAwait(false);
         await store.SetAsync(SettingKeys.CompanionReduceMotion, Lower(ReduceMotion), cancellationToken)
+            .ConfigureAwait(false);
+        await store.SetAsync(SettingKeys.CompanionRoamScreen, Lower(RoamScreen), cancellationToken)
             .ConfigureAwait(false);
         var selectedPet = SelectedPet == CompanionPetKind.Dragon && !DragonUnlocked
             ? CompanionPetKind.Rabbit

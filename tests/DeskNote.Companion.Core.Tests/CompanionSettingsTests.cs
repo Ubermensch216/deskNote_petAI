@@ -99,6 +99,7 @@ public sealed class CompanionSettingsTests
             ProactiveEnabled = false,
             AlwaysVisible = true,
             ReduceMotion = true,
+            RoamScreen = false,
             SelectedPet = CompanionPetKind.Otter,
             PetName = "  Dori  ",
             PetSize = CompanionPetSize.Small,
@@ -111,6 +112,22 @@ public sealed class CompanionSettingsTests
         var actual = await CompanionSettings.LoadAsync(store, TestContext.Current.CancellationToken);
 
         Assert.Equal(expected with { PetName = "Dori" }, actual);
+    }
+
+    [Fact]
+    public async Task Climbing_the_screen_is_on_unless_it_was_turned_off()
+    {
+        var empty = await CompanionSettings.LoadAsync(new MemorySettingsStore(), TestContext.Current.CancellationToken);
+        var garbled = await CompanionSettings.LoadAsync(
+            new MemorySettingsStore(new Dictionary<string, string> { [SettingKeys.CompanionRoamScreen] = "maybe" }),
+            TestContext.Current.CancellationToken);
+        var off = await CompanionSettings.LoadAsync(
+            new MemorySettingsStore(new Dictionary<string, string> { [SettingKeys.CompanionRoamScreen] = "false" }),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(empty.RoamScreen);
+        Assert.True(garbled.RoamScreen);
+        Assert.False(off.RoamScreen);
     }
 
     [Theory]

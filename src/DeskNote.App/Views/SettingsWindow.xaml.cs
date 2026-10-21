@@ -62,6 +62,7 @@ public sealed partial class SettingsWindow : Window
     private readonly ToggleSwitch _proactiveEnabled = NewSwitch();
     private readonly ToggleSwitch _alwaysVisible = NewSwitch();
     private readonly ToggleSwitch _petMovement = NewSwitch();
+    private readonly ToggleSwitch _petRoam = NewSwitch();
     private readonly ToggleSwitch _aiEnabled = NewSwitch();
 
     private BehaviorRow? _aiEnabledRow;
@@ -118,7 +119,7 @@ public sealed partial class SettingsWindow : Window
             ClearStatus();
         };
 
-        foreach (var toggle in new[] { _companionEnabled, _proactiveEnabled, _alwaysVisible, _petMovement })
+        foreach (var toggle in new[] { _companionEnabled, _proactiveEnabled, _alwaysVisible, _petMovement, _petRoam })
         {
             toggle.Toggled += (_, _) =>
             {
@@ -398,6 +399,7 @@ public sealed partial class SettingsWindow : Window
         _proactiveEnabled.IsOn = value.ProactiveEnabled;
         _alwaysVisible.IsOn = value.AlwaysVisible;
         _petMovement.IsOn = !value.ReduceMotion;
+        _petRoam.IsOn = value.RoamScreen;
         QuietStart.Time = value.QuietStart.ToTimeSpan();
         QuietEnd.Time = value.QuietEnd.ToTimeSpan();
 
@@ -411,6 +413,7 @@ public sealed partial class SettingsWindow : Window
         ProactiveEnabled = _proactiveEnabled.IsOn,
         AlwaysVisible = _alwaysVisible.IsOn,
         ReduceMotion = !_petMovement.IsOn,
+        RoamScreen = _petRoam.IsOn,
         SelectedPet = _selectedPet,
         PetName = CompanionSettings.NormalizePetName(PetNameInput.Text),
         PetSize = _petSize,
@@ -962,7 +965,7 @@ public sealed partial class SettingsWindow : Window
     }
 
     /// <summary>
-    /// The seven pets, as seven portraits.
+    /// The pets, as portraits.
     /// </summary>
     /// <remarks>
     /// The dropdown this replaces asked a user to open it before they could see what they had, and
@@ -1165,6 +1168,8 @@ public sealed partial class SettingsWindow : Window
                 Description: "Settings_AlwaysVisibleDescription", Switch: _alwaysVisible),
             (Emoji: "\U0001F3C3", Title: "Settings_ReduceMotion",
                 Description: "Settings_ReduceMotionDescription", Switch: _petMovement),
+            (Emoji: "🧗", Title: "Settings_RoamScreen",
+                Description: "Settings_RoamScreenDescription", Switch: _petRoam),
         };
 
         foreach (var (emoji, title, description, toggle) in rows)
@@ -1447,6 +1452,11 @@ public sealed partial class SettingsWindow : Window
             row.Switch.IsEnabled = enabled;
             row.Root.Opacity = enabled ? 1 : 0.4;
         }
+
+        // Climbing is a way of moving, so it means nothing while the pet is told to stand still.
+        var roams = enabled && _petMovement.IsOn;
+        _petRoam.IsEnabled = roams;
+        _behaviorRows[^1].Root.Opacity = roams ? 1 : 0.4;
 
         var quietApplies = enabled && _proactiveEnabled.IsOn;
         QuietStart.IsEnabled = quietApplies;

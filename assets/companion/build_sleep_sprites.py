@@ -15,6 +15,9 @@ operations, the same code for all seven species:
     the body far harder than the head, so the animal ends up lying down with its head still up
     instead of looking like it was stepped on.
 
+The duck is not in this list: its eyes are plain dots with no highlight for the detector to find,
+and it came as two finished drawings. It has its own script, `build_duck_sprites.py`.
+
 Run it after changing any `*-rest.png`:
 
     python assets/companion/build_sleep_sprites.py

@@ -114,7 +114,7 @@ python assets/icon/build_icon.py
 python assets/companion/build_sleep_sprites.py
 ```
 
-`src/DeskNote.App/Assets/Companion/{종}-sleep.png` 일곱 장을 각 종의 `-rest.png` 에서 다시
+`src/DeskNote.App/Assets/Companion/{종}-sleep.png` 여섯 장(오리 제외)을 각 종의 `-rest.png` 에서 다시
 만든다. 눈을 감기고 몸을 눕히는 두 가지 연산이며, 근거는
 [docs/companion.md](companion.md#바탕화면-행동)에 있다. Pillow와 NumPy가 필요하다. 결과물은
 커밋되므로 앱을 빌드하는 사람이 이것을 돌릴 일은 없고, `-rest.png` 를 바꿨을 때만 다시 돌린다.
@@ -122,6 +122,19 @@ python assets/companion/build_sleep_sprites.py
 스크립트는 만들어 낸 그림의 위·아래 경계를 출력한다. 그 값이 `DesktopPetWindow` 의
 `SleepHeadTopFraction` 계열 상수의 출처이므로, 자세를 조정했으면 출력된 값으로 상수도 맞춰야
 성장 표식과 말풍선이 누운 펫의 머리를 따라간다.
+
+오리는 이 스크립트에 들어 있지 않다. 눈이 하이라이트 없는 점이라 눈 찾기가 통하지 않고, 처음부터
+선 그림과 누운 그림 두 장으로 들어왔기 때문이다. 오리의 세 시트는 따로 만든다.
+
+```bash
+python assets/companion/build_duck_sprites.py
+```
+
+원본 두 장은 `assets/companion/duck/` 에 있다. `duck-walk.png` 는 선 그림을 발을 축으로 좌우로 흔든
+뒤뚱걸음, `duck-rest.png` 는 같은 그림의 호흡과 눈 깜빡임, `duck-sleep.png` 는 누운 그림에 감은 눈을
+그린 것이다. 모두 회전과 균일 확대만 쓰므로 비율 규칙을 지킨다. 출력하는 위·아래 경계는 다른 종과
+같은 값(발 0.78, 선 머리 0.21, 누운 머리 0.36)에 맞춰져 있어 `DesktopPetWindow` 의 상수를 바꿀 필요가
+없다.
 
 ## 문서 이미지
 
@@ -146,7 +159,8 @@ dotnet run --project tools/DemoSeeder -- $demo
 Start-Process .\dist\DeskNote-win-x64\DeskNote.exe -ArgumentList "--data", $demo
 ```
 
-`tools/DemoSeeder` 는 지어낸 메모 일곱 개와 노트북 둘을 넣고 펫을 켜 둔다. 펫은 `움직이기` 를 끈
+`tools/DemoSeeder` 는 지어낸 메모 일곱 개와 노트북 둘을 넣고 펫을 켜 둔다. `--motion` 을 주면 펫을 걷는
+채로 두고(움직임을 확인할 때), `--pet <키>` 로 종을 고른다. 펫은 `움직이기` 를 끈
 상태로 시작하는데, **걷는 펫은 창 위치를 읽고 포인터가 도착하는 사이에 자리를 옮겨** 클릭이 빗나가기
 때문이다.
 

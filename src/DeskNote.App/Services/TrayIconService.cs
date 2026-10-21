@@ -39,6 +39,8 @@ public sealed class TrayIconService : IDisposable
     private readonly Action _onSettings;
     private readonly Action _onExit;
     private readonly Action<bool> _onStartupChanged;
+    private readonly Action _onRecallPet;
+    private readonly Func<bool> _hasPet;
     private readonly ManualResetEventSlim _ready = new(false);
 
     private Thread? _thread;
@@ -53,7 +55,9 @@ public sealed class TrayIconService : IDisposable
         Action onExit,
         Action<bool> onStartupChanged,
         Action onBriefing,
-        Action onSettings)
+        Action onSettings,
+        Action onRecallPet,
+        Func<bool> hasPet)
     {
         _onNewNote = onNewNote;
         _onOpenLibrary = onOpenLibrary;
@@ -61,6 +65,8 @@ public sealed class TrayIconService : IDisposable
         _onSettings = onSettings;
         _onExit = onExit;
         _onStartupChanged = onStartupChanged;
+        _onRecallPet = onRecallPet;
+        _hasPet = hasPet;
     }
 
     public void Start()
@@ -184,6 +190,7 @@ public sealed class TrayIconService : IDisposable
                     case 4: _onExit(); return nint.Zero;
                     case 5: _onBriefing(); return nint.Zero;
                     case 6: _onSettings(); return nint.Zero;
+                    case 7: _onRecallPet(); return nint.Zero;
                 }
 
                 break;
@@ -203,6 +210,11 @@ public sealed class TrayIconService : IDisposable
         AppendMenu(menu, 0, 2, Strings.Get("Tray_Library"));
         AppendMenu(menu, 0, 5, Strings.Get("Tray_Briefing"));
         AppendMenu(menu, 0, 6, Strings.Get("Tray_Settings"));
+
+        // The way back for a pet that has wandered somewhere it cannot be found. It is greyed
+        // out rather than hidden when there is no pet, so the menu does not rearrange itself
+        // depending on a setting the user may have forgotten they changed.
+        AppendMenu(menu, _hasPet() ? 0u : 0x1u /* MF_GRAYED */, 7, Strings.Get("Tray_RecallPet"));
         AppendMenu(menu, 0x800 /* MF_SEPARATOR */, 0, string.Empty);
 
         // MF_CHECKED reflects the live registry state rather than a cached flag, so the tick is

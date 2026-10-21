@@ -155,6 +155,7 @@ public enum CompanionSpecialCare
     WaterPlay = 5,
     Preening = 6,
     ScalePolish = 7,
+    PuddleSplash = 8,
 }
 
 public static class CompanionSpecialCareCatalog
@@ -167,6 +168,7 @@ public static class CompanionSpecialCareCatalog
         CompanionPetKind.Otter => CompanionSpecialCare.WaterPlay,
         CompanionPetKind.Monkey => CompanionSpecialCare.Preening,
         CompanionPetKind.Dragon => CompanionSpecialCare.ScalePolish,
+        CompanionPetKind.Duck => CompanionSpecialCare.PuddleSplash,
         _ => CompanionSpecialCare.Brushing,
     };
 
