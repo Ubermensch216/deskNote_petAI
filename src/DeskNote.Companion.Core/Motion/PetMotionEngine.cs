@@ -23,6 +23,15 @@ public enum PetMotionState
 
     /// <summary>Crawling along the top of the screen.</summary>
     Ceiling,
+
+    /// <summary>Climbing up the side of another application's window.</summary>
+    WindowClimb,
+
+    /// <summary>Sliding quickly along the floor, away from the pointer.</summary>
+    Dashing,
+
+    /// <summary>A little jump on the spot.</summary>
+    Hopping,
 }
 
 /// <summary>What the pet is doing while it is not walking.</summary>
@@ -84,6 +93,15 @@ public enum PetDemo
 
     /// <summary>Be lifted to the top of the screen and float down.</summary>
     Fall,
+
+    /// <summary>Walk to an open window, climb it and stand on top.</summary>
+    Window,
+
+    /// <summary>Slide a short way along the floor.</summary>
+    Dash,
+
+    /// <summary>Jump on the spot.</summary>
+    Hop,
 }
 
 /// <summary>What the world looks like to the pet on this tick.</summary>
@@ -94,6 +112,10 @@ public enum PetDemo
 /// <param name="Listless">Whether a low mood should tilt the choice of rest pose.</param>
 /// <param name="AllowWalls">Whether the pet may climb the sides of the screen.</param>
 /// <param name="AllowCeiling">Whether the pet may crawl along the top of the screen.</param>
+/// <param name="AllowWindows">Whether the pet may climb open windows and walk along their tops.</param>
+/// <param name="CursorMode">How the pet reacts to the pointer.</param>
+/// <param name="Cursor">Where the pointer is, or null when that cannot be known.</param>
+/// <param name="Surfaces">The open windows the pet could stand on, in screen pixels.</param>
 public readonly record struct PetMotionContext(
     PetArea Area,
     PetBodies Bodies,
@@ -101,7 +123,11 @@ public readonly record struct PetMotionContext(
     double BaseRestSeconds,
     bool Listless,
     bool AllowWalls = false,
-    bool AllowCeiling = false);
+    bool AllowCeiling = false,
+    bool AllowWindows = false,
+    PetCursorMode CursorMode = PetCursorMode.None,
+    PetCursor? Cursor = null,
+    IReadOnlyList<PetSurface>? Surfaces = null);
 
 /// <summary>What changed during one call to <see cref="PetMotionEngine.Advance"/>.</summary>
 [Flags]
@@ -145,7 +171,7 @@ public enum PetMotionEvents
 /// run an hour of walking in a millisecond.
 /// </para>
 /// </remarks>
-public sealed class PetMotionEngine
+public sealed partial class PetMotionEngine
 {
     public const double WalkLegMinimumSeconds = 3.2;
     public const double WalkLegMaximumSeconds = 9.5;
@@ -238,11 +264,15 @@ public sealed class PetMotionEngine
         ? Math.Clamp(_stateElapsed / LandingSeconds, 0, 1)
         : 0;
 
-    /// <summary>Whether the pet is standing on the floor, so anything that wants it to sit may have it now.</summary>
-    public bool IsOnFloor => State is PetMotionState.Walking or PetMotionState.Resting;
+    /// <summary>
+    /// Whether the pet is on its feet, so anything that wants it to sit may have it now. That is
+    /// the floor or the top of a window, and a slide or a hop in progress gives way to a rest.
+    /// </summary>
+    public bool IsOnFloor => State is PetMotionState.Walking or PetMotionState.Resting
+        or PetMotionState.Dashing or PetMotionState.Hopping;
 
-    /// <summary>Whether the pet is on a wall or the ceiling.</summary>
-    public bool IsClimbing => State is PetMotionState.Wall or PetMotionState.Ceiling;
+    /// <summary>Whether the pet is on a wall, the ceiling or the side of a window.</summary>
+    public bool IsClimbing => State is PetMotionState.Wall or PetMotionState.Ceiling or PetMotionState.WindowClimb;
 
     /// <summary>Whether something is carrying the pet through the air: falling, flying or in a hand.</summary>
     public bool IsAirborne => State is PetMotionState.Falling or PetMotionState.Thrown or PetMotionState.Held;
@@ -281,8 +311,9 @@ public sealed class PetMotionEngine
         CenterX = centerX;
         CenterY = centerY;
         _queued = null;
+        LeaveSupport();
 
-        var floorBox = FloorBoxCenter(world);
+        var floorBox = FloorCenter(world);
         if (centerY >= floorBox - 1)
         {
             CenterY = floorBox;
@@ -332,6 +363,7 @@ public sealed class PetMotionEngine
     public void Grab()
     {
         _queued = null;
+        LeaveSupport();
         _samples.Clear();
         _velocityX = 0;
         _velocityY = 0;
@@ -386,7 +418,7 @@ public sealed class PetMotionEngine
             return true;
         }
 
-        var floor = FloorBoxCenter(world);
+        var floor = FloorCenter(world);
         if (CenterY >= floor - 1)
         {
             CenterY = floor;
@@ -407,13 +439,26 @@ public sealed class PetMotionEngine
     /// False when the screen offers nothing to do it on: a wall needs an edge that no other display
     /// touches, and the ceiling needs a top that none does.
     /// </returns>
-    public bool Demonstrate(PetDemo demo, in PetMotionContext world)
+    public bool Demonstrate(PetDemo demo, in PetMotionContext world, TimeSpan now = default)
     {
         var area = world.Area;
         _queued = null;
 
         switch (demo)
         {
+            case PetDemo.Window:
+                return DemonstrateWindow(world, now);
+
+            case PetDemo.Dash:
+                StandOnFloor(world, now);
+                BeginDashing(DashMinimumSeconds + 0.1);
+                return true;
+
+            case PetDemo.Hop:
+                StandOnFloor(world, now);
+                BeginHop(world);
+                return true;
+
             case PetDemo.Wall:
                 var side = area.RightIsOuter ? 1 : area.LeftIsOuter ? -1 : 0;
                 if (side == 0)
@@ -444,7 +489,7 @@ public sealed class PetMotionEngine
         }
     }
 
-    /// <summary>Makes the pet let go of a wall or the ceiling and come down.</summary>
+    /// <summary>Makes the pet let go of a wall, the ceiling or a window and come down.</summary>
     public void Drop(in PetMotionContext world)
     {
         if (!IsClimbing)
@@ -452,6 +497,7 @@ public sealed class PetMotionEngine
             return;
         }
 
+        _targetId = 0;
         BeginFalling(0, 0);
         ClampToArea(world);
     }
@@ -466,6 +512,7 @@ public sealed class PetMotionEngine
     {
         _changed = false;
         _stateElapsed += elapsed;
+        ResolveSupport(world);
 
         var events = State switch
         {
@@ -475,6 +522,9 @@ public sealed class PetMotionEngine
             PetMotionState.Thrown => AdvanceThrown(elapsed, world),
             PetMotionState.Wall => AdvanceWall(elapsed, world),
             PetMotionState.Ceiling => AdvanceCeiling(elapsed, world),
+            PetMotionState.WindowClimb => AdvanceWindowClimb(now, elapsed, world),
+            PetMotionState.Dashing => AdvanceDashing(now, elapsed, world),
+            PetMotionState.Hopping => AdvanceHopping(now, world),
             _ => PetMotionEvents.None,
         };
 
@@ -483,24 +533,32 @@ public sealed class PetMotionEngine
 
     private static (double Width, double Height) Size(PetMotionState state, in PetBodies bodies) => state switch
     {
-        PetMotionState.Wall => (bodies.WallWidth, bodies.WallHeight),
+        PetMotionState.Wall or PetMotionState.WindowClimb => (bodies.WallWidth, bodies.WallHeight),
         PetMotionState.Ceiling => (bodies.CeilingWidth, bodies.CeilingHeight),
         _ => (bodies.FloorWidth, bodies.FloorHeight),
     };
 
-    /// <summary>Where the centre of a standing pet's box is when its feet are on the floor.</summary>
-    private static double FloorBoxCenter(in PetMotionContext world) =>
-        world.Area.Bottom - (world.Bodies.FloorHeight / 2);
+    /// <summary>
+    /// Where the centre of a standing pet's box is when its feet are on whatever it stands on: the
+    /// floor, or the top of the window it has climbed.
+    /// </summary>
+    private double FloorCenter(in PetMotionContext world) =>
+        (_support?.Top ?? world.Area.Bottom) - (world.Bodies.FloorHeight / 2);
 
     private PetMotionEvents AdvanceFloor(TimeSpan now, double elapsed, in PetMotionContext world)
     {
         var events = PetMotionEvents.None;
-        var bodies = world.Bodies;
-        CenterY = FloorBoxCenter(world);
+        CenterY = FloorCenter(world);
 
-        var min = world.Area.Left + (bodies.FloorWidth / 2);
-        var max = Math.Max(min, world.Area.Right - (bodies.FloorWidth / 2));
+        FloorRange(world, out var min, out var max);
         CenterX = Math.Clamp(CenterX, min, max);
+
+        // The pointer comes first: a pet that is about to be caught slides away from it whether it
+        // was walking or sitting, and one that is watching it turns to look wherever it was.
+        if (ReactToCursor(now, world, min, max))
+        {
+            return PetMotionEvents.Moved;
+        }
 
         if (State == PetMotionState.Resting)
         {
@@ -514,6 +572,11 @@ public sealed class PetMotionEngine
             events |= PetMotionEvents.BeganWalking;
         }
 
+        if (_support is null && SteerTowardWindow(now, elapsed, world, min, max))
+        {
+            return events | PetMotionEvents.Moved;
+        }
+
         CenterX += Direction * world.Speed * elapsed;
         events |= PetMotionEvents.Moved;
 
@@ -522,11 +585,14 @@ public sealed class PetMotionEngine
             var side = CenterX <= min ? -1 : 1;
             CenterX = side < 0 ? min : max;
 
-            var outer = side < 0 ? world.Area.LeftIsOuter : world.Area.RightIsOuter;
-            if (world.AllowWalls && outer && _random.NextDouble() < WallChance)
+            if (_support is null)
             {
-                BeginWall(side, descending: false, world);
-                return events;
+                var outer = side < 0 ? world.Area.LeftIsOuter : world.Area.RightIsOuter;
+                if (world.AllowWalls && outer && _targetId == 0 && _random.NextDouble() < WallChance)
+                {
+                    BeginWall(side, descending: false, world);
+                    return events;
+                }
             }
 
             Direction = -side;
@@ -549,7 +615,7 @@ public sealed class PetMotionEngine
 
     private PetMotionEvents AdvanceLanding(TimeSpan now, in PetMotionContext world)
     {
-        CenterY = FloorBoxCenter(world);
+        CenterY = FloorCenter(world);
 
         if (_stateElapsed < LandingSeconds)
         {
@@ -576,6 +642,7 @@ public sealed class PetMotionEngine
     {
         // A rotor sinks, it does not drop: speed builds up to a steady descent and stays there.
         _velocityY = Math.Min(FallMaximumSpeed, Math.Max(FallMinimumSpeed, _velocityY + (FallAcceleration * elapsed)));
+        var feetBefore = CenterY + (world.Bodies.FloorHeight / 2);
         CenterY += _velocityY * elapsed;
 
         if (Math.Abs(_drift) > 0.1)
@@ -586,9 +653,17 @@ public sealed class PetMotionEngine
 
         ClampToArea(world);
 
-        if (CenterY >= FloorBoxCenter(world))
+        if (TryLandOnWindow(feetBefore, CenterY + (world.Bodies.FloorHeight / 2), world, out var window))
         {
-            CenterY = FloorBoxCenter(world);
+            StandOn(window);
+            CenterY = window.Top - (world.Bodies.FloorHeight / 2);
+            BeginLanding();
+            return PetMotionEvents.Moved;
+        }
+
+        if (CenterY >= FloorCenter(world))
+        {
+            CenterY = FloorCenter(world);
             BeginLanding();
         }
 
@@ -612,10 +687,19 @@ public sealed class PetMotionEngine
 
         var hitSide = nextX < leftLimit || nextX > rightLimit;
         var hitTop = nextY < topLimit;
-        var nearFloor = _velocityY > 0 && nextY >= FloorBoxCenter(world) - 10;
+        var nearFloor = _velocityY > 0 && nextY >= FloorCenter(world) - 10;
 
+        var feetBefore = CenterY + halfHeight;
         CenterX = Math.Clamp(nextX, leftLimit, rightLimit);
-        CenterY = Math.Max(topLimit, Math.Min(FloorBoxCenter(world), nextY));
+        CenterY = Math.Max(topLimit, Math.Min(FloorCenter(world), nextY));
+
+        // Flying over the top of a window: open the rotor just above it, and let the fall do the
+        // landing, so a throw never passes through ground the pet could have stood on.
+        if (_velocityY > 0 && TryLandOnWindow(feetBefore, CenterY + halfHeight + 18, world, out var over))
+        {
+            CenterY = Math.Min(CenterY, over.Top - halfHeight - 1);
+            nearFloor = true;
+        }
 
         if (hitSide)
         {
@@ -677,7 +761,7 @@ public sealed class PetMotionEngine
                 CenterX = side < 0
                     ? world.Area.Left + (bodies.FloorWidth / 2)
                     : world.Area.Right - (bodies.FloorWidth / 2);
-                CenterY = FloorBoxCenter(world);
+                CenterY = FloorCenter(world);
                 BeginLanding();
             }
         }
@@ -752,6 +836,7 @@ public sealed class PetMotionEngine
 
     private void BeginFalling(double velocityY, double drift)
     {
+        LeaveSupport();
         SetState(PetMotionState.Falling);
         _velocityY = velocityY;
         _drift = drift;
@@ -795,11 +880,12 @@ public sealed class PetMotionEngine
 
         // A toss from the floor has to leave it before the rotor can open, or the pet would be
         // "thrown" straight into the ground.
-        var floor = FloorBoxCenter(world);
+        var floor = FloorCenter(world);
         if (CenterY > floor - 24)
         {
             _velocityY = Math.Min(_velocityY, FloorTossRise);
         }
+
 
         _throwSeconds = 0.45 + (0.15 * Math.Clamp(-_velocityY / 600, 0, 1));
         if (Math.Abs(_velocityX) > 25)
@@ -818,7 +904,7 @@ public sealed class PetMotionEngine
         var right = Math.Max(left, world.Area.Right - (bodies.FloorWidth / 2));
         var top = world.Area.Top + (bodies.FloorHeight / 2);
         CenterX = Math.Clamp(CenterX, left, right);
-        CenterY = Math.Clamp(CenterY, top, Math.Max(top, FloorBoxCenter(world)));
+        CenterY = Math.Clamp(CenterY, top, Math.Max(top, FloorCenter(world)));
     }
 
     private void SetState(PetMotionState state)
