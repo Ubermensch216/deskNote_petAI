@@ -1,0 +1,37 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net10.0-windows7.0": {
+      "System.Drawing.Common": {
+        "type": "Direct",
+        "requested": "[10.0.11, )",
+        "resolved": "10.0.11",
+        "contentHash": "Schxw0FzXMAwa+If/oVxqjrmmiyUbw9KUAeqJOPnjsdAzkmUZXSZWNRLHZye2boFYlbMRkeBY6dba5hs8Mu4OQ==",
+        "dependencies": {
+          "Microsoft.Win32.SystemEvents": "10.0.11"
+        }
+      },
+      "Microsoft.Win32.SystemEvents": {
+        "type": "Transitive",
+        "resolved": "10.0.11",
+        "contentHash": "WXGazuzGf3eX24z1qgiGwP2df3t2T28QeZvMjlRqdjNuewQyLfbOb6rEXmk6Xs++gOQClmw90pkjPd9j/hNWDw=="
+      },
+      "desknote.companion.core": {
+        "type": "Project",
+        "dependencies": {
+          "DeskNote.Core": "[1.0.0, )"
+        }
+      },
+      "desknote.companion.rig": {
+        "type": "Project",
+        "dependencies": {
+          "DeskNote.Companion.Core": "[1.0.0, )",
+          "System.Drawing.Common": "[10.0.11, )"
+        }
+      },
+      "desknote.core": {
+        "type": "Project"
+      }
+    }
+  }
+}

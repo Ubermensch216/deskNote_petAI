@@ -1,5 +1,3 @@
-// Taken from the desktop pet this project's characters were drawn for, and kept in its style.
-#nullable disable
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using DeskNote.Companion.Core;
@@ -7,7 +5,7 @@ using DeskNote.Companion.Core;
 namespace DeskNote.Companion.Rig;
 
 /// <summary>Polygon helpers.</summary>
-internal static class Geo
+internal static class Shapes
 {
     public static PointF P(float x, float y) { return new PointF(x, y); }
 
@@ -106,39 +104,8 @@ internal static class Geo
     }
 }
 
-/// <summary>One character's drawing kit. The lengths in a <see cref="RigPose"/> are in units of a figure 571 tall.</summary>
-internal abstract class CharRig
-{
-    public abstract float RefH { get; }
-    public abstract float FootX { get; }
-    public abstract float FootY { get; }
-    public abstract float HeadAxisDx { get; }
-    public abstract float GripY { get; }
-    public abstract float BodyRefW { get; }
-    public abstract float NominalW { get; }
-    public abstract float BellyY { get; }
-    public abstract float HeadCx { get; }
-    public abstract float HeadCy { get; }
-    public abstract float HeadSize { get; }
-    public float U { get { return RefH / 571f; } }
-    protected abstract void DrawBody(Graphics g, RigPose p, float k, bool faceRight);
-
-    /// <summary>The origin of <c>g</c> is the middle of the feet, in pixels. <c>Lie</c> lays the whole body down by up to 90 degrees.</summary>
-    public void Draw(Graphics g, RigPose p, float k, bool faceRight)
-    {
-        if (Math.Abs(p.Lie) < .01f) { DrawBody(g, p, k, faceRight); return; }
-        var st = g.Save();
-        float ang = (faceRight ? -90f : 90f) * p.Lie, a = Math.Abs(p.Lie);
-        // Lying down puts the body on the floor, moved sideways so its middle is where it stood
-        g.TranslateTransform(-Math.Sign(ang) * RefH * k * .5f * a, -BodyRefW * .5f * k * a);
-        g.RotateTransform(ang);
-        DrawBody(g, p, k, faceRight);
-        g.Restore(st);
-    }
-}
-
 /// <summary>Arm maths shared by the characters.</summary>
-internal static class Kit
+internal static class TwoJointArm
 {
     /// <summary>Two-joint arm: finds the upper-arm (A) and forearm (B) angles that put the wrist at T from shoulder S (straight down is 0, outward is positive).</summary>
     public static void IK(PointF S, PointF T, float L1, float L2, int outSign, out float A, out float B)

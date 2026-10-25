@@ -12,11 +12,10 @@ internal static class RigEffects
 {
     /// <param name="g">Origin at the middle of the feet.</param>
     /// <param name="frame">What to draw.</param>
-    /// <param name="rig">The body the effects belong to.</param>
     /// <param name="w">Width of the body's walking box, in pixels.</param>
     /// <param name="h">Height of the body, in pixels.</param>
     /// <param name="s">Size of the figure against the one the effects were drawn for.</param>
-    public static void DrawDecor(Graphics g, RigFrame frame, DbRig rig, float w, float h, float s)
+    public static void DrawDecor(Graphics g, RigFrame frame, float w, float h, float s)
     {
         var decor = frame.Decor;
         if (decor == RigDecor.None)
@@ -84,7 +83,7 @@ internal static class RigEffects
 
         if ((decor & RigDecor.Flower) != 0)
         {
-            DrawBouquet(g, rig, h / rig.RefH, s, ink);
+            DrawBouquet(g, h / FigureRig.ReferenceHeight, s, ink);
         }
 
         if ((decor & RigDecor.Notes) != 0)
@@ -163,9 +162,9 @@ internal static class RigEffects
     }
 
     /// <summary>A bouquet in both arms. The hands are the rig's, already folded at the belly.</summary>
-    private static void DrawBouquet(Graphics g, DbRig rig, float k, float s, Pen ink)
+    private static void DrawBouquet(Graphics g, float k, float s, Pen ink)
     {
-        var handY = (rig.BellyY - rig.FootY) * k;
+        var handY = (FigureRig.BellyY - FigureRig.FootY) * k;
         var x = 3 * s;
         var y = handY - (20 * s);
 

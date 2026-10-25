@@ -23,6 +23,10 @@ param(
     [double] $FractionX = 0.5,
     [double] $FractionY = 0.5,
     [switch] $Click,
+
+    # Wheel notches to turn once the pointer is there; negative scrolls down. For windows longer
+    # than the screen, which are photographed in two halves.
+    [int] $Wheel = 0,
     [switch] $KeepPointer,
     [int] $SettleMilliseconds = 900
 )
@@ -54,6 +58,7 @@ namespace DeskNote
         private const uint MOUSEEVENTF_MOVE = 0x0001;
         private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
         private const uint MOUSEEVENTF_LEFTUP = 0x0004;
+        private const uint MOUSEEVENTF_WHEEL = 0x0800;
         private const uint MOUSEEVENTF_ABSOLUTE = 0x8000;
         private const uint MOUSEEVENTF_VIRTUALDESK = 0x4000;
 
@@ -85,6 +90,15 @@ namespace DeskNote
             var dy = (uint)Math.Round((y - top) * 65535.0 / Math.Max(1, height - 1));
 
             mouse_event(MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK, dx, dy, 0, UIntPtr.Zero);
+        }
+
+        public static void Wheel(int notches)
+        {
+            for (var i = 0; i < Math.Abs(notches); i++)
+            {
+                mouse_event(MOUSEEVENTF_WHEEL, 0, 0, unchecked((uint)(Math.Sign(notches) * 120)), UIntPtr.Zero);
+                System.Threading.Thread.Sleep(40);
+            }
         }
 
         public static void Click()
@@ -136,6 +150,11 @@ try {
 
     if ($Click) {
         [DeskNote.Pointer]::Click()
+        Start-Sleep -Milliseconds $SettleMilliseconds
+    }
+
+    if ($Wheel -ne 0) {
+        [DeskNote.Pointer]::Wheel($Wheel)
         Start-Sleep -Milliseconds $SettleMilliseconds
     }
 

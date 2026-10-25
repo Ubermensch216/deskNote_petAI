@@ -1,5 +1,3 @@
-// Taken from the desktop pet this project's characters were drawn for, and kept in its style.
-#nullable disable
 using System;
 using DeskNote.Companion.Core;
 using System.Collections.Generic;
@@ -8,37 +6,12 @@ using System.Drawing.Drawing2D;
 
 namespace DeskNote.Companion.Rig
 {
-    /// <summary>Draws the five characters part by part (Goku, kid Goku, Roshi, Vegeta, Piccolo). Coordinates are in units of a 571-unit-tall figure.</summary>
-    internal sealed class DbRig : CharRig
-    {
-        private readonly RigCharacter who;
-        public DbRig(RigCharacter who) { this.who = who; }
-        public RigCharacter Who { get { return who; } }
-
-        public override float RefH { get { return 571f; } }
-        public override float FootX { get { return 200f; } }
-        public override float FootY { get { return 571f; } }
-        public override float HeadAxisDx { get { return 0; } }
-        public override float GripY { get { return 70; } }
-        public override float BodyRefW { get { return who == RigCharacter.Piccolo ? 210f : 190f; } }
-        public override float NominalW { get { return 270f; } }
-        public override float BellyY { get { return 430; } }
-        public override float HeadCx { get { return 200; } }
-        public override float HeadCy { get { return who == RigCharacter.Kid ? 180 : who == RigCharacter.Roshi ? 185 : 160; } }
-        public override float HeadSize { get { return who == RigCharacter.Piccolo ? 250 : 240; } }
-
-        protected override void DrawBody(Graphics g, RigPose p, float k, bool faceRight)
-        {
-            using (var painter = new DbPainter(g, p, who, k, faceRight)) painter.Run();
-        }
-    }
-
     /// <summary>The brushes, dimensions and colours for one paint pass; a new one is made for every frame.</summary>
-    internal sealed partial class DbPainter : IDisposable
+    internal sealed partial class FigurePainter : IDisposable
     {
         private readonly Graphics g; private readonly RigPose p; private readonly RigCharacter who; private readonly float k; private readonly bool faceRight;
         private readonly List<IDisposable> trash = new List<IDisposable>();
-        private Pen ink; private float ow;
+        private Pen ink = null!; private float ow;
         private static readonly Color cInk = Color.FromArgb(44, 32, 36);
         private static readonly Color cWhite = Color.FromArgb(250, 250, 252);
 
@@ -52,7 +25,7 @@ namespace DeskNote.Companion.Rig
         private readonly PointF[] wrist = new PointF[2], hdir = new PointF[2];
         private float torsoCx { get { return 200 - 36 * turn; } }
 
-        internal DbPainter(Graphics g, RigPose p, RigCharacter who, float k, bool faceRight)
+        internal FigurePainter(Graphics g, RigPose p, RigCharacter who, float k, bool faceRight)
         { this.g = g; this.p = p; this.who = who; this.k = k; this.faceRight = faceRight; Setup(); }
 
         public void Dispose() { foreach (var d in trash) d.Dispose(); trash.Clear(); }
@@ -241,7 +214,7 @@ namespace DeskNote.Companion.Rig
                 pts.Add(Pt(x, y));
             }
             pts.Add(Pt(torsoCx + hw + 10, shY + 60)); pts.Add(Pt(torsoCx + hw, shY - 8));
-            PointF[] cp = Geo.Smooth(pts.ToArray(), true, 5);
+            PointF[] cp = Shapes.Smooth(pts.ToArray(), true, 5);
             Fill(cp, cape);
             using (var gp = new GraphicsPath())
             {
@@ -256,7 +229,7 @@ namespace DeskNote.Companion.Rig
         {
             Color a = Color.FromArgb(104, 140, 76), b = Color.FromArgb(70, 100, 52);
             float cx = torsoCx, cy = shY + 82, rx = topW / 2 + 38, ry = 112;
-            PointF[] shell = Geo.Ellipse(cx, cy, rx, ry, 36);
+            PointF[] shell = Shapes.Ellipse(cx, cy, rx, ry, 36);
             Fill(shell, a);
             // hexagon pattern
             using (var gp = new GraphicsPath())
@@ -302,7 +275,7 @@ namespace DeskNote.Companion.Rig
             float sc = 1 + .5f * ape;
             for (int i = 0; i < len.Length; i++) len[i] *= sc;
             PointF[] sp = Chain(Pt(torsoCx + botW * .42f, waistY - 6), len, bd, p.Tail * .8f, p.TailCurl, p.TailWaveAmp, p.TailWavePhase);
-            PointF[] tail = Geo.Limb(sp, new[] { 26f * sc, 24f * sc, 22f * sc, 18f * sc, 13f * sc, 9f * sc }, true, 6);
+            PointF[] tail = Shapes.Limb(sp, new[] { 26f * sc, 24f * sc, 22f * sc, 18f * sc, 13f * sc, 9f * sc }, true, 6);
             Fill(tail, Color.FromArgb(158, 100, 48));
         }
 
@@ -318,11 +291,11 @@ namespace DeskNote.Companion.Rig
                 PointF anchor = Pt(200 + sgn * footDx + fx - 10 * turn, 548 + fy);
                 float bend = (p.Knee + Math.Max(0, p.BodyY) * .3f) * sgn;
                 PointF mid = Pt((hx + anchor.X) / 2 + bend, (hy + anchor.Y) / 2);
-                PointF[] leg = Geo.Limb(new[] { Pt(hx, hy), mid, Pt(anchor.X, anchor.Y - 4) }, new[] { legW, legW * .9f, legW * .84f }, false, 6);
+                PointF[] leg = Shapes.Limb(new[] { Pt(hx, hy), mid, Pt(anchor.X, anchor.Y - 4) }, new[] { legW, legW * .9f, legW * .84f }, false, 6);
                 if (who == RigCharacter.Roshi)
                 {
                     Fill(leg, skin);
-                    PointF[] sh = Geo.Limb(new[] { Pt(hx, hy), Pt((hx + mid.X) / 2 + sgn * 3, (hy + mid.Y) / 2 + 6) }, new[] { legW * 1.12f, legW * 1.08f }, false, 4);
+                    PointF[] sh = Shapes.Limb(new[] { Pt(hx, hy), Pt((hx + mid.X) / 2 + sgn * 3, (hy + mid.Y) / 2 + 6) }, new[] { legW * 1.12f, legW * 1.08f }, false, 4);
                     Fill(sh, pants);
                 }
                 else
@@ -332,7 +305,7 @@ namespace DeskNote.Companion.Rig
                     {
                         // white boot cuff
                         PointF bt = Pt(mid.X + (anchor.X - mid.X) * .35f, mid.Y + (anchor.Y - mid.Y) * .35f);
-                        PointF[] boot = Geo.Limb(new[] { bt, Pt(anchor.X, anchor.Y - 4) }, new[] { legW * .92f, legW * .86f }, false, 4);
+                        PointF[] boot = Shapes.Limb(new[] { bt, Pt(anchor.X, anchor.Y - 4) }, new[] { legW * .92f, legW * .86f }, false, 4);
                         Fill(boot, shoe);
                         g.DrawLine(Pn(shoeTrim, ow * 1.6f), Pt(bt.X - legW * .44f, bt.Y), Pt(bt.X + legW * .44f, bt.Y));
                     }
@@ -381,7 +354,7 @@ namespace DeskNote.Companion.Rig
             };
             var all = new List<PointF>(l); all.Add(Pt(cx, waistY + 22));
             for (int i = l.Length - 1; i >= 0; i--) all.Add(Pt(2 * cx - l[i].X, l[i].Y));
-            return Geo.Smooth(all.ToArray(), true, 6);
+            return Shapes.Smooth(all.ToArray(), true, 6);
         }
 
         private void DrawNeck()
@@ -516,7 +489,7 @@ namespace DeskNote.Companion.Rig
                 float sx = sh[i].X + (i == 0 ? -6 : 6), sy = sh[i].Y - 4;
                 var st = g.Save(); g.TranslateTransform(sx, sy); g.RotateTransform(i == 0 ? -14 : 14);
                 float ww = w * (who == RigCharacter.Piccolo ? 1.2f : 1f) * (1 - .2f * turn);
-                PointF[] pad = Geo.Ellipse(0, 0, ww, who == RigCharacter.Piccolo ? 26 : 24, 20);
+                PointF[] pad = Shapes.Ellipse(0, 0, ww, who == RigCharacter.Piccolo ? 26 : 24, 20);
                 Fill(pad, c);
                 g.DrawLine(Pn(Al(cInk, 120), ow * .8f), Pt(-ww * .7f, 4), Pt(ww * .7f, 4));
                 g.Restore(st);
@@ -536,15 +509,15 @@ namespace DeskNote.Companion.Rig
                 float len = right ? p.ArmLenR : p.ArmLenL;
                 float L1 = l1 * len, L2 = l2 * len, A, B2;
                 PointF? to = p.Clasp ? Pt(torsoCx + (right ? 16 : -16), shY + 70) : (right ? p.HandRTo : p.HandLTo);
-                if (to.HasValue) Kit.IK(S, to.Value, L1, L2, outSign, out A, out B2);
+                if (to.HasValue) TwoJointArm.IK(S, to.Value, L1, L2, outSign, out A, out B2);
                 else { A = MapA(right ? p.ArmRA : p.ArmLA); B2 = MapB(right ? p.ArmRB : p.ArmLB); }
                 PointF E = Pt(S.X + outSign * (float)Math.Sin(A * Math.PI / 180) * L1, S.Y + (float)Math.Cos(A * Math.PI / 180) * L1);
                 PointF d = Pt(outSign * (float)Math.Sin(B2 * Math.PI / 180), (float)Math.Cos(B2 * Math.PI / 180));
                 PointF W = Pt(E.X + d.X * L2, E.Y + d.Y * L2);
                 wrist[side] = W; hdir[side] = d;
                 float aw = armW;
-                PointF[] up = Geo.Limb(new[] { S, E }, new[] { aw * 1.05f, aw * .96f }, false, 4);
-                PointF[] lo = Geo.Limb(new[] { E, W }, new[] { aw * .94f, aw * .74f }, false, 4);
+                PointF[] up = Shapes.Limb(new[] { S, E }, new[] { aw * 1.05f, aw * .96f }, false, 4);
+                PointF[] lo = Shapes.Limb(new[] { E, W }, new[] { aw * .94f, aw * .74f }, false, 4);
                 Color upC = ArmUpperColor(), loC = ArmLowerColor();
                 Fill(lo, loC);
                 DrawCuffs(E, W, side);
@@ -594,7 +567,7 @@ namespace DeskNote.Companion.Rig
             }
             float t0 = who == RigCharacter.Vegeta ? .5f : .72f;
             PointF a = Pt(E.X + (W.X - E.X) * t0, E.Y + (W.Y - E.Y) * t0), b = Pt(E.X + (W.X - E.X) * 1.0f, E.Y + (W.Y - E.Y) * 1.0f);
-            PointF[] band = Geo.Limb(new[] { a, b }, new[] { armW * .8f, armW * .74f }, false, 3);
+            PointF[] band = Shapes.Limb(new[] { a, b }, new[] { armW * .8f, armW * .74f }, false, 3);
             Fill(band, c);
         }
 
@@ -616,16 +589,16 @@ namespace DeskNote.Companion.Rig
             else if (style == HandStyle.Point)
             {
                 // hand with the index and middle fingers extended (instant transmission, special beam cannon)
-                PointF[] palm = Geo.Smooth(new[] { Pt(-4, -15), Pt(18, -17), Pt(30, -8), Pt(30, 10), Pt(18, 17), Pt(-4, 15) }, true, 5);
+                PointF[] palm = Shapes.Smooth(new[] { Pt(-4, -15), Pt(18, -17), Pt(30, -8), Pt(30, 10), Pt(18, 17), Pt(-4, 15) }, true, 5);
                 Fill(palm, hc);
-                PointF[] f1 = Geo.Limb(new[] { Pt(24, -9), Pt(54, -8) }, new[] { 12f, 9f }, true, 3);
-                PointF[] f2 = Geo.Limb(new[] { Pt(24, 1), Pt(56, 3) }, new[] { 12f, 9f }, true, 3);
+                PointF[] f1 = Shapes.Limb(new[] { Pt(24, -9), Pt(54, -8) }, new[] { 12f, 9f }, true, 3);
+                PointF[] f2 = Shapes.Limb(new[] { Pt(24, 1), Pt(56, 3) }, new[] { 12f, 9f }, true, 3);
                 Fill(f1, hc); Fill(f2, hc);
                 g.FillEllipse(B(hc), 8, 10, 18, 14); g.DrawEllipse(ink, 8, 10, 18, 14);
             }
             else
             {
-                PointF[] hand = Geo.Smooth(new[] { Pt(-4, -16), Pt(16, -19), Pt(32, -12), Pt(38, -2), Pt(32, 8), Pt(20, 18), Pt(2, 18), Pt(-4, 12) }, true, 4);
+                PointF[] hand = Shapes.Smooth(new[] { Pt(-4, -16), Pt(16, -19), Pt(32, -12), Pt(38, -2), Pt(32, 8), Pt(20, 18), Pt(2, 18), Pt(-4, 12) }, true, 4);
                 Fill(hand, hc);
                 g.DrawLine(Pn(Al(cInk, 150), ow * .7f), Pt(22, -10), Pt(36, -6)); g.DrawLine(Pn(Al(cInk, 150), ow * .7f), Pt(20, -2), Pt(35, 1)); g.DrawLine(Pn(Al(cInk, 150), ow * .7f), Pt(18, 7), Pt(31, 9));
             }

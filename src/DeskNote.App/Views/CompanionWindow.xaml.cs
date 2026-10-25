@@ -117,13 +117,15 @@ public sealed partial class CompanionWindow : Window
             presenter.IsMaximizable = false;
         }
 
+        // The theme goes on before the palette is read from it, or a window opened under a theme
+        // other than the one the application started in paints its first frame in the wrong one.
+        ThemeService.ApplyThemeToWindow(this);
         LocalizeChrome();
         BuildTiles();
         ApplyAccessibleName();
         ApplyPalette();
         UpdateSnapshot(snapshot);
 
-        ThemeService.ApplyThemeToWindow(this);
         ThemeService.ThemeChanged += OnThemeChanged;
 
         // The palette is resolved per theme, and the window can be open when Windows switches.

@@ -6,7 +6,18 @@
   </PropertyGroup>
 
   <ItemGroup Label="UI">
-    <PackageVersion Include="Microsoft.WindowsAppSDK" Version="2.4.0" />
+    <!--
+      The Windows App SDK metapackage drags in AI, ML, Search and Widgets, which this app never touches:
+      about fifty megabytes of ONNX Runtime, DirectML and projections in every download. Only the
+      components a WinUI window actually needs are referenced, at the versions the metapackage
+      2.4.0 resolved to.
+    -->
+    <PackageVersion Include="Microsoft.WindowsAppSDK.Base" Version="2.0.4" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.Foundation" Version="2.3.9" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.InteractiveExperiences" Version="2.1.6" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.WinUI" Version="2.3.6" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.DWrite" Version="2.1.0" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.Runtime" Version="2.4.0" />
     <PackageVersion Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2526" />
   </ItemGroup>
 

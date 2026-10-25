@@ -29,9 +29,7 @@ public readonly record struct RigPlacement(double FootX, double FootY, double Ch
 /// </remarks>
 public sealed class RigSurface : IDisposable
 {
-    private static readonly Dictionary<RigCharacter, DbRig> Rigs = [];
-
-    private readonly DbRig _rig;
+    private readonly FigureRig _rig;
     private readonly RigCharacter _character;
     private Bitmap _bitmap;
     private Bitmap? _layer;
@@ -41,7 +39,7 @@ public sealed class RigSurface : IDisposable
     public RigSurface(RigCharacter character, int width, int height)
     {
         _character = character;
-        _rig = RigFor(character);
+        _rig = new FigureRig(character);
         Width = width;
         Height = height;
         _bitmap = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
@@ -54,19 +52,6 @@ public sealed class RigSurface : IDisposable
 
     /// <summary>The last frame painted: premultiplied BGRA, top row first, no padding between rows.</summary>
     public ReadOnlySpan<byte> Pixels => _pixels;
-
-    private static DbRig RigFor(RigCharacter character)
-    {
-        lock (Rigs)
-        {
-            if (!Rigs.TryGetValue(character, out var rig))
-            {
-                Rigs[character] = rig = new DbRig(character);
-            }
-
-            return rig;
-        }
-    }
 
     /// <summary>Resizes the surface; the next paint is always drawn.</summary>
     public void Resize(int width, int height)
@@ -132,7 +117,7 @@ public sealed class RigSurface : IDisposable
     /// <summary>Paints a frame onto any bitmap, for callers that want a picture rather than a stream of them.</summary>
     public void Paint(Bitmap target, RigFrame frame, RigPlacement placement)
     {
-        var k = (float)(placement.CharacterPixels / _rig.RefH);
+        var k = (float)(placement.CharacterPixels / FigureRig.ReferenceHeight);
         var scale = placement.CharacterPixels / (RigCharacters.ReferencePixels * RigCharacters.HeightFactor(_character));
 
         using var g = Graphics.FromImage(target);
@@ -166,7 +151,7 @@ public sealed class RigSurface : IDisposable
         g.Transform = body;
         var width = (float)(RigCharacters.NominalWidthUnits * k);
         var height = (float)placement.CharacterPixels;
-        RigEffects.DrawDecor(g, frame, _rig, width, height, (float)scale);
+        RigEffects.DrawDecor(g, frame, width, height, (float)scale);
 
         if ((frame.Decor & RigDecor.Moon) != 0)
         {

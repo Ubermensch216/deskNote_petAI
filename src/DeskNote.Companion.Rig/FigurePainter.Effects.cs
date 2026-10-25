@@ -1,5 +1,3 @@
-// Taken from the desktop pet this project's characters were drawn for, and kept in its style.
-#nullable disable
 using System;
 using DeskNote.Companion.Core;
 using System.Collections.Generic;
@@ -9,7 +7,7 @@ using System.Drawing.Drawing2D;
 namespace DeskNote.Companion.Rig
 {
     /// <summary>Aura, ki orbs, beams, ki blasts, lightning, flashes, the flying nimbus, the power pole and props.</summary>
-    internal sealed partial class DbPainter
+    internal sealed partial class FigurePainter
     {
         private PointF WristMid { get { return Pt((wrist[0].X + wrist[1].X) / 2, (wrist[0].Y + wrist[1].Y) / 2); } }
 
@@ -44,9 +42,9 @@ namespace DeskNote.Companion.Rig
                 float hgt = (210 + 120 * s * s + (i == 4 ? 80 : 0)) * a * (1 - Math.Abs(u - .5f) * .6f);
                 float lean = (float)Math.Sin(t * 4 + i) * 14;
                 PointF[] fl = { Pt(x0 - 32, 562), Pt(x0 - 20, 562 - hgt * .45f), Pt(x0 + lean - 6, 562 - hgt * .8f), Pt(x0 + lean, 562 - hgt), Pt(x0 + lean + 8, 562 - hgt * .72f), Pt(x0 + 24, 562 - hgt * .4f), Pt(x0 + 32, 562) };
-                PointF[] outer = Geo.Smooth(fl, true, 5);
+                PointF[] outer = Shapes.Smooth(fl, true, 5);
                 g.FillPolygon(B(Al(c1, 120 * a)), outer);
-                PointF[] inner = Geo.Map(outer, q => Pt(x0 + (q.X - x0) * .56f, 562 + (q.Y - 562) * .66f));
+                PointF[] inner = Shapes.Map(outer, q => Pt(x0 + (q.X - x0) * .56f, 562 + (q.Y - 562) * .66f));
                 g.FillPolygon(B(Al(c2, 150 * a)), inner);
             }
         }
@@ -136,13 +134,13 @@ namespace DeskNote.Companion.Rig
             if (open)
             {
                 g.FillEllipse(B(Color.FromArgb(40, 36, 44)), -30, -28, 60, 16);
-                PointF[] lid = Geo.Smooth(new[] { Pt(20, -26), Pt(40, -52), Pt(70, -46), Pt(58, -22) }, true, 5);
+                PointF[] lid = Shapes.Smooth(new[] { Pt(20, -26), Pt(40, -52), Pt(70, -46), Pt(58, -22) }, true, 5);
                 g.FillPolygon(B(Color.FromArgb(240, 240, 246)), lid); g.DrawPolygon(ink, lid);
                 for (int i = 0; i < 3; i++) g.DrawArc(Pn(Color.FromArgb(160, 255, 255, 255), 4), -24 + i * 22, -72 + (float)Math.Sin(p.BeamT * 6 + i) * 4, 14, 36, 100, 160);
             }
             else
             {
-                PointF[] lid = Geo.Smooth(new[] { Pt(-34, -18), Pt(-26, -36), Pt(26, -36), Pt(34, -18) }, true, 5);
+                PointF[] lid = Shapes.Smooth(new[] { Pt(-34, -18), Pt(-26, -36), Pt(26, -36), Pt(34, -18) }, true, 5);
                 g.FillPolygon(B(Color.FromArgb(240, 240, 246)), lid); g.DrawPolygon(ink, lid);
                 g.FillEllipse(B(Color.FromArgb(214, 60, 60)), -7, -46, 14, 14); g.DrawEllipse(ink, -7, -46, 14, 14);
             }
@@ -258,7 +256,7 @@ namespace DeskNote.Companion.Rig
                 PointF[] star = new PointF[24];
                 for (int i = 0; i < star.Length; i++) { double an = i * Math.PI * 2 / star.Length; float rr = i % 2 == 0 ? R : R * .55f; star[i] = Pt(b.X + (float)Math.Cos(an) * rr, b.Y + (float)Math.Sin(an) * rr); }
                 g.FillPolygon(B(Al(edge, a * .7f)), star);
-                PointF[] star2 = Geo.Map(star, s => Pt(b.X + (s.X - b.X) * .62f, b.Y + (s.Y - b.Y) * .62f));
+                PointF[] star2 = Shapes.Map(star, s => Pt(b.X + (s.X - b.X) * .62f, b.Y + (s.Y - b.Y) * .62f));
                 g.FillPolygon(B(Al(mid, a)), star2);
                 g.FillEllipse(B(Al(core, a)), b.X - R * .32f, b.Y - R * .32f, R * .64f, R * .64f);
             }

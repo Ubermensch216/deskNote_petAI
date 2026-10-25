@@ -1,15 +1,12 @@
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using DeskNote.App.Services;
 using DeskNote.Companion.Core;
-using Microsoft.UI.Composition;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
-using WinRT;
 using Windows.Graphics;
 
 namespace DeskNote.App.Views;
@@ -23,36 +20,12 @@ public sealed partial class DesktopPetWindow : Window
     private const double BaseFrameHeight = 200;
     private const int FrameCount = 4;
     private const double WalkSpeed = 58;
-    private const double CarePropSeconds = 2.6;
     private const double WalkLegMinimumSeconds = 3.2;
     private const double WalkLegMaximumSeconds = 9.5;
-    private const double OrnamentMinimumScale = 0.5;
-    private const double HeadTopFraction = 0.78;
-    private const double RestEffectFraction = 0.68;
-
-    // The sleeping artwork is the same frame with the animal lying down in it, so everything
-    // that hangs off the pet's head has to come down with it. Measured off the generated sheets
-    // by assets/companion/build_sleep_sprites.py, which prints the content bounds it produced.
-    private const double SleepHeadTopFraction = 0.62;
-    private const double SleepRestEffectFraction = 0.54;
-    private const double SleepSpeechFraction = 0.80;
-    private const double RestEffectSideOffset = 18;
-    private const double SpeechBubbleGap = 2;
-    private const double SpeechBubbleReserve = 58;
-    private const int IdleChatterMinimumSeconds = 45;
-    private const int IdleChatterMaximumSeconds = 105;
-    private const int GwlExStyle = -20;
-    private const long WsExLayered = 0x0008_0000;
-    private const long WsExToolWindow = 0x0000_0080;
     private const long WsExTopmost = 0x0000_0008;
     private const nint HwndTopmost = -1;
     private const uint SwpKeepTopmost = 0x0001 | 0x0002 | 0x0010;
     private const double TopmostRecheckSeconds = 1;
-    private const uint DwmBbEnable = 0x0000_0001;
-    private const uint DwmBbBlurRegion = 0x0000_0002;
-    private const int DwmwaWindowCornerPreference = 33;
-    private const int DwmwcpDoNotRound = 1;
-    private const uint SwpRefreshFrame = 0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020;
 
     private readonly Action _showDetails;
     private readonly Func<Task> _createNote;
@@ -82,11 +55,7 @@ public sealed partial class DesktopPetWindow : Window
     private readonly Random _behaviour = new();
     private readonly PetMotionEngine _motion;
     private readonly Stopwatch _clock = Stopwatch.StartNew();
-    [ThreadStatic]
-    private static object? _systemDispatcherQueueController;
 
-    private Windows.UI.Composition.Compositor? _backdropCompositor;
-    private Windows.UI.Composition.CompositionColorBrush? _transparentBackdrop;
     private CompanionSettings _settings;
     private TimeSpan _lastTick;
     private double _frameWidth = BaseFrameWidth;
@@ -101,28 +70,11 @@ public sealed partial class DesktopPetWindow : Window
     private int _appearanceStage = -1;
     private CompanionPetKind? _appearancePet;
     private CompanionNeeds _needs = new(100, 100, 100, 0);
-    private double _carePropElapsed;
     private PetAnimation _animation = PetAnimation.Walk;
     private CompanionGrowthMark _growthMark = CompanionGrowthMark.None;
     private double _poseScale = 1;
     private double _poseAngle;
     private NativePoint _dragStartCursor;
-
-    /// <summary>
-    /// What the pet says to itself when nothing has happened.
-    /// </summary>
-    /// <remarks>
-    /// Small, self-absorbed thoughts rather than prompts: the pet is not a reminder that has
-    /// learned to talk, and a line that asks the user for something every time it opens its mouth
-    /// stops being company and becomes another notification. The corpus is per species and per
-    /// language, and it is dealt from a shuffled deck rather than drawn at random - three hundred
-    /// lines picked independently repeat inside an afternoon, and a repeat is what makes a large
-    /// corpus feel like a small one.
-    /// </remarks>
-    private CompanionChatterBag? _chatterBag;
-
-    /// <summary>The species and language the loaded corpus belongs to.</summary>
-    private (CompanionPetKind Pet, string Locale) _chatterSource;
 
     public DesktopPetWindow(
         CompanionSnapshot snapshot,
@@ -295,194 +247,6 @@ public sealed partial class DesktopPetWindow : Window
         return needs.Mood <= CompanionCareRules.PlayThreshold ? "Companion_MoodBored" : null;
     }
 
-    private void Say(string key) => SayLine(Strings.Get(key));
-
-    /// <summary>
-    /// Puts one already-written line in the bubble.
-    /// </summary>
-    /// <remarks>
-    /// The care and mood lines come from the UI resources by key, while the idle musings come from
-    /// the chatter corpus as finished text. Both end here so the bubble timing and the idle reset
-    /// are written once - the pet should not have two ways of opening its mouth.
-    /// </remarks>
-    private void SayLine(string line)
-    {
-        if (string.IsNullOrEmpty(line))
-        {
-            ScheduleIdleChatter();
-            return;
-        }
-
-        // The bubble rests on the head of an upright pet; on a wall or the ceiling the head is
-        // elsewhere, so the line is dropped there rather than shown floating.
-        if (_motion.IsClimbing)
-        {
-            ScheduleIdleChatter();
-            return;
-        }
-
-        SpeechText.Text = line;
-        SpeechBubble.Visibility = Visibility.Visible;
-        UpdateOrnamentVisibility();
-        _bubbleTimer.Stop();
-        _bubbleTimer.Start();
-
-        // Anything the pet was told to say resets the idle clock, so a musing never lands on top
-        // of news the user actually asked for.
-        ScheduleIdleChatter();
-    }
-
-    /// <summary>
-    /// Rests the bubble on the pet's head.
-    /// </summary>
-    /// <remarks>
-    /// The window is a fixed 250px tall; the pet inside it is anywhere from about 40px to the full
-    /// 200, once the size setting and the growth silhouette are applied. A bubble pinned to the top
-    /// of the window therefore floated further above the animal the smaller it was — most of a
-    /// hand's width away from a small, young pet, which reads as words belonging to nothing.
-    /// Measuring from the drawn height instead keeps the two together at every size; the cap stops
-    /// a full-grown pet from pushing the bubble out through the top of the window.
-    /// </remarks>
-    private void PositionSpeechBubble() =>
-        SpeechBubble.Margin = new Thickness(
-            0,
-            0,
-            0,
-            Math.Min(
-                (_frameHeight * _growthScale * SpeechAnchorFraction()) + SpeechBubbleGap,
-                WindowHeight - SpeechBubbleReserve));
-
-    /// <summary>How much of the frame the pet currently fills, from the floor up.</summary>
-    private double SpeechAnchorFraction() =>
-        IsRig ? RigHeadTopFraction(_animation == PetAnimation.Sleep) + 0.02
-        : _animation is PetAnimation.Sleep or PetAnimation.Stretch ? SleepSpeechFraction : 1;
-
-    /// <summary>
-    /// Waits a while, then lets the pet think out loud.
-    /// </summary>
-    /// <remarks>
-    /// The gap is randomised because a fixed one turns into a metronome: the second time a bubble
-    /// appears exactly a minute after the first, it stops being a pet having a thought and becomes
-    /// a timer firing. Quiet hours and the proactive switch apply — this is the pet speaking
-    /// first, which is exactly what those settings are about.
-    /// </remarks>
-    private void ScheduleIdleChatter()
-    {
-        _idleChatterTimer.Stop();
-        _idleChatterTimer.Interval = TimeSpan.FromSeconds(
-            _chatter.Next(IdleChatterMinimumSeconds, IdleChatterMaximumSeconds + 1));
-        _idleChatterTimer.Start();
-    }
-
-    private void OnIdleChatterTick(
-        Microsoft.UI.Dispatching.DispatcherQueueTimer sender,
-        object args)
-    {
-        sender.Stop();
-
-        if (!_settings.AllowsProactiveAt(DateTimeOffset.Now)
-            || SpeechBubble.Visibility == Visibility.Visible
-            || _pointerDown)
-        {
-            ScheduleIdleChatter();
-            return;
-        }
-
-        SayLine(Chatter().Next());
-    }
-
-    /// <summary>
-    /// Loads the corpus for the species and language now in force, if either has changed.
-    /// </summary>
-    /// <remarks>
-    /// Both can change while the window is alive - the user picks another species in settings, or
-    /// switches the UI language - and a pet that went on musing in the language it was born in
-    /// would be the most visible part of the app to miss the switch.
-    /// </remarks>
-    private CompanionChatterBag Chatter()
-    {
-        var source = (Pet: _settings.SelectedPet, Locale: Strings.ActiveLocale);
-
-        if (_chatterBag is null || _chatterSource != source)
-        {
-            _chatterSource = source;
-            _chatterBag = new CompanionChatterBag(
-                CompanionChatterCatalog.Lines(source.Pet, source.Locale));
-        }
-
-        return _chatterBag;
-    }
-
-    /// <summary>Acts out one paid care action beside the pet.</summary>
-    public void PlayCareReaction(CareRequest request)
-    {
-        if (!DispatcherQueue.HasThreadAccess)
-        {
-            DispatcherQueue.TryEnqueue(() => PlayCareReaction(request));
-            return;
-        }
-
-        FeedProp.Visibility = Collapsed(request.Action == CompanionCareAction.Feed);
-        CleanProp.Visibility = Collapsed(request.Action == CompanionCareAction.BasicCare);
-        SpecialProp.Visibility = Collapsed(request.Action == CompanionCareAction.SpecialCare);
-        PlayProp.Visibility = Collapsed(request.Action == CompanionCareAction.Play);
-        GreetProp.Visibility = Collapsed(request.Action == CompanionCareAction.Greeting);
-        RestProp.Visibility = Collapsed(request.Action == CompanionCareAction.Rest);
-
-        Say($"Companion_CareReaction{request.Action}");
-
-        // A pet clinging to a wall cannot be fed: it comes down first, and the reaction is acted
-        // out when it has landed.
-        if (_motion.IsClimbing)
-        {
-            LetGo();
-        }
-
-        // Being put to bed is the one care action with a pose of its own; the rest are acted out
-        // by the prop beside the pet, and a pet that curled up and slept through being fed would
-        // be answering a different request.
-        BeginRest(
-            _clock.Elapsed,
-            seconds: CarePropSeconds,
-            pose: request.Action == CompanionCareAction.Rest
-                ? PetRestPose.Sleep
-                : PetRestPose.Sit);
-
-        ActOutCare(request.Action);
-        _carePropElapsed = 0;
-        CareProp.Opacity = 1;
-        if (_settings.ReduceMotion)
-        {
-            CarePropLift.Y = 0;
-            _carePropTimer.Stop();
-            _bubbleTimer.Stop();
-            _bubbleTimer.Start();
-            return;
-        }
-
-        _carePropTimer.Start();
-    }
-
-    private void OnCarePropTick(
-        Microsoft.UI.Dispatching.DispatcherQueueTimer sender,
-        object args)
-    {
-        _carePropElapsed += sender.Interval.TotalSeconds;
-        if (_carePropElapsed >= CarePropSeconds)
-        {
-            sender.Stop();
-            CareProp.Opacity = 0;
-            CarePropLift.Y = 0;
-            return;
-        }
-
-        CarePropLift.Y = -6 * Math.Abs(Math.Sin(_carePropElapsed * 4));
-        var fadeFrom = CarePropSeconds - 0.5;
-        CareProp.Opacity = _carePropElapsed <= fadeFrom
-            ? 1
-            : 1 - ((_carePropElapsed - fadeFrom) / 0.5);
-    }
-
     private static Visibility Collapsed(bool visible) =>
         visible ? Visibility.Visible : Visibility.Collapsed;
 
@@ -547,133 +311,6 @@ public sealed partial class DesktopPetWindow : Window
         LayOutRigImage();
         PositionSpeechBubble();
         PositionOrnaments();
-    }
-    private void ApplyGrowthAppearance(CompanionPetKind pet, int appearanceStage)
-    {
-        var normalizedStage = Math.Clamp(
-            appearanceStage,
-            0,
-            CompanionGrowthAppearanceCatalog.FinalStage);
-        if (_appearancePet == pet && _appearanceStage == normalizedStage)
-        {
-            return;
-        }
-
-        _appearancePet = pet;
-        _appearanceStage = normalizedStage;
-        var appearance = CompanionGrowthAppearanceCatalog.For(pet, normalizedStage);
-        _growthScale = appearance.Scale;
-        _growthMark = appearance.Mark;
-        ApplyGrowthMark();
-        ApplyFacingTransform(_settings.ReduceMotion);
-        PositionSpeechBubble();
-        PositionOrnaments();
-    }
-
-    /// <summary>Hangs the ornament this stage has earned over the pet.</summary>
-    private void ApplyGrowthMark()
-    {
-        SproutMark.Visibility = Collapsed(_growthMark == CompanionGrowthMark.Sprout);
-        SparklesMark.Visibility = Collapsed(_growthMark == CompanionGrowthMark.Sparkles);
-        TiaraMark.Visibility = Collapsed(_growthMark == CompanionGrowthMark.Tiara);
-        CrownMark.Visibility = Collapsed(_growthMark == CompanionGrowthMark.Crown);
-        UpdateOrnamentVisibility();
-    }
-
-    /// <summary>
-    /// Puts both overlays where the pet's head actually is.
-    /// </summary>
-    /// <remarks>
-    /// The sprite sits between roughly a fifth and four fifths of its frame, so the head top is a
-    /// fraction of the drawn height rather than the window's. Both layers shrink with the pet but
-    /// stop at half scale: a newborn at the small size setting is about thirty pixels tall, and an
-    /// ornament that shrank with it in full would be a smudge.
-    /// </remarks>
-    private void PositionOrnaments()
-    {
-        var drawnHeight = _frameHeight * _growthScale;
-        var scale = Math.Clamp(drawnHeight / BaseFrameHeight, OrnamentMinimumScale, 1);
-
-        GrowthMarkScale.ScaleX = scale;
-        GrowthMarkScale.ScaleY = scale;
-        GrowthMark.Margin = new Thickness(
-            0,
-            0,
-            0,
-            drawnHeight * HeadTopFractionNow());
-
-        RestEffectScale.ScaleX = scale;
-        RestEffectScale.ScaleY = scale;
-
-        // The rotor stands on the head, above whatever ornament the pet has earned.
-        RotorScale.ScaleX = scale;
-        RotorScale.ScaleY = scale;
-        RotorProp.Margin = new Thickness(0, 0, 0, (drawnHeight * HeadTopFractionNow()) - 2);
-
-        // A centred child is centred in what is left after its own margins, so twice the wanted
-        // offset on the left shifts it by the offset itself. The Zs rise beside the head rather
-        // than through the ornament already sitting on top of it.
-        RestEffect.Margin = new Thickness(
-            2 * RestEffectSideOffset * scale,
-            0,
-            0,
-            drawnHeight * RestEffectFractionNow());
-    }
-
-    /// <summary>Where the top of the head is, for the crown to sit on, whichever kind of pet this is.</summary>
-    private double HeadTopFractionNow() =>
-        IsRig ? RigHeadTopFraction(_animation == PetAnimation.Sleep)
-        : _animation is PetAnimation.Sleep or PetAnimation.Stretch ? SleepHeadTopFraction : HeadTopFraction;
-
-    /// <summary>Where the Zs and thought dots start: a little under the top of the head, beside it.</summary>
-    private double RestEffectFractionNow() =>
-        IsRig ? RigHeadTopFraction(_animation == PetAnimation.Sleep) - 0.07
-        : _animation is PetAnimation.Sleep or PetAnimation.Stretch ? SleepRestEffectFraction : RestEffectFraction;
-
-    /// <summary>
-    /// Keeps the overlays out of the way of the pet's own words.
-    /// </summary>
-    /// <remarks>
-    /// A small pet's bubble lands in the same band as its ornament, and an opaque bubble with a
-    /// crown poking through it looks like a drawing error rather than a pet. The bubble lasts four
-    /// seconds; the ornament comes back after it.
-    /// </remarks>
-    private void UpdateOrnamentVisibility()
-    {
-        var talking = SpeechBubble.Visibility == Visibility.Visible;
-
-        // The growth mark sits on the head, so it goes where the head is not free: under a rotor,
-        // or on a pet whose head is pointing along a wall.
-        var headFree = !_motion.IsClimbing && _motion.State != PetMotionState.Falling;
-        GrowthMark.Visibility =
-            Collapsed(_growthMark != CompanionGrowthMark.None && !talking && headFree);
-        RestEffect.Visibility = Collapsed(
-            !talking
-            && !_settings.ReduceMotion
-            && _motion.State == PetMotionState.Resting
-            && _motion.RestPose is PetRestPose.Sleep or PetRestPose.Daydream);
-    }
-
-    /// <summary>Gives the ornament a slow bob, the stage-three pair its twinkle, and the tiara its gem shimmer.</summary>
-    private void AnimateGrowthMark(TimeSpan now)
-    {
-        if (_growthMark == CompanionGrowthMark.None)
-        {
-            return;
-        }
-
-        var seconds = now.TotalSeconds;
-        GrowthMarkLift.Y = -2.5 * Math.Sin(seconds * 1.9);
-
-        if (_growthMark == CompanionGrowthMark.Sparkles)
-        {
-            SparkleLeft.Opacity = 0.55 + (0.45 * Math.Sin(seconds * 2.6));
-            SparkleRight.Opacity = 0.55 + (0.45 * Math.Sin((seconds * 2.6) + Math.PI));
-        }
-        else if (_growthMark == CompanionGrowthMark.Tiara)
-        {
-            TiaraGemShimmer.Opacity = 0.45 + (0.55 * Math.Sin(seconds * 2.4));
-        }
     }
 
     /// <summary>
@@ -946,105 +583,6 @@ public sealed partial class DesktopPetWindow : Window
         _backdropCompositor = null;
     }
 
-    private void MakeBackgroundTransparent()
-    {
-        var window = Microsoft.UI.Win32Interop.GetWindowFromWindowId(AppWindow.Id);
-        var style = GetWindowLongPtr(window, GwlExStyle).ToInt64();
-        _ = SetWindowLongPtr(window, GwlExStyle, new nint(style | WsExLayered | WsExToolWindow));
-
-        var cornerPreference = DwmwcpDoNotRound;
-        _ = DwmSetWindowAttribute(
-            window,
-            DwmwaWindowCornerPreference,
-            ref cornerPreference,
-            sizeof(int));
-        _ = SetWindowPos(window, 0, 0, 0, 0, 0, SwpRefreshFrame);
-
-        var margins = new Margins();
-        _ = DwmExtendFrameIntoClientArea(window, ref margins);
-
-        // WinUI owns a DirectComposition surface, so a layered-window colour key cannot remove
-        // its background. Give DWM a transparent system backdrop instead; XAML alpha then reaches
-        // the desktop while the PNG and speech bubble keep their own per-pixel opacity.
-        var blurRegion = CreateRectRgn(-2, -2, -1, -1);
-        try
-        {
-            var blur = new DwmBlurBehind
-            {
-                Flags = DwmBbEnable | DwmBbBlurRegion,
-                Enable = true,
-                BlurRegion = blurRegion,
-            };
-            _ = DwmEnableBlurBehindWindow(window, ref blur);
-        }
-        finally
-        {
-            _ = DeleteObject(blurRegion);
-        }
-
-        EnsureSystemDispatcherQueue();
-        _backdropCompositor = new Windows.UI.Composition.Compositor();
-        _transparentBackdrop = _backdropCompositor.CreateColorBrush(
-            Windows.UI.Color.FromArgb(0, 0, 0, 0));
-        this.As<ICompositionSupportsSystemBackdrop>().SystemBackdrop = _transparentBackdrop;
-    }
-
-    private static void EnsureSystemDispatcherQueue()
-    {
-        if (Windows.System.DispatcherQueue.GetForCurrentThread() is not null)
-        {
-            return;
-        }
-
-        var options = new DispatcherQueueOptions
-        {
-            Size = Marshal.SizeOf<DispatcherQueueOptions>(),
-            ThreadType = 2, // DQTYPE_THREAD_CURRENT
-            ApartmentType = 2, // DQTAT_COM_STA
-        };
-        Marshal.ThrowExceptionForHR(CreateDispatcherQueueController(
-            options,
-            out _systemDispatcherQueueController));
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct DwmBlurBehind
-    {
-        public uint Flags;
-
-        [MarshalAs(UnmanagedType.Bool)]
-        public bool Enable;
-
-        public nint BlurRegion;
-
-        [MarshalAs(UnmanagedType.Bool)]
-        public bool TransitionOnMaximized;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct Margins
-    {
-        public int Left;
-        public int Right;
-        public int Top;
-        public int Bottom;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NativePoint
-    {
-        public int X;
-        public int Y;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct DispatcherQueueOptions
-    {
-        public int Size;
-        public int ThreadType;
-        public int ApartmentType;
-    }
-
     /// <summary>Which sprite sheet is loaded.</summary>
     /// <remarks>
     /// Sleeping earns a sheet of its own because it cannot be faked from the sitting one: a
@@ -1065,52 +603,4 @@ public sealed partial class DesktopPetWindow : Window
         Stretch,
     }
 
-    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
-    private static extern nint GetWindowLongPtr(nint window, int index);
-
-    [DllImport("CoreMessaging.dll")]
-    private static extern int CreateDispatcherQueueController(
-        DispatcherQueueOptions options,
-        [MarshalAs(UnmanagedType.IUnknown)] out object? dispatcherQueueController);
-
-    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
-    private static extern nint SetWindowLongPtr(nint window, int index, nint newStyle);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetCursorPos(out NativePoint point);
-
-    [DllImport("user32.dll")]
-    private static extern uint GetDoubleClickTime();
-
-    [DllImport("gdi32.dll")]
-    private static extern nint CreateRectRgn(int left, int top, int right, int bottom);
-
-    [DllImport("gdi32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool DeleteObject(nint value);
-
-    [DllImport("dwmapi.dll")]
-    private static extern int DwmEnableBlurBehindWindow(nint window, ref DwmBlurBehind blur);
-
-    [DllImport("dwmapi.dll")]
-    private static extern int DwmExtendFrameIntoClientArea(nint window, ref Margins margins);
-
-    [DllImport("dwmapi.dll")]
-    private static extern int DwmSetWindowAttribute(
-        nint window,
-        int attribute,
-        ref int value,
-        int size);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetWindowPos(
-        nint window,
-        nint insertAfter,
-        int x,
-        int y,
-        int width,
-        int height,
-        uint flags);
 }

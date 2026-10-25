@@ -1,5 +1,3 @@
-// Taken from the desktop pet this project's characters were drawn for, and kept in its style.
-#nullable disable
 using System;
 using DeskNote.Companion.Core;
 using System.Collections.Generic;
@@ -9,7 +7,7 @@ using System.Drawing.Drawing2D;
 namespace DeskNote.Companion.Rig
 {
     /// <summary>The head: face, ears, hair, eyes, brows, mouth, sunglasses, beard, antennae and turban.</summary>
-    internal sealed partial class DbPainter
+    internal sealed partial class FigurePainter
     {
         private float FX(float x) { return 200 + (x - 200) * (1 - .1f * p.View) - 30 * p.View; }
         private bool Side { get { return p.View == 1; } }
@@ -226,7 +224,7 @@ namespace DeskNote.Companion.Rig
                 else g.DrawArc(lid, cx - w2, cy - 16, w2 * 2, 28, 25, 130);                                  // ∪
                 return;
             }
-            PointF[] eye = Geo.Ellipse(cx, cy, erx, ery, 26);
+            PointF[] eye = Shapes.Ellipse(cx, cy, erx, ery, 26);
             // an angry slant, lower toward the nose: the top is cut away on a diagonal
             if (Math.Abs(tilt) > .02f)
             {
@@ -234,7 +232,7 @@ namespace DeskNote.Companion.Rig
                 float slope = tilt * .62f;
                 // line: y = y0 + slope*(x-cx)*inner, keep only what lies below it
                 float y0 = cy - ery * .9f;
-                eye = Geo.ClipHalf(eye, -slope * inner, 1, -y0 + slope * inner * cx);
+                eye = Shapes.ClipHalf(eye, -slope * inner, 1, -y0 + slope * inner * cx);
                 if (eye.Length < 3) return;
             }
             g.FillPolygon(B(cWhite), eye);
@@ -373,7 +371,7 @@ namespace DeskNote.Companion.Rig
                 Pt(cx, jy + 180 + sway), Pt(FX(200 + 48), jy + 160 - sway), Pt(FX(200 + 80), jy + 126), Pt(FX(200 + headRx - 14), jy + 84), Pt(FX(200 + headRx - 6), jy + 36),
                 Pt(FX(200 + 70), jy + 62), Pt(cx, jy + 70), Pt(FX(200 - 70), jy + 62)
             };
-            PointF[] beard = Geo.Smooth(pts.ToArray(), true, 6);
+            PointF[] beard = Shapes.Smooth(pts.ToArray(), true, 6);
             Fill(beard, w);
             // hair strands
             var pen = Pn(sh, ow * .9f);
@@ -383,7 +381,7 @@ namespace DeskNote.Companion.Rig
             for (int s = -1; s <= 1; s += 2)
             {
                 float bx = cx + s * 4, by = jy + 66 - mm;
-                PointF[] mu = Geo.Smooth(new[] { Pt(bx, by - 8), Pt(bx + s * 30, by - 10), Pt(bx + s * 56, by + 6), Pt(bx + s * 66, by + 26 - mm), Pt(bx + s * 44, by + 16), Pt(bx + s * 18, by + 10), Pt(bx, by + 10) }, true, 4);
+                PointF[] mu = Shapes.Smooth(new[] { Pt(bx, by - 8), Pt(bx + s * 30, by - 10), Pt(bx + s * 56, by + 6), Pt(bx + s * 66, by + 26 - mm), Pt(bx + s * 44, by + 16), Pt(bx + s * 18, by + 10), Pt(bx, by + 10) }, true, 4);
                 Fill(mu, w);
             }
         }
@@ -398,12 +396,12 @@ namespace DeskNote.Companion.Rig
                 {
                     float bx = 200 + s * 28, by = headCy - headRy - 18;
                     float tx = bx + s * 20 + (s < 0 ? p.EarL : p.EarR) * 1.4f, ty = by - 54;
-                    PointF[] ant = Geo.Limb(new[] { Pt(bx, by), Pt((bx + tx) / 2 + s * 4, (by + ty) / 2), Pt(tx, ty) }, new[] { 12f, 9f, 6f }, true, 5);
+                    PointF[] ant = Shapes.Limb(new[] { Pt(bx, by), Pt((bx + tx) / 2 + s * 4, (by + ty) / 2), Pt(tx, ty) }, new[] { 12f, 9f, 6f }, true, 5);
                     Fill(ant, skin);
                 }
                 // turban (white cloth)
                 float cy = headCy - 62;
-                PointF[] turban = Geo.Ellipse(200 + (Side ? -4 : 0), cy, headRx + 8, 60, 30);
+                PointF[] turban = Shapes.Ellipse(200 + (Side ? -4 : 0), cy, headRx + 8, 60, 30);
                 Fill(turban, cape);
                 var fold = Pn(Color.FromArgb(190, 196, 214), ow * 1.1f);
                 g.DrawArc(fold, 112, cy - 40, 176, 80, 200, 120); g.DrawArc(fold, 128, cy - 30, 150, 66, 215, 100);
