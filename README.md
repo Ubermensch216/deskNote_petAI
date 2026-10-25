@@ -755,7 +755,7 @@ CI도 같은 스크립트를 씁니다. `install-ai.bat` 은 앱과 함께 풀�
 - CI가 `dotnet format --verify-no-changes` 를 돌리므로, 커밋 전에 `dotnet format` 을 한 번
   돌려 두면 빌드가 서식으로 실패하지 않습니다.
 
-자세한 배경(단일 exe를 만들지 않는 이유, 아이콘 생성, 문서 이미지 촬영)은
+자세한 배경(`DeskNote.exe` 하나가 만들어지는 방식, 앱 자체를 단일 파일로 만들지 않는 이유, 아이콘 생성, 문서 이미지 촬영)은
 [docs/development.md](docs/development.md)에 있습니다.
 
 ---

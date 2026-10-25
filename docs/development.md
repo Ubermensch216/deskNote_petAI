@@ -197,13 +197,23 @@ python assets/companion/build_duck_sprites.py
 `Environment.GetFolderPath(LocalApplicationData)` 는 그 변수가 아니라 셸의 known folder를 읽는다.
 
 ```powershell
-$demo = "$env:TEMP\desknote-docs"
-dotnet run --project tools/DemoSeeder -- $demo
-Start-Process .\dist\DeskNote-win-x64\DeskNote.exe -ArgumentList "--data", $demo
+$demo = "D:\desknote-docs"
+dotnet run --project tools/DemoSeeder -- $demo --pet goku --name 오공
+$env:DESKNOTE_THEME = "light"
+Start-Process .\dist\DeskNote-win-x64\DeskNote.exe -ArgumentList "--data `"$demo`""
 ```
 
+데이터 폴더는 **사용자 이름이 들어가지 않는 경로**에 둔다. 설정의 `일반` 탭이 그 경로를 그대로
+보여 주기 때문에, `%TEMP%` 아래에 두고 그 탭을 찍으면 사진에 사용자 이름이 남는다. 경로의 따옴표도
+한 덩어리로 넘겨야 한다 — 공백이 든 경로를 `-ArgumentList "--data", $demo` 로 넘기면 따옴표 없이
+붙어서 앱이 엉뚱한 폴더를 연다.
+
+사진은 모두 **밝은 테마**로 찍는다. 찍는 컴퓨터가 어두운 테마여도 Windows 설정을 바꾸지 않도록
+`DESKNOTE_THEME`(`light` 또는 `dark`) 환경 변수가 시스템 테마 감지를 대신한다. 값이 없으면 평소대로
+시스템을 따른다.
+
 `tools/DemoSeeder` 는 지어낸 메모 일곱 개와 노트북 둘을 넣고 펫을 켜 둔다. `--motion` 을 주면 펫을 걷는
-채로 두고(움직임을 확인할 때), `--pet <키>` 로 종을 고른다. 펫은 `움직이기` 를 끈
+채로 두고(움직임을 확인할 때), `--pet <키>` 로 종을, `--name <이름>` 으로 펫의 이름을 고른다. 펫은 `움직이기` 를 끈
 상태로 시작하는데, **걷는 펫은 창 위치를 읽고 포인터가 도착하는 사이에 자리를 옮겨** 클릭이 빗나가기
 때문이다.
 
@@ -227,8 +237,9 @@ dotnet run --project tools/PetSheets -- contact $env:TEMP\pet-contact
 WinUI는 커서의 위치가 아니라 **입력 큐**를 보므로 실제 입력 이벤트로 움직여야 한다.
 
 한 화면보다 긴 창은 두 장으로 나눠 찍는다. 설정 창(`settings-character.png`,
-`settings-behavior.png`)이 그런 경우로, 기본 크기 그대로 두고 휠로 위·아래 끝까지 굴린 뒤 각각
-찍었다. 창을 `MoveWindow` 로 늘려 한 장에 담으려고 하면 안 된다 — `AppWindow` 가 모르는 사이에
+`settings-behavior.png`)이 그런 경우로, 기본 크기 그대로 두고 `point-window.ps1 -Wheel <칸>`(음수가
+아래로)으로 굴린 뒤 각각 찍었다. `움직이기` 에 기대는 스위치는 그 스위치가 꺼져 있으면 흐려지므로,
+`behavior` 사진은 시더가 끈 `움직이기` 를 설정 창에서 켠 뒤(저장하지 않는다) 찍는다. 창을 `MoveWindow` 로 늘려 한 장에 담으려고 하면 안 된다 — `AppWindow` 가 모르는 사이에
 크기가 바뀌어 그 뒤의 활성화가 이상하게 동작한다.
 
 **UI를 바꾸면 그 화면의 이미지도 함께 다시 찍는다.** `docs/images/` 는 추적되는 파일이고, 낡은 사진은
