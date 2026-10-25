@@ -275,7 +275,7 @@ public sealed partial class DesktopPetWindow
     /// <summary>Draws the pet as it should look from the moment it sits down.</summary>
     private void ApplyRestVisuals()
     {
-        SetAnimation(_motion.RestPose == PetRestPose.Sleep ? PetAnimation.Sleep : PetAnimation.Rest);
+        SetAnimation(RestAnimation());
 
         // A sleeping animal is still, so the strip is parked on one frame rather than cycling;
         // the sheet holds four copies of the same pose anyway. What says "asleep" beyond the
@@ -297,6 +297,16 @@ public sealed partial class DesktopPetWindow
         _poseAngle = 0;
         ApplyFacingTransform();
     }
+
+    /// <summary>Which sheet the rest now beginning is drawn from.</summary>
+    private PetAnimation RestAnimation() => _motion.RestPose switch
+    {
+        PetRestPose.Sleep => PetAnimation.Sleep,
+        PetRestPose.Stretch when HasStretchArt() => PetAnimation.Stretch,
+        _ => PetAnimation.Rest,
+    };
+
+    private bool HasStretchArt() => PetStretchArt.Has(CompanionPetCatalog.FromAssetKey(_assetKey));
 
     /// <summary>Draws the pet as it should look from the moment it gets up, or is up to anything but resting.</summary>
     private void ApplyWalkingVisuals()
@@ -523,6 +533,17 @@ public sealed partial class DesktopPetWindow
                 AdvanceFrame(elapsed, 1.1);
                 SetPose(1, angle: 1.6 * Math.Sin(_motion.RestElapsed * 0.85));
                 AnimateDaydream();
+                break;
+
+            case PetRestPose.Stretch when HasStretchArt():
+                // Drawn, not transformed: lean in, reach, hold with a tremble, and let go. The
+                // frame is chosen by how far through the rest the pet is, so a stretch that is
+                // cut short, or run longer by a care action, still ends where it started.
+                var progress = _motion.RestDuration <= 0 ? 1 : _motion.RestElapsed / _motion.RestDuration;
+                SetFrame(PetStretchArt.FrameAt(
+                    progress,
+                    _motion.RestElapsed - (_motion.RestDuration * 0.26)));
+                SetPose(1, angle: 0);
                 break;
 
             case PetRestPose.Stretch:

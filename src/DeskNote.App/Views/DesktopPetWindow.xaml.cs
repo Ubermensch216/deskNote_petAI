@@ -355,7 +355,7 @@ public sealed partial class DesktopPetWindow : Window
     /// <summary>How much of the frame the pet currently fills, from the floor up.</summary>
     private double SpeechAnchorFraction() =>
         IsRig ? RigHeadTopFraction(_animation == PetAnimation.Sleep) + 0.02
-        : _animation == PetAnimation.Sleep ? SleepSpeechFraction : 1;
+        : _animation is PetAnimation.Sleep or PetAnimation.Stretch ? SleepSpeechFraction : 1;
 
     /// <summary>
     /// Waits a while, then lets the pet think out loud.
@@ -623,12 +623,12 @@ public sealed partial class DesktopPetWindow : Window
     /// <summary>Where the top of the head is, for the crown to sit on, whichever kind of pet this is.</summary>
     private double HeadTopFractionNow() =>
         IsRig ? RigHeadTopFraction(_animation == PetAnimation.Sleep)
-        : _animation == PetAnimation.Sleep ? SleepHeadTopFraction : HeadTopFraction;
+        : _animation is PetAnimation.Sleep or PetAnimation.Stretch ? SleepHeadTopFraction : HeadTopFraction;
 
     /// <summary>Where the Zs and thought dots start: a little under the top of the head, beside it.</summary>
     private double RestEffectFractionNow() =>
         IsRig ? RigHeadTopFraction(_animation == PetAnimation.Sleep) - 0.07
-        : _animation == PetAnimation.Sleep ? SleepRestEffectFraction : RestEffectFraction;
+        : _animation is PetAnimation.Sleep or PetAnimation.Stretch ? SleepRestEffectFraction : RestEffectFraction;
 
     /// <summary>
     /// Keeps the overlays out of the way of the pet's own words.
@@ -919,6 +919,7 @@ public sealed partial class DesktopPetWindow : Window
         var suffix = animation switch
         {
             PetAnimation.Sleep => "sleep",
+            PetAnimation.Stretch => "stretch",
             PetAnimation.Rest => "rest",
             _ => "walk",
         };
@@ -1056,6 +1057,12 @@ public sealed partial class DesktopPetWindow : Window
         Walk,
         Rest,
         Sleep,
+
+        /// <summary>
+        /// A stretch drawn for the species that has one; see <see cref="PetStretchArt"/>. The head
+        /// is as low as a sleeping pet's, so the crown and the bubble sit where they do for sleep.
+        /// </summary>
+        Stretch,
     }
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
