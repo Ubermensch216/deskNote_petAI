@@ -926,7 +926,8 @@ public sealed partial class CompanionWindow : Window
     {
         var normalizedAssetKey = assetKey switch
         {
-            "rabbit" or "cat" or "dog" or "fennec" or "otter" or "dragon" or "monkey" or "duck" => assetKey,
+            "rabbit" or "cat" or "dog" or "fennec" or "otter" or "dragon" or "monkey" or "duck"
+                or "goku" or "kidgoku" or "roshi" or "vegeta" or "piccolo" => assetKey,
             _ => "rabbit",
         };
 
@@ -1000,6 +1001,11 @@ public sealed partial class CompanionWindow : Window
         "dragon" => "Settings_PetDragon",
         "monkey" => "Settings_PetMonkey",
         "duck" => "Settings_PetDuck",
+        "goku" => "Settings_PetGoku",
+        "kidgoku" => "Settings_PetKidGoku",
+        "roshi" => "Settings_PetRoshi",
+        "vegeta" => "Settings_PetVegeta",
+        "piccolo" => "Settings_PetPiccolo",
         _ => "Settings_PetRabbit",
     });
 

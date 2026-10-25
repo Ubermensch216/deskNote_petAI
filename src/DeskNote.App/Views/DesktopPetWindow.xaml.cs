@@ -147,7 +147,7 @@ public sealed partial class DesktopPetWindow : Window
         _createNote = createNote;
 
         AppWindow.Title = Strings.Get("Companion_Title");
-        AppWindow.Resize(new SizeInt32(WindowWidth, WindowHeight));
+        AppWindow.Resize(new SizeInt32(CurrentWindowWidth, CurrentWindowHeight));
         AppWindow.TitleBar.ExtendsContentIntoTitleBar = true;
         try
         {
@@ -354,7 +354,8 @@ public sealed partial class DesktopPetWindow : Window
 
     /// <summary>How much of the frame the pet currently fills, from the floor up.</summary>
     private double SpeechAnchorFraction() =>
-        _animation == PetAnimation.Sleep ? SleepSpeechFraction : 1;
+        IsRig ? RigHeadTopFraction(_animation == PetAnimation.Sleep) + 0.02
+        : _animation == PetAnimation.Sleep ? SleepSpeechFraction : 1;
 
     /// <summary>
     /// Waits a while, then lets the pet think out loud.
@@ -447,6 +448,7 @@ public sealed partial class DesktopPetWindow : Window
                 ? PetRestPose.Sleep
                 : PetRestPose.Sit);
 
+        ActOutCare(request.Action);
         _carePropElapsed = 0;
         CareProp.Opacity = 1;
         if (_settings.ReduceMotion)
@@ -542,6 +544,7 @@ public sealed partial class DesktopPetWindow : Window
         SpriteStrip.Width = _frameWidth * FrameCount;
         SpriteStrip.Height = _frameHeight;
         Canvas.SetLeft(SpriteStrip, -_frame * _frameWidth);
+        LayOutRigImage();
         PositionSpeechBubble();
         PositionOrnaments();
     }
@@ -597,9 +600,7 @@ public sealed partial class DesktopPetWindow : Window
             0,
             0,
             0,
-            drawnHeight * (_animation == PetAnimation.Sleep
-                ? SleepHeadTopFraction
-                : HeadTopFraction));
+            drawnHeight * HeadTopFractionNow());
 
         RestEffectScale.ScaleX = scale;
         RestEffectScale.ScaleY = scale;
@@ -607,7 +608,7 @@ public sealed partial class DesktopPetWindow : Window
         // The rotor stands on the head, above whatever ornament the pet has earned.
         RotorScale.ScaleX = scale;
         RotorScale.ScaleY = scale;
-        RotorProp.Margin = new Thickness(0, 0, 0, (drawnHeight * HeadTopFraction) - 2);
+        RotorProp.Margin = new Thickness(0, 0, 0, (drawnHeight * HeadTopFractionNow()) - 2);
 
         // A centred child is centred in what is left after its own margins, so twice the wanted
         // offset on the left shifts it by the offset itself. The Zs rise beside the head rather
@@ -616,10 +617,18 @@ public sealed partial class DesktopPetWindow : Window
             2 * RestEffectSideOffset * scale,
             0,
             0,
-            drawnHeight * (_animation == PetAnimation.Sleep
-                ? SleepRestEffectFraction
-                : RestEffectFraction));
+            drawnHeight * RestEffectFractionNow());
     }
+
+    /// <summary>Where the top of the head is, for the crown to sit on, whichever kind of pet this is.</summary>
+    private double HeadTopFractionNow() =>
+        IsRig ? RigHeadTopFraction(_animation == PetAnimation.Sleep)
+        : _animation == PetAnimation.Sleep ? SleepHeadTopFraction : HeadTopFraction;
+
+    /// <summary>Where the Zs and thought dots start: a little under the top of the head, beside it.</summary>
+    private double RestEffectFractionNow() =>
+        IsRig ? RigHeadTopFraction(_animation == PetAnimation.Sleep) - 0.07
+        : _animation == PetAnimation.Sleep ? SleepRestEffectFraction : RestEffectFraction;
 
     /// <summary>
     /// Keeps the overlays out of the way of the pet's own words.
@@ -779,6 +788,8 @@ public sealed partial class DesktopPetWindow : Window
         FinishDrag();
         if (clicked)
         {
+            FlinchIfDrawn();
+
             // A click on a pet that is clinging to something lets it go, as well as doing what a
             // click does: it is the quickest way to bring one down.
             if (_motion.IsClimbing)
@@ -884,6 +895,7 @@ public sealed partial class DesktopPetWindow : Window
         }
 
         _assetKey = assetKey;
+        ApplyRigMode(CompanionPetCatalog.FromAssetKey(assetKey));
         SetAnimation(_animation, force: true);
     }
 
@@ -897,6 +909,13 @@ public sealed partial class DesktopPetWindow : Window
         _animation = animation;
         _frameTime = 0;
         SetFrame(0);
+        if (IsRig)
+        {
+            // A drawn character has no strips to load; the animation is only remembered, because
+            // where the head is, and so where the crown and the Zs go, depends on it.
+            return;
+        }
+
         var suffix = animation switch
         {
             PetAnimation.Sleep => "sleep",
@@ -918,6 +937,8 @@ public sealed partial class DesktopPetWindow : Window
         _carePropTimer.Stop();
         _idleChatterTimer.Stop();
         _topmostTimer.Stop();
+        _rigSurface?.Dispose();
+        _rigSurface = null;
         _transparentBackdrop?.Dispose();
         _transparentBackdrop = null;
         _backdropCompositor?.Dispose();

@@ -251,6 +251,13 @@ public sealed partial class PetMotionEngine
 
     public double RestElapsed { get; private set; }
 
+    /// <summary>
+    /// Counts the rests the pet has begun. Two rests that look alike, one straight after the other,
+    /// are told apart by it - which is what a drawing that plays something different each time it
+    /// sits down needs to know.
+    /// </summary>
+    public int RestSerial { get; private set; }
+
     public double RestDuration { get; private set; }
 
     /// <summary>Horizontal velocity in a throw, in pixels a second.</summary>
@@ -347,6 +354,7 @@ public sealed partial class PetMotionEngine
         SetState(PetMotionState.Resting);
         RestPose = pose ?? ChooseRestPose(listless);
         RestElapsed = 0;
+        RestSerial++;
         RestDuration = seconds ?? (baseRestSeconds * RestPoseFactor(RestPose));
         _restUntil = now + TimeSpan.FromSeconds(RestDuration);
         return true;

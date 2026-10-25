@@ -12,11 +12,13 @@
 | `src/DeskNote.Data` | net10.0 | SQLite + FTS5, 마이그레이션, 리포지토리 |
 | `src/DeskNote.Ai` | net10.0 | `ILocalAiService` 구현 (Ollama HTTP) |
 | `src/DeskNote.Companion.Core` | net10.0 | 펫 도메인 — 활동 분류, 밸런스, 성장 사다리, 상태 투영, 종별 대사 코퍼스 |
+| `src/DeskNote.Companion.Rig` | net10.0-windows | 그려서 움직이는 캐릭터 5종의 GDI+ 그리기(`RigSurface`) — [동반자 문서](companion.md#그려서-움직이는-캐릭터) |
 | `src/DeskNote.App` | net10.0-windows | WinUI 3 데스크톱 UI (실행 진입점) |
 | `tests/DeskNote.Core.Tests` | net10.0 | 도메인·배치·자동저장 정책 |
 | `tests/DeskNote.Data.Tests` | net10.0 | 영속성, 한국어 FTS, 마이그레이션 |
 | `tests/DeskNote.Ai.Tests` | net10.0 | 프롬프트 조립, 응답 파싱, 정리 규칙 |
 | `tests/DeskNote.Companion.Core.Tests` | net10.0 | 점수·상한·성장 단계·상태 투영의 결정론, 대사 코퍼스와 셔플 덱 |
+| `tests/DeskNote.Companion.Rig.Tests` | net10.0-windows | 모든 캐릭터·상태·시그니처가 그려지는가, 불투명도·크기·발 위치 |
 | `tests/DeskNote.Benchmarks` | net10.0 | SLO 측정과 강제 종료 내성 검증 (콘솔 실행 파일) |
 
 의존 방향은 `App → Core ← Data`. `Core`는 아무것도 참조하지 않는다.

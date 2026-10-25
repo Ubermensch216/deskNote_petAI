@@ -27,6 +27,15 @@ public static class PetArtBounds
         CompanionPetKind.Dragon => new PetInk(0.061, 0.200, 1.000, 0.772),
         CompanionPetKind.Monkey => new PetInk(0.064, 0.204, 0.913, 0.778),
         CompanionPetKind.Duck => new PetInk(0.171, 0.198, 0.831, 0.773),
+
+        // The rig-drawn characters, measured off the live drawing rather than a sheet: the figure
+        // stands on a fixed foot line (RigCharacters.FootFraction) and its height is its own, so the
+        // box is the walking figure's. `tools/PetSheets` prints these.
+        CompanionPetKind.Goku => new PetInk(0.239, 0.347, 0.681, 0.906),
+        CompanionPetKind.KidGoku => new PetInk(0.289, 0.497, 0.654, 0.905),
+        CompanionPetKind.Roshi => new PetInk(0.374, 0.511, 0.683, 0.912),
+        CompanionPetKind.Vegeta => new PetInk(0.319, 0.395, 0.661, 0.905),
+        CompanionPetKind.Piccolo => new PetInk(0.271, 0.218, 0.731, 0.906),
         _ => new PetInk(0.04, 0.20, 0.96, 0.78),
     };
 }

@@ -67,6 +67,8 @@ public sealed partial class SettingsWindow : Window
     private readonly ToggleSwitch _petWatch = NewSwitch();
     private readonly ToggleSwitch _petFollow = NewSwitch();
     private readonly ToggleSwitch _petDodge = NewSwitch();
+    private readonly ToggleSwitch _signatureMoves = NewSwitch();
+    private SignatureFrequency _signatureFrequency = SignatureFrequency.Normal;
     private readonly ToggleSwitch _aiEnabled = NewSwitch();
 
     private BehaviorRow? _aiEnabledRow;
@@ -134,6 +136,7 @@ public sealed partial class SettingsWindow : Window
             _petWatch,
             _petFollow,
             _petDodge,
+            _signatureMoves,
         })
         {
             toggle.Toggled += (_, _) =>
@@ -436,6 +439,8 @@ public sealed partial class SettingsWindow : Window
         _petWatch.IsOn = value.WatchCursor;
         _petFollow.IsOn = value.FollowCursor;
         _petDodge.IsOn = value.DodgeCursor && !value.FollowCursor;
+        _signatureFrequency = value.SignatureFrequency;
+        _signatureMoves.IsOn = value.SignatureFrequency != SignatureFrequency.Off;
         QuietStart.Time = value.QuietStart.ToTimeSpan();
         QuietEnd.Time = value.QuietEnd.ToTimeSpan();
 
@@ -454,6 +459,9 @@ public sealed partial class SettingsWindow : Window
         WatchCursor = _petWatch.IsOn,
         FollowCursor = _petFollow.IsOn,
         DodgeCursor = _petDodge.IsOn,
+        SignatureFrequency = !_signatureMoves.IsOn
+            ? SignatureFrequency.Off
+            : _signatureFrequency == SignatureFrequency.Off ? SignatureFrequency.Normal : _signatureFrequency,
         SelectedPet = _selectedPet,
         PetName = CompanionSettings.NormalizePetName(PetNameInput.Text),
         PetSize = _petSize,
@@ -1218,6 +1226,8 @@ public sealed partial class SettingsWindow : Window
                 Description: "Settings_FollowCursorDescription", Switch: _petFollow),
             (Emoji: "\U0001F4A8", Title: "Settings_DodgeCursor",
                 Description: "Settings_DodgeCursorDescription", Switch: _petDodge),
+            (Emoji: "★", Title: "Settings_SignatureMoves",
+                Description: "Settings_SignatureMovesDescription", Switch: _signatureMoves),
         };
 
         foreach (var (emoji, title, description, toggle) in rows)

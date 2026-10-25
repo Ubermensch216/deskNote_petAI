@@ -145,6 +145,15 @@
                     Canvas.Top="0"
                     Source="ms-appx:///Assets/Companion/rabbit-walk.png"
                     Stretch="Fill" />
+
+                <!-- The drawn characters are painted into this each frame instead. It is far larger
+                     than the frame the pet stands in, because a beam, a stretched arm or a great ape
+                     has to have somewhere to go, and it is placed in code so that the figure's feet
+                     land on the frame's foot line. -->
+                <Image
+                    x:Name="RigImage"
+                    Stretch="Fill"
+                    Visibility="Collapsed" />
             </Canvas>
         </Grid>
 

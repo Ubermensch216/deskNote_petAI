@@ -48,8 +48,24 @@ public sealed partial class DesktopPetWindow
         Microsoft.UI.Dispatching.DispatcherQueueTimer sender,
         object args)
     {
-        if (!_placed || _settings.ReduceMotion || _pointerDown || IsPausedForSession)
+        if (!_placed || _settings.ReduceMotion || IsPausedForSession)
         {
+            return;
+        }
+
+        if (_pointerDown)
+        {
+            // A drawn character in the hand keeps moving - it dangles, kicks and swings with the
+            // pointer - where a sprite is simply carried.
+            if (IsRig && _dragMoved)
+            {
+                var held = _clock.Elapsed;
+                var heldFor = Math.Min(0.05, (held - _lastTick).TotalSeconds);
+                _lastTick = held;
+                AnimateGrowthMark(held);
+                AdvanceRig(heldFor, held: true);
+            }
+
             return;
         }
 
@@ -66,6 +82,19 @@ public sealed partial class DesktopPetWindow
         if (events.HasFlag(PetMotionEvents.StateChanged))
         {
             ApplyStateVisuals();
+        }
+
+        if (IsRig)
+        {
+            // The pet sat down of its own accord: this is the moment it may show off instead.
+            if (events.HasFlag(PetMotionEvents.BeganRest))
+            {
+                MaybeStartSignature();
+            }
+
+            AdvanceRig(elapsed);
+            PlaceWindow(layout, ink, world.Bodies);
+            return;
         }
 
         if (events.HasFlag(PetMotionEvents.Resting))
@@ -139,7 +168,8 @@ public sealed partial class DesktopPetWindow
             SetFrame(0);
         }
 
-        RotorProp.Visibility = Collapsed(state == PetMotionState.Falling && !_settings.ReduceMotion);
+        // A drawn character floats down on its own ki, not on a rotor.
+        RotorProp.Visibility = Collapsed(state == PetMotionState.Falling && !_settings.ReduceMotion && !IsRig);
 
         // The bubble rests on the head of an upright pet. On a wall or the ceiling the head is
         // somewhere else, and a bubble left where it was would be words floating nowhere.
@@ -185,6 +215,7 @@ public sealed partial class DesktopPetWindow
             SetAnimation(PetAnimation.Walk);
             SetFrame(0);
             SetPose(1, angle: 0);
+            PaintStandingRig();
             GrowthMarkLift.Y = 0;
             RotorProp.Visibility = Visibility.Collapsed;
             SetFastCadence(false);
@@ -346,7 +377,7 @@ public sealed partial class DesktopPetWindow
     private PetMotionContext BuildWorld(PetLayout layout, PetInk ink, PetArea area) => new(
         area,
         CurrentBodies(layout, ink),
-        WalkSpeed * MoodSpeedFactor() * GrowthSpeedFactor(),
+        WalkSpeed * MoodSpeedFactor() * GrowthSpeedFactor() * RigSpeedFactor(),
         RestDurationSeconds(),
         IsListless(),
         AllowWalls: _settings.RoamScreen,

@@ -156,6 +156,11 @@ public enum CompanionSpecialCare
     Preening = 6,
     ScalePolish = 7,
     PuddleSplash = 8,
+    Sparring = 9,
+    NimbusRide = 10,
+    TeaBreak = 11,
+    GravityTraining = 12,
+    Meditation = 13,
 }
 
 public static class CompanionSpecialCareCatalog
@@ -169,6 +174,11 @@ public static class CompanionSpecialCareCatalog
         CompanionPetKind.Monkey => CompanionSpecialCare.Preening,
         CompanionPetKind.Dragon => CompanionSpecialCare.ScalePolish,
         CompanionPetKind.Duck => CompanionSpecialCare.PuddleSplash,
+        CompanionPetKind.Goku => CompanionSpecialCare.Sparring,
+        CompanionPetKind.KidGoku => CompanionSpecialCare.NimbusRide,
+        CompanionPetKind.Roshi => CompanionSpecialCare.TeaBreak,
+        CompanionPetKind.Vegeta => CompanionSpecialCare.GravityTraining,
+        CompanionPetKind.Piccolo => CompanionSpecialCare.Meditation,
         _ => CompanionSpecialCare.Brushing,
     };
 

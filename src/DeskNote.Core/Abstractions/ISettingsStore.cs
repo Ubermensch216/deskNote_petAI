@@ -87,6 +87,9 @@ public static class SettingKeys
     /// <summary>Whether the pet slides out of the way of the pointer.</summary>
     public const string CompanionDodgeCursor = "companion.dodgeCursor";
 
+    /// <summary>How often a pet that has signature moves breaks into one when it sits down to rest.</summary>
+    public const string CompanionSignatureFrequency = "companion.signatureFrequency";
+
     /// <summary>Local quiet-hours start in 24-hour HH:mm form.</summary>
     public const string CompanionQuietHoursStart = "companion.quietHours.start";
 

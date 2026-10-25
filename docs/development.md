@@ -164,6 +164,20 @@ Start-Process .\dist\DeskNote-win-x64\DeskNote.exe -ArgumentList "--data", $demo
 상태로 시작하는데, **걷는 펫은 창 위치를 읽고 포인터가 도착하는 사이에 자리를 옮겨** 클릭이 빗나가기
 때문이다.
 
+### 그려서 움직이는 캐릭터의 시트
+
+손오공·어린 오공·무천도사·베지터·피콜로는 바탕화면에서 매 프레임 그려지지만, 설정·대시보드·성장 안내는
+다른 펫처럼 `Assets/Companion/{키}-walk|rest|sleep.png` 를 한 칸 잘라 쓴다. 캐릭터를 고치면 시트를 다시
+만든다.
+
+```powershell
+dotnet run --project tools/PetSheets -- sheets src/DeskNote.App/Assets/Companion
+dotnet run --project tools/PetSheets -- contact $env:TEMP\pet-contact
+```
+
+`sheets` 는 세 시트를 쓰고 `PetArtBounds` 에 붙일 다섯 줄을 출력한다. `contact` 는 모든 상태와 15가지
+시그니처를 시간 순으로 늘어놓은 점검용 그림을 만든다 — 자세를 고친 뒤에는 이 그림을 눈으로 본다.
+
 창은 `tools/capture-window.ps1` 로 찍고(창 단위 `PrintWindow` + DWM 프레임 기준 자르기),
 `tools/point-window.ps1` 로 포인터를 넣거나 누른다. 포인터는 대상 창의 rect 안으로만 이동하며 끝나면
 원래 자리로 돌아간다. 메모의 조작 요소는 `SetCursorPos` 로 커서를 순간이동시키면 나타나지 않는다 —

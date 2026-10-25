@@ -10,6 +10,13 @@ public enum CompanionPetKind
     Dragon = 6,
     Monkey = 7,
     Duck = 8,
+
+    // The five characters drawn by the rig instead of a sprite sheet; see RigCharacters.
+    Goku = 9,
+    KidGoku = 10,
+    Roshi = 11,
+    Vegeta = 12,
+    Piccolo = 13,
 }
 
 public enum CompanionPetSize
@@ -55,6 +62,11 @@ public static class CompanionPetCatalog
         CompanionPetKind.Dragon,
         CompanionPetKind.Monkey,
         CompanionPetKind.Duck,
+        CompanionPetKind.Goku,
+        CompanionPetKind.KidGoku,
+        CompanionPetKind.Roshi,
+        CompanionPetKind.Vegeta,
+        CompanionPetKind.Piccolo,
     ];
 
     /// <remarks>
@@ -87,6 +99,11 @@ public static class CompanionPetCatalog
         "dragon" => CompanionPetKind.Dragon,
         "monkey" => CompanionPetKind.Monkey,
         "duck" => CompanionPetKind.Duck,
+        "goku" => CompanionPetKind.Goku,
+        "kidgoku" => CompanionPetKind.KidGoku,
+        "roshi" => CompanionPetKind.Roshi,
+        "vegeta" => CompanionPetKind.Vegeta,
+        "piccolo" => CompanionPetKind.Piccolo,
         _ => CompanionPetKind.Rabbit,
     };
 }
@@ -142,6 +159,11 @@ public static class CompanionGrowthAppearanceCatalog
             CompanionPetKind.Monkey => 0.52,
             CompanionPetKind.Dragon => 0.49,
             CompanionPetKind.Duck => 0.51,
+            CompanionPetKind.Goku => 0.51,
+            CompanionPetKind.KidGoku => 0.52,
+            CompanionPetKind.Roshi => 0.52,
+            CompanionPetKind.Vegeta => 0.51,
+            CompanionPetKind.Piccolo => 0.50,
             _ => 0.51,
         };
 

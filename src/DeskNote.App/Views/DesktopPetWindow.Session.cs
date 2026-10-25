@@ -175,6 +175,11 @@ public sealed partial class DesktopPetWindow
 
         var menu = new MenuFlyout();
         menu.Items.Add(preview);
+        if (SignatureMenu() is { } signatures)
+        {
+            menu.Items.Add(signatures);
+        }
+
         menu.Items.Add(new MenuFlyoutSeparator());
         menu.Items.Add(recall);
         menu.Opened += (_, _) => _menuOpen = true;

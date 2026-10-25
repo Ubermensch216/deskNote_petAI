@@ -1,0 +1,116 @@
+# 시그니처 기술의 이름·설명·시간대별 외침.
+# 형식:  <캐릭터>.<번호>|name|이름   /   |desc|설명   /   |shout|<시작 초>|외침
+# 외침은 말풍선 둘째 줄이라 한 줄(한글 13자 안팎)에 들어와야 한다. 비운 외침은 그 시각부터 말을 멈춘다.
+
+# 손오공
+goku.0|name|가메하메파
+goku.0|desc|두 손에 푸른 기를 모아 한 번에 쏘아 보내는 대표 기술
+goku.0|shout|0|카~
+goku.0|shout|1.0|카~메~
+goku.0|shout|1.9|카~메~하~메~
+goku.0|shout|2.7|카~메~하~메~…
+goku.0|shout|3.2|파~~~!!
+goku.0|shout|5.8|후~
+goku.0|shout|6.8|헤헤
+goku.1|name|순간이동
+goku.1|desc|이마에 두 손가락을 대고 슉! 사라졌다가 다른 곳에 나타남
+goku.1|shout|0|집중…
+goku.1|shout|1.4|슉!
+goku.1|shout|2.0|
+goku.1|shout|3.4|짠!
+goku.1|shout|4.2|다녀왔어!
+goku.2|name|초사이어인 변신
+goku.2|desc|고함과 함께 머리카락이 금빛으로 변하며 번개와 오라가 폭발
+goku.2|shout|0|으으으…
+goku.2|shout|1.0|우오오오오!!
+goku.2|shout|3.1|하앗!!
+goku.2|shout|3.7|초사이어인이다!
+goku.2|shout|7.0|휴~
+
+# 어린 오공
+kid.0|name|근두운 타기
+kid.0|desc|근두운을 불러 올라타고 둥실둥실 하늘을 가로지름
+kid.0|shout|0|이얍!
+kid.0|shout|1.1|근두운~!
+kid.0|shout|2.4|야호~!
+kid.0|shout|5.5|신난다~!
+kid.0|shout|6.8|안녕~!
+kid.1|name|여의봉 휘두르기
+kid.1|desc|여의봉을 빙글 돌리다가 하늘 높이 쭉 늘려 내리침
+kid.1|shout|0|여의봉!
+kid.1|shout|1.0|얍! 얍!
+kid.1|shout|3.0|늘어나라~!
+kid.1|shout|4.6|에잇!!
+kid.1|shout|6.0|원위치~
+kid.2|name|보름달 대원숭이
+kid.2|desc|보름달을 보고 거대한 원숭이로 변신해 가슴을 쿵쿵
+kid.2|shout|0|어? 보름달이다…
+kid.2|shout|1.2|우… 우오오…!
+kid.2|shout|3.2|우오오오오!!
+kid.2|shout|7.4|어라? 돌아왔네…
+
+# 무천도사
+roshi.0|name|원조 가메하메파
+roshi.0|desc|가메하메파의 원조! 큰 광선을 쏘고 허리를 부여잡음
+roshi.0|shout|0|카~
+roshi.0|shout|1.2|카~메~
+roshi.0|shout|2.2|카~메~하~메~…
+roshi.0|shout|3.4|파~~~!!!
+roshi.0|shout|6.2|허리야…
+roshi.1|name|MAX 파워
+roshi.1|desc|숨을 들이마셔 온몸의 근육을 부풀리는 전성기 모습
+roshi.1|shout|0|허리야…
+roshi.1|shout|1.0|으으으…
+roshi.1|shout|3.0|MAX 파워!!
+roshi.1|shout|5.4|…
+roshi.1|shout|6.2|콜록콜록
+roshi.2|name|봉마파 (전기밥솥)
+roshi.2|desc|전기밥솥을 꺼내 사악한 기운을 빨아들여 봉인
+roshi.2|shout|0|봉마파~
+roshi.2|shout|2.2|봉마파!!
+roshi.2|shout|5.2|탁!
+roshi.2|shout|5.8|휴…
+roshi.2|shout|7.0|헉헉…
+
+# 베지터
+vegeta.0|name|빅뱅 어택
+vegeta.0|desc|손바닥에 기를 모아 거대한 기탄을 날려 폭발시킴
+vegeta.0|shout|0|흥…
+vegeta.0|shout|0.8|빅~뱅~
+vegeta.0|shout|2.8|어택!!
+vegeta.0|shout|4.5|흥, 별거 아니군.
+vegeta.1|name|파이널 플래시
+vegeta.1|desc|두 손을 앞으로 뻗어 눈부신 황금빛 광선을 발사
+vegeta.1|shout|0|파이널~
+vegeta.1|shout|2.2|파이널~ 플래시!!
+vegeta.1|shout|3.4|하아아아!!!
+vegeta.1|shout|6.2|하아… 하아…
+vegeta.2|name|왕자의 오라
+vegeta.2|desc|팔짱을 낀 채 떠올라 푸른 오라를 터뜨리는 사이어인 왕자
+vegeta.2|shout|0|흐흥…
+vegeta.2|shout|1.6|이 몸은…
+vegeta.2|shout|3.0|사이어인의 왕자,
+vegeta.2|shout|4.2|베지터님이시다!
+vegeta.2|shout|5.4|덤벼라!
+
+# 피콜로
+piccolo.0|name|마관광살포
+piccolo.0|desc|이마에 두 손가락을 대고 기를 모아 꼬인 광선을 발사
+piccolo.0|shout|0|마~
+piccolo.0|shout|1.2|마~관~
+piccolo.0|shout|2.4|마~관~광~
+piccolo.0|shout|3.6|살~포!!
+piccolo.0|shout|6.2|흥…
+piccolo.1|name|팔 늘리기
+piccolo.1|desc|팔을 고무줄처럼 쭉쭉 늘려 멀리 있는 적을 때림
+piccolo.1|shout|0|…
+piccolo.1|shout|0.9|늘어나라!
+piccolo.1|shout|1.8|하앗!!
+piccolo.1|shout|3.5|이것도 받아라!
+piccolo.1|shout|5.2|흥…
+piccolo.2|name|명상 공중부양
+piccolo.2|desc|책상다리로 둥실 떠올라 명상하다 눈을 번쩍 뜸
+piccolo.2|shout|0|…
+piccolo.2|shout|1.4|(명상 중)
+piccolo.2|shout|6.5|!!
+piccolo.2|shout|7.2|흠.

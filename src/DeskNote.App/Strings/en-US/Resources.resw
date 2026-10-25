@@ -477,4 +477,25 @@ Try adding a date or a weekday.</value></data>
   <data name="Companion_MemoryStage4" xml:space="preserve"><value>As we matured, we learned to dream together.</value></data>
   <data name="Companion_MemoryStage5" xml:space="preserve"><value>Fully grown! Let's celebrate our time together.</value></data>
   <data name="Companion_MemoryWelcomeBack" xml:space="preserve"><value>Your growth so far is honoured with learned reactions and this album.</value></data>
+  <data name="Settings_PetGoku" xml:space="preserve"><value>Goku</value></data>
+  <data name="Settings_PetKidGoku" xml:space="preserve"><value>Kid Goku</value></data>
+  <data name="Settings_PetRoshi" xml:space="preserve"><value>Master Roshi</value></data>
+  <data name="Settings_PetVegeta" xml:space="preserve"><value>Vegeta</value></data>
+  <data name="Settings_PetPiccolo" xml:space="preserve"><value>Piccolo</value></data>
+  <data name="Companion_SpecialCareSparring" xml:space="preserve"><value>Sparring</value></data>
+  <data name="Companion_SpecialCareNimbusRide" xml:space="preserve"><value>Nimbus ride</value></data>
+  <data name="Companion_SpecialCareTeaBreak" xml:space="preserve"><value>Tea break</value></data>
+  <data name="Companion_SpecialCareGravityTraining" xml:space="preserve"><value>Gravity training</value></data>
+  <data name="Companion_SpecialCareMeditation" xml:space="preserve"><value>Meditation</value></data>
+  <data name="Companion_UnlockedSpecialGoku" xml:space="preserve"><value>Wanna spar? Hehe!</value></data>
+  <data name="Companion_UnlockedSpecialKidGoku" xml:space="preserve"><value>Hop on, the Nimbus goes anywhere!</value></data>
+  <data name="Companion_UnlockedSpecialRoshi" xml:space="preserve"><value>Hoho, my back feels younger already.</value></data>
+  <data name="Companion_UnlockedSpecialVegeta" xml:space="preserve"><value>Hmph. I will admit you tried.</value></data>
+  <data name="Companion_UnlockedSpecialPiccolo" xml:space="preserve"><value>...Thank you. I will say it once.</value></data>
+  <data name="Companion_MenuSignature" xml:space="preserve"><value>★ Signature moves</value></data>
+  <data name="Companion_SignatureComeDown" xml:space="preserve"><value>I'll come down and show you!</value></data>
+  <data name="Companion_PowerBurst" xml:space="preserve"><value>Ki is bursting out!</value></data>
+  <data name="Settings_SignatureMoves" xml:space="preserve"><value>★ Signature moves</value></data>
+  <data name="Settings_SignatureMovesDescription" xml:space="preserve"><value>While resting, a pet now and then shows a move of its own - Goku a Kamehameha, Vegeta a Final Flash. Only for the drawn characters.</value></data>
+  <data name="Companion_Dizzy" xml:space="preserve"><value>Round and round... so dizzy!</value></data>
 </root>

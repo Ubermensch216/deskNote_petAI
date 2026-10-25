@@ -187,6 +187,55 @@ public sealed class CompanionSettingsTests
         Assert.Equal(CompanionPetKind.Rabbit, actual.SelectedPet);
     }
 
+    [Theory]
+    [InlineData(SignatureFrequency.Off)]
+    [InlineData(SignatureFrequency.Rare)]
+    [InlineData(SignatureFrequency.Normal)]
+    [InlineData(SignatureFrequency.Often)]
+    public async Task Signature_frequency_is_saved_and_read_back(SignatureFrequency frequency)
+    {
+        var store = new MemorySettingsStore();
+
+        await new CompanionSettings { SignatureFrequency = frequency }
+            .SaveAsync(store, TestContext.Current.CancellationToken);
+        var actual = await CompanionSettings.LoadAsync(store, TestContext.Current.CancellationToken);
+
+        Assert.Equal(frequency, actual.SignatureFrequency);
+    }
+
+    [Theory]
+    [InlineData("loud")]
+    [InlineData("42")]
+    [InlineData("")]
+    public async Task A_garbled_signature_frequency_means_the_default(string stored)
+    {
+        var store = new MemorySettingsStore(new Dictionary<string, string>
+        {
+            [SettingKeys.CompanionSignatureFrequency] = stored,
+        });
+
+        var actual = await CompanionSettings.LoadAsync(store, TestContext.Current.CancellationToken);
+
+        Assert.Equal(SignatureFrequency.Normal, actual.SignatureFrequency);
+    }
+
+    [Theory]
+    [InlineData(CompanionPetKind.Goku)]
+    [InlineData(CompanionPetKind.KidGoku)]
+    [InlineData(CompanionPetKind.Roshi)]
+    [InlineData(CompanionPetKind.Vegeta)]
+    [InlineData(CompanionPetKind.Piccolo)]
+    public async Task A_drawn_character_can_be_the_selected_pet(CompanionPetKind pet)
+    {
+        var store = new MemorySettingsStore();
+
+        await new CompanionSettings { SelectedPet = pet }
+            .SaveAsync(store, TestContext.Current.CancellationToken);
+        var actual = await CompanionSettings.LoadAsync(store, TestContext.Current.CancellationToken);
+
+        Assert.Equal(pet, actual.SelectedPet);
+    }
+
     private sealed class MemorySettingsStore : ISettingsStore
     {
         private readonly Dictionary<string, string> _values;

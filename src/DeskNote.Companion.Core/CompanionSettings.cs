@@ -55,6 +55,11 @@ public sealed record CompanionSettings
         : WatchCursor ? PetCursorMode.Watch
         : PetCursorMode.None;
 
+    /// <summary>
+    /// How often a pet with signature moves breaks into one at rest. Pets without any ignore it.
+    /// </summary>
+    public SignatureFrequency SignatureFrequency { get; init; } = SignatureFrequency.Normal;
+
     public CompanionPetKind SelectedPet { get; init; } = CompanionPetKind.Rabbit;
 
     public string PetName { get; init; } = DefaultPetName;
@@ -99,6 +104,7 @@ public sealed record CompanionSettings
             WatchCursor = Boolean(values, SettingKeys.CompanionWatchCursor, fallback: true),
             FollowCursor = Boolean(values, SettingKeys.CompanionFollowCursor, fallback: false),
             DodgeCursor = Boolean(values, SettingKeys.CompanionDodgeCursor, fallback: false),
+            SignatureFrequency = Frequency(values, SettingKeys.CompanionSignatureFrequency),
             SelectedPet = selectedPet,
             PetName = NormalizePetName(values.GetValueOrDefault(SettingKeys.CompanionPetName)),
             PetSize = ParsePetSize(values, SettingKeys.CompanionPetSize),
@@ -149,6 +155,11 @@ public sealed record CompanionSettings
                 cancellationToken)
             .ConfigureAwait(false);
         await store.SetAsync(SettingKeys.CompanionPetSize, PetSize.ToString(), cancellationToken)
+            .ConfigureAwait(false);
+        await store.SetAsync(
+                SettingKeys.CompanionSignatureFrequency,
+                SignatureFrequency.ToString(),
+                cancellationToken)
             .ConfigureAwait(false);
         await store.SetAsync(
                 SettingKeys.CompanionQuietHoursStart,
@@ -231,6 +242,15 @@ public sealed record CompanionSettings
         && Enum.IsDefined(parsed)
             ? parsed
             : CompanionPetKind.Rabbit;
+
+    private static SignatureFrequency Frequency(
+        IReadOnlyDictionary<string, string> values,
+        string key) =>
+        values.TryGetValue(key, out var value)
+        && Enum.TryParse<SignatureFrequency>(value, ignoreCase: true, out var parsed)
+        && Enum.IsDefined(parsed)
+            ? parsed
+            : SignatureFrequency.Normal;
 
     private static CompanionPetSize ParsePetSize(
         IReadOnlyDictionary<string, string> values,

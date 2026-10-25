@@ -477,4 +477,25 @@
   <data name="Companion_MemoryStage4" xml:space="preserve"><value>성숙해진 우리는 함께 꿈꾸는 법을 배웠어요.</value></data>
   <data name="Companion_MemoryStage5" xml:space="preserve"><value>완전체가 된 날! 함께 보낸 시간을 축하해요.</value></data>
   <data name="Companion_MemoryWelcomeBack" xml:space="preserve"><value>지금까지의 성장을 기념해 반응을 앨범과 함께 간직해요.</value></data>
+  <data name="Settings_PetGoku" xml:space="preserve"><value>손오공</value></data>
+  <data name="Settings_PetKidGoku" xml:space="preserve"><value>어린 오공</value></data>
+  <data name="Settings_PetRoshi" xml:space="preserve"><value>무천도사</value></data>
+  <data name="Settings_PetVegeta" xml:space="preserve"><value>베지터</value></data>
+  <data name="Settings_PetPiccolo" xml:space="preserve"><value>피콜로</value></data>
+  <data name="Companion_SpecialCareSparring" xml:space="preserve"><value>대련하기</value></data>
+  <data name="Companion_SpecialCareNimbusRide" xml:space="preserve"><value>근두운 태워주기</value></data>
+  <data name="Companion_SpecialCareTeaBreak" xml:space="preserve"><value>차 한 잔 드리기</value></data>
+  <data name="Companion_SpecialCareGravityTraining" xml:space="preserve"><value>중력 수련 함께하기</value></data>
+  <data name="Companion_SpecialCareMeditation" xml:space="preserve"><value>명상 함께하기</value></data>
+  <data name="Companion_UnlockedSpecialGoku" xml:space="preserve"><value>같이 한 판 붙어볼래? 헤헤!</value></data>
+  <data name="Companion_UnlockedSpecialKidGoku" xml:space="preserve"><value>근두운 타고 어디든 가자!</value></data>
+  <data name="Companion_UnlockedSpecialRoshi" xml:space="preserve"><value>허허, 자네 덕에 허리가 펴지는군.</value></data>
+  <data name="Companion_UnlockedSpecialVegeta" xml:space="preserve"><value>흥, 네 정성은 인정해주지.</value></data>
+  <data name="Companion_UnlockedSpecialPiccolo" xml:space="preserve"><value>…고맙다. 한 번만 말하겠다.</value></data>
+  <data name="Companion_MenuSignature" xml:space="preserve"><value>★ 시그니처 기술</value></data>
+  <data name="Companion_SignatureComeDown" xml:space="preserve"><value>내려가서 보여줄게!</value></data>
+  <data name="Companion_PowerBurst" xml:space="preserve"><value>기가 폭발한다!</value></data>
+  <data name="Settings_SignatureMoves" xml:space="preserve"><value>★ 시그니처 기술</value></data>
+  <data name="Settings_SignatureMovesDescription" xml:space="preserve"><value>쉬는 동안 가끔 손오공은 가메하메파를, 베지터는 파이널 플래시를 쓰는 식으로 캐릭터마다 다른 기술을 보여줍니다. 그림으로 그린 캐릭터에만 해당합니다.</value></data>
+  <data name="Companion_Dizzy" xml:space="preserve"><value>빙글빙글… 어질어질!</value></data>
 </root>

@@ -11,6 +11,7 @@
   -->
   <ItemGroup>
     <EmbeddedResource Include="Chatter\**\*.txt" />
+    <EmbeddedResource Include="Rig\Signatures\*.txt" />
   </ItemGroup>
 
 </Project>
