@@ -34,6 +34,8 @@ public sealed partial class DesktopPetWindow
     private const double DisplayRefreshSeconds = 1;
     private const double ThrownTiltDegrees = 32;
     private const double LandingSquash = 0.07;
+    private const double DashFrameSeconds = 0.08;
+    private const double DashLeanDegrees = 7;
 
     private readonly List<DisplayRegion> _displays = [];
     private TimeSpan _displaysRefreshedAt = TimeSpan.MinValue;
@@ -139,6 +141,12 @@ public sealed partial class DesktopPetWindow
             case PetMotionState.Landing:
                 // A pulse rather than a squash: the proportions are never touched.
                 _poseScale = 1 - (LandingSquash * Math.Sin(Math.PI * _motion.LandingProgress));
+                break;
+
+            case PetMotionState.Dashing:
+                // A slide is the walk run fast with the body leant into it.
+                AdvanceFrame(elapsed, DashFrameSeconds);
+                _poseAngle = _motion.Direction * DashLeanDegrees;
                 break;
         }
     }
@@ -391,7 +399,23 @@ public sealed partial class DesktopPetWindow
         RestDurationSeconds(),
         IsListless(),
         AllowWalls: _settings.RoamScreen,
-        AllowCeiling: _settings.RoamScreen);
+        AllowCeiling: _settings.RoamScreen,
+        CursorMode: _settings.CursorMode,
+        Cursor: PointerForPet());
+
+    /// <summary>
+    /// Where the pointer is, for a pet that has been asked to notice it - and nothing for one that has not.
+    /// </summary>
+    /// <remarks>
+    /// Left unread when the setting is off, so a pet that ignores the pointer does not ask the system
+    /// where it is thirty times a second. The button is read from the keyboard state rather than from
+    /// the window's events because the pet is usually somewhere the window never hears the pointer:
+    /// it only wants to know whether a drag or a click is under way, so as not to slide away from it.
+    /// </remarks>
+    private PetCursor? PointerForPet() =>
+        _settings.CursorMode != PetCursorMode.None && GetCursorPos(out var cursor)
+            ? new PetCursor(cursor.X, cursor.Y, (GetAsyncKeyState(VkLButton) & 0x8000) != 0)
+            : null;
 
     private PetMotionContext CurrentWorld() =>
         BuildWorld(CurrentLayout(), CurrentInk(), AreaAt(_motion.CenterX, _motion.CenterY));

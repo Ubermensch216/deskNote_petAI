@@ -8,6 +8,7 @@ namespace DeskNote.App.Views;
 public sealed partial class DesktopPetWindow
 {
     private const int GwlExStyle = -20;
+    private const int VkLButton = 0x01;
     private const long WsExLayered = 0x0008_0000;
     private const long WsExToolWindow = 0x0000_0080;
     private const uint DwmBbEnable = 0x0000_0001;
@@ -137,6 +138,9 @@ public sealed partial class DesktopPetWindow
 
     [DllImport("user32.dll")]
     private static extern uint GetDoubleClickTime();
+
+    [DllImport("user32.dll")]
+    private static extern short GetAsyncKeyState(int key);
 
     [DllImport("gdi32.dll")]
     private static extern nint CreateRectRgn(int left, int top, int right, int bottom);
