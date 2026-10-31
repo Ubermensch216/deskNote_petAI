@@ -99,6 +99,10 @@ public sealed class CompanionSettingsTests
             ProactiveEnabled = false,
             AlwaysVisible = true,
             ReduceMotion = true,
+            RoamScreen = false,
+            ClimbWindows = true,
+            WatchCursor = false,
+            FollowCursor = true,
             SelectedPet = CompanionPetKind.Otter,
             PetName = "  Dori  ",
             PetSize = CompanionPetSize.Small,
@@ -111,6 +115,52 @@ public sealed class CompanionSettingsTests
         var actual = await CompanionSettings.LoadAsync(store, TestContext.Current.CancellationToken);
 
         Assert.Equal(expected with { PetName = "Dori" }, actual);
+    }
+
+    [Fact]
+    public async Task Climbing_the_screen_is_on_unless_it_was_turned_off()
+    {
+        var empty = await CompanionSettings.LoadAsync(new MemorySettingsStore(), TestContext.Current.CancellationToken);
+        var garbled = await CompanionSettings.LoadAsync(
+            new MemorySettingsStore(new Dictionary<string, string> { [SettingKeys.CompanionRoamScreen] = "maybe" }),
+            TestContext.Current.CancellationToken);
+        var off = await CompanionSettings.LoadAsync(
+            new MemorySettingsStore(new Dictionary<string, string> { [SettingKeys.CompanionRoamScreen] = "false" }),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(empty.RoamScreen);
+        Assert.True(garbled.RoamScreen);
+        Assert.False(off.RoamScreen);
+    }
+
+    [Fact]
+    public async Task The_livelier_behaviours_start_off_and_watching_the_pointer_starts_on()
+    {
+        var actual = await CompanionSettings.LoadAsync(new MemorySettingsStore(), TestContext.Current.CancellationToken);
+
+        Assert.False(actual.ClimbWindows);
+        Assert.False(actual.FollowCursor);
+        Assert.False(actual.DodgeCursor);
+        Assert.True(actual.WatchCursor);
+        Assert.Equal(PetCursorMode.Watch, actual.CursorMode);
+    }
+
+    [Theory]
+    [InlineData(false, false, false, PetCursorMode.None)]
+    [InlineData(true, false, false, PetCursorMode.Watch)]
+    [InlineData(true, true, false, PetCursorMode.Follow)]
+    [InlineData(false, true, false, PetCursorMode.Follow)]
+    [InlineData(true, false, true, PetCursorMode.Dodge)]
+    [InlineData(true, true, true, PetCursorMode.Dodge)]
+    public void One_reaction_comes_out_of_the_three_switches_and_dodging_wins(
+        bool watch,
+        bool follow,
+        bool dodge,
+        PetCursorMode expected)
+    {
+        var settings = new CompanionSettings { WatchCursor = watch, FollowCursor = follow, DodgeCursor = dodge };
+
+        Assert.Equal(expected, settings.CursorMode);
     }
 
     [Theory]
@@ -135,6 +185,55 @@ public sealed class CompanionSettingsTests
         var actual = await CompanionSettings.LoadAsync(store, TestContext.Current.CancellationToken);
 
         Assert.Equal(CompanionPetKind.Rabbit, actual.SelectedPet);
+    }
+
+    [Theory]
+    [InlineData(SignatureFrequency.Off)]
+    [InlineData(SignatureFrequency.Rare)]
+    [InlineData(SignatureFrequency.Normal)]
+    [InlineData(SignatureFrequency.Often)]
+    public async Task Signature_frequency_is_saved_and_read_back(SignatureFrequency frequency)
+    {
+        var store = new MemorySettingsStore();
+
+        await new CompanionSettings { SignatureFrequency = frequency }
+            .SaveAsync(store, TestContext.Current.CancellationToken);
+        var actual = await CompanionSettings.LoadAsync(store, TestContext.Current.CancellationToken);
+
+        Assert.Equal(frequency, actual.SignatureFrequency);
+    }
+
+    [Theory]
+    [InlineData("loud")]
+    [InlineData("42")]
+    [InlineData("")]
+    public async Task A_garbled_signature_frequency_means_the_default(string stored)
+    {
+        var store = new MemorySettingsStore(new Dictionary<string, string>
+        {
+            [SettingKeys.CompanionSignatureFrequency] = stored,
+        });
+
+        var actual = await CompanionSettings.LoadAsync(store, TestContext.Current.CancellationToken);
+
+        Assert.Equal(SignatureFrequency.Normal, actual.SignatureFrequency);
+    }
+
+    [Theory]
+    [InlineData(CompanionPetKind.Goku)]
+    [InlineData(CompanionPetKind.KidGoku)]
+    [InlineData(CompanionPetKind.Roshi)]
+    [InlineData(CompanionPetKind.Vegeta)]
+    [InlineData(CompanionPetKind.Piccolo)]
+    public async Task A_drawn_character_can_be_the_selected_pet(CompanionPetKind pet)
+    {
+        var store = new MemorySettingsStore();
+
+        await new CompanionSettings { SelectedPet = pet }
+            .SaveAsync(store, TestContext.Current.CancellationToken);
+        var actual = await CompanionSettings.LoadAsync(store, TestContext.Current.CancellationToken);
+
+        Assert.Equal(pet, actual.SelectedPet);
     }
 
     private sealed class MemorySettingsStore : ISettingsStore

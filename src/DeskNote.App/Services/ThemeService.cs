@@ -127,6 +127,16 @@ public static class ThemeService
 
     private static bool DetectSystemDarkTheme()
     {
+        // The screen photographs in docs/images are all light, whatever the machine they are taken
+        // on is set to, and changing the Windows theme to take them is not something a tool should do.
+        switch (Environment.GetEnvironmentVariable("DESKNOTE_THEME")?.Trim().ToLowerInvariant())
+        {
+            case "light":
+                return false;
+            case "dark":
+                return true;
+        }
+
         try
         {
             if (_uiSettings is not null)

@@ -213,6 +213,15 @@ Try adding a date or a weekday.</value></data>
   <data name="Palette_Placeholder" xml:space="preserve"><value>search, ask, remind, or jot down</value></data>
   <data name="Palette_Hint" xml:space="preserve"><value>Just type to find a note. Enter opens the first result.</value></data>
   <data name="Tray_Settings" xml:space="preserve"><value>Settings</value></data>
+  <data name="Tray_RecallPet" xml:space="preserve"><value>Bring the pet back</value></data>
+  <data name="Companion_MenuPreview" xml:space="preserve"><value>Preview actions</value></data>
+  <data name="Companion_MenuPoseSit" xml:space="preserve"><value>Sit and rest</value></data>
+  <data name="Companion_MenuPoseSleep" xml:space="preserve"><value>Sleep</value></data>
+  <data name="Companion_MenuPoseDaydream" xml:space="preserve"><value>Daydream</value></data>
+  <data name="Companion_MenuPoseStretch" xml:space="preserve"><value>Stretch</value></data>
+  <data name="Companion_MenuDemoWall" xml:space="preserve"><value>Climb a wall</value></data>
+  <data name="Companion_MenuDemoCeiling" xml:space="preserve"><value>Crawl on the ceiling</value></data>
+  <data name="Companion_MenuDemoFall" xml:space="preserve"><value>Float down</value></data>
   <data name="Settings_Title" xml:space="preserve"><value>DeskNote settings</value></data>
   <data name="Settings_LocalOnly" xml:space="preserve"><value>Companion state and activity history stay on this PC.</value></data>
   <data name="Settings_CompanionHeader" xml:space="preserve"><value>Desktop companion</value></data>
@@ -228,6 +237,7 @@ Try adding a date or a weekday.</value></data>
   <data name="Settings_PetOtter" xml:space="preserve"><value>Otter</value></data>
   <data name="Settings_PetDragon" xml:space="preserve"><value>Dragon</value></data>
   <data name="Settings_PetMonkey" xml:space="preserve"><value>Monkey</value></data>
+  <data name="Settings_PetDuck" xml:space="preserve"><value>Duck</value></data>
   <data name="Settings_PetLockedFormat" xml:space="preserve"><value>{0} · Locked</value></data>
   <data name="Settings_PetSize" xml:space="preserve"><value>Pet size</value></data>
   <data name="Settings_PetSizeSmall" xml:space="preserve"><value>Small</value></data>
@@ -251,6 +261,16 @@ Try adding a date or a weekday.</value></data>
   <data name="Settings_ProactiveDescription" xml:space="preserve"><value>The pet speaks up when work has stalled or something is still waiting.</value></data>
   <data name="Settings_AlwaysVisibleDescription" xml:space="preserve"><value>Keeps the pet's detail window above your other windows.</value></data>
   <data name="Settings_ReduceMotionDescription" xml:space="preserve"><value>The pet walks around the desktop. Off, it stays where you put it.</value></data>
+  <data name="Settings_RoamScreen" xml:space="preserve"><value>Climb the screen edges</value></data>
+  <data name="Settings_RoamScreenDescription" xml:space="preserve"><value>The pet climbs the walls and crawls along the ceiling. Off, it stays on the floor.</value></data>
+  <data name="Settings_ClimbWindows" xml:space="preserve"><value>Climb open windows</value></data>
+  <data name="Settings_ClimbWindowsDescription" xml:space="preserve"><value>The pet climbs up the side of other programs' windows and walks along their tops. It follows a window when you move it and comes down when it closes.</value></data>
+  <data name="Settings_WatchCursor" xml:space="preserve"><value>Watch the cursor</value></data>
+  <data name="Settings_WatchCursorDescription" xml:space="preserve"><value>While it sits, the pet turns to look at the mouse cursor.</value></data>
+  <data name="Settings_FollowCursor" xml:space="preserve"><value>Follow the cursor</value></data>
+  <data name="Settings_FollowCursorDescription" xml:space="preserve"><value>The pet walks over to a cursor on its level and sits beside it. Cannot be combined with running away.</value></data>
+  <data name="Settings_DodgeCursor" xml:space="preserve"><value>Run from the cursor</value></data>
+  <data name="Settings_DodgeCursorDescription" xml:space="preserve"><value>The pet slides out of the way when the cursor touches it. It does not run while you are clicking.</value></data>
   <data name="Settings_QuietWindowFormat" xml:space="preserve"><value>Quiet from {0} to {1} · {2}</value></data>
   <data name="Settings_QuietNone" xml:space="preserve"><value>Start and end match, so there are no quiet hours.</value></data>
   <data name="Settings_QuietInactiveHint" xml:space="preserve"><value>Applies only while timely suggestions are on.</value></data>
@@ -313,6 +333,7 @@ Try adding a date or a weekday.</value></data>
   <data name="Companion_SpecialCareWaterPlay" xml:space="preserve"><value>Water play</value></data>
   <data name="Companion_SpecialCarePreening" xml:space="preserve"><value>Preening</value></data>
   <data name="Companion_SpecialCareScalePolish" xml:space="preserve"><value>Scale polish</value></data>
+  <data name="Companion_SpecialCarePuddleSplash" xml:space="preserve"><value>Puddle splash</value></data>
   <data name="Companion_CareThanks" xml:space="preserve"><value>Thank you!</value></data>
   <data name="Companion_CareDone" xml:space="preserve"><value>That is already done for today.</value></data>
   <data name="Companion_CareNotNeeded" xml:space="preserve"><value>Not needed right now — try again a little later.</value></data>
@@ -441,6 +462,7 @@ Try adding a date or a weekday.</value></data>
   <data name="Companion_UnlockedSpecialFennecFox" xml:space="preserve"><value>Our memories are softer than sand!</value></data>
   <data name="Companion_UnlockedSpecialOtter" xml:space="preserve"><value>I'll treasure this like my best shell!</value></data>
   <data name="Companion_UnlockedSpecialMonkey" xml:space="preserve"><value>Want to hear what I'm proud of today?</value></data>
+  <data name="Companion_UnlockedSpecialDuck" xml:space="preserve"><value>Any puddle is an ocean with you!</value></data>
   <data name="Companion_UnlockedSpecialDragon" xml:space="preserve"><value>Our time together is my treasure.</value></data>
   <data name="Companion_MemoryMission" xml:space="preserve"><value>We finished today's little promise together.</value></data>
   <data name="Companion_MemoryRecall" xml:space="preserve"><value>We revisited a note together.</value></data>
@@ -455,4 +477,25 @@ Try adding a date or a weekday.</value></data>
   <data name="Companion_MemoryStage4" xml:space="preserve"><value>As we matured, we learned to dream together.</value></data>
   <data name="Companion_MemoryStage5" xml:space="preserve"><value>Fully grown! Let's celebrate our time together.</value></data>
   <data name="Companion_MemoryWelcomeBack" xml:space="preserve"><value>Your growth so far is honoured with learned reactions and this album.</value></data>
+  <data name="Settings_PetGoku" xml:space="preserve"><value>Goku</value></data>
+  <data name="Settings_PetKidGoku" xml:space="preserve"><value>Kid Goku</value></data>
+  <data name="Settings_PetRoshi" xml:space="preserve"><value>Master Roshi</value></data>
+  <data name="Settings_PetVegeta" xml:space="preserve"><value>Vegeta</value></data>
+  <data name="Settings_PetPiccolo" xml:space="preserve"><value>Piccolo</value></data>
+  <data name="Companion_SpecialCareSparring" xml:space="preserve"><value>Sparring</value></data>
+  <data name="Companion_SpecialCareNimbusRide" xml:space="preserve"><value>Nimbus ride</value></data>
+  <data name="Companion_SpecialCareTeaBreak" xml:space="preserve"><value>Tea break</value></data>
+  <data name="Companion_SpecialCareGravityTraining" xml:space="preserve"><value>Gravity training</value></data>
+  <data name="Companion_SpecialCareMeditation" xml:space="preserve"><value>Meditation</value></data>
+  <data name="Companion_UnlockedSpecialGoku" xml:space="preserve"><value>Wanna spar? Hehe!</value></data>
+  <data name="Companion_UnlockedSpecialKidGoku" xml:space="preserve"><value>Hop on, the Nimbus goes anywhere!</value></data>
+  <data name="Companion_UnlockedSpecialRoshi" xml:space="preserve"><value>Hoho, my back feels younger already.</value></data>
+  <data name="Companion_UnlockedSpecialVegeta" xml:space="preserve"><value>Hmph. I will admit you tried.</value></data>
+  <data name="Companion_UnlockedSpecialPiccolo" xml:space="preserve"><value>...Thank you. I will say it once.</value></data>
+  <data name="Companion_MenuSignature" xml:space="preserve"><value>★ Signature moves</value></data>
+  <data name="Companion_SignatureComeDown" xml:space="preserve"><value>I'll come down and show you!</value></data>
+  <data name="Companion_PowerBurst" xml:space="preserve"><value>Ki is bursting out!</value></data>
+  <data name="Settings_SignatureMoves" xml:space="preserve"><value>★ Signature moves</value></data>
+  <data name="Settings_SignatureMovesDescription" xml:space="preserve"><value>While resting, a pet now and then shows a move of its own - Goku a Kamehameha, Vegeta a Final Flash. Only for the drawn characters.</value></data>
+  <data name="Companion_Dizzy" xml:space="preserve"><value>Round and round... so dizzy!</value></data>
 </root>

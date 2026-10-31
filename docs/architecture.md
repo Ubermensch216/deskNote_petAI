@@ -11,15 +11,22 @@
 | `src/DeskNote.Core` | net10.0 | 도메인 모델, 인터페이스, UI·DB에 의존하지 않는 정책 |
 | `src/DeskNote.Data` | net10.0 | SQLite + FTS5, 마이그레이션, 리포지토리 |
 | `src/DeskNote.Ai` | net10.0 | `ILocalAiService` 구현 (Ollama HTTP) |
-| `src/DeskNote.Companion.Core` | net10.0 | 펫 도메인 — 활동 분류, 밸런스, 성장 사다리, 상태 투영, 종별 대사 코퍼스 |
+| `src/DeskNote.Companion.Core` | net10.0 | 펫 도메인 — 활동 분류, 밸런스, 성장 사다리, 상태 투영, 종별 대사 코퍼스, 이동 엔진(`PetMotionEngine`), 그려서 움직이는 캐릭터의 자세 감독(`RigDirector`) |
+| `src/DeskNote.Companion.Rig` | net10.0-windows | 그려서 움직이는 캐릭터 5종의 GDI+ 그리기(`RigSurface`) — [동반자 문서](companion.md#그려서-움직이는-캐릭터) |
 | `src/DeskNote.App` | net10.0-windows | WinUI 3 데스크톱 UI (실행 진입점) |
 | `tests/DeskNote.Core.Tests` | net10.0 | 도메인·배치·자동저장 정책 |
 | `tests/DeskNote.Data.Tests` | net10.0 | 영속성, 한국어 FTS, 마이그레이션 |
 | `tests/DeskNote.Ai.Tests` | net10.0 | 프롬프트 조립, 응답 파싱, 정리 규칙 |
 | `tests/DeskNote.Companion.Core.Tests` | net10.0 | 점수·상한·성장 단계·상태 투영의 결정론, 대사 코퍼스와 셔플 덱 |
+| `tests/DeskNote.Companion.Rig.Tests` | net10.0-windows | 모든 캐릭터·상태·시그니처가 그려지는가, 불투명도·크기·발 위치 |
 | `tests/DeskNote.Benchmarks` | net10.0 | SLO 측정과 강제 종료 내성 검증 (콘솔 실행 파일) |
+| `tools/DemoSeeder` | net10.0 | 문서 사진용 가짜 메모 데이터베이스 (솔루션 밖) |
+| `tools/PetSheets` | net10.0-windows | 그려서 움직이는 캐릭터의 정지 시트와 점검용 접촉 시트 (솔루션 밖) |
+| `tools/Launcher` | net472 | 앱을 품은 `DeskNote.exe` 하나 — 풀고, 설치하고, 실행한다 (솔루션 밖) |
 
-의존 방향은 `App → Core ← Data`. `Core`는 아무것도 참조하지 않는다.
+의존 방향은 `App → Core ← Data`. `Core`는 아무것도 참조하지 않는다. 펫은 `App → Companion.Rig → Companion.Core` 로 이어지고
+(그리는 쪽이 도메인을 알 뿐 반대는 없다), `Companion.Core` 는 UI도 GDI+도 모른다 — 이동·자세·반응 판정이
+순수해서 시계와 포인터를 숫자로 줘서 시험할 수 있다.
 AI 계층은 `Core`의 `ILocalAiService` 뒤에만 존재한다. 구현은 `src/DeskNote.Ai`의
 `OllamaAiService`이고, 로컬 모델이 없거나 `ai.enabled` 가 꺼져 있으면 항상 "사용 불가"를
 반환하는 `NullAiService`로 내려간다.

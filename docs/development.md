@@ -36,36 +36,79 @@ CI가 실패한 변경은 병합하지 않는다. 특히 테스트 성공 뒤 pu
 
 ## 배포 패키지 만들기
 
-배포물은 self-contained 폴더를 담은 ZIP이다. .NET 런타임과 Windows App SDK 파일이 모두 포함되므로
-받는 쪽은 별도 런타임을 설치하지 않는다. 다만 압축을 푼 뒤 **폴더 전체를 함께 보관**해야 하며,
-`DeskNote.exe`만 다른 위치로 옮기면 안 된다.
-
 ```powershell
 ./scripts/publish-win-x64.ps1
 ```
 
-스크립트는 `dist/DeskNote-win-x64/DeskNote.exe`를 포함한 폴더를 만들고, 실제 시작 검사를 통과한 뒤
-`dist/DeskNote-win-x64.zip`으로 압축한다. CI도 같은 스크립트를 사용한다.
+만들어지는 것은 둘이고, 받는 사람에게 건네는 것은 **`dist/DeskNote.exe` 하나**다.
 
-`scripts/install-ai.bat` 과 `scripts/install-ai.ps1` 도 같은 폴더로 복사된다. ZIP을 받는 사람은
-저장소를 볼 일이 없고, 그에게 로컬 AI 준비는 "`install-ai.bat` 을 누른다" 한 줄이어야 하기
-때문이다. 스크립트가 하는 일과 옵션은 [README의 AI 설치 장](../README.md#ai-설치하고-연결하기)에
-있다. 배치 파일은 실행 로직을 갖지 않는 실행기일 뿐이다 — 한글 메시지는 BOM이 붙은 `.ps1` 안에
-두고, `.bat` 은 ASCII만 담는다. 콘솔 코드 페이지가 무엇이든 안내가 깨지지 않게 하려는 것이다.
+| 파일 | 크기 | 무엇인가 |
+|---|---:|---|
+| `dist/DeskNote.exe` | 약 80MB | 앱을 품은 실행 파일 하나. 처음 실행할 때 `%LOCALAPPDATA%\Programs\DeskNote` 에 풀고 시작한다 |
+| `dist/DeskNote-win-x64.zip` | 약 80MB | 같은 앱을 폴더로 담은 포터블판. 푼 폴더에서 바로 실행한다 |
+
+두 파일의 내용은 같다. 앞의 것은 뒤의 것을 안에 품고 있다.
+
+스크립트는 `dist/DeskNote-win-x64/` 폴더를 만들고, 필수 파일을 확인하고, **그 폴더의 앱을 8초간
+실행**해 시작 중 죽지 않는지 본다. 그 뒤 zip으로 압축하고, 그 zip을 품은 `DeskNote.exe` 를 만든 다음,
+**그 exe도 처음 받는 사람이 하는 대로** 검사한다 — 빈 폴더로 향하게 해 실행하고(`DESKNOTE_INSTALL_DIR`),
+앱이 풀리고, 풀린 앱이 8초를 버티는지. 두 검사 모두 자기 데이터 폴더(`--data`)를 쓰므로 개발 중인
+앱이나 실제 메모를 건드리지 않는다. CI도 같은 스크립트를 사용한다.
+
+### 어떻게 작아지고, 어떻게 하나가 되는가
+
+**하나가 되는 방법.** 앱 자체를 단일 파일로 publish할 수는 없다(아래 절). 그래서 `tools/Launcher` 가
+작은 .NET Framework 4.7.2 프로그램을 만들고, 그 안에 publish된 앱의 zip을 리소스로 넣는다. 4.7.2는
+Windows 10 1803부터 들어 있으므로 이 프로그램은 아무것도 설치되지 않은 PC에서, 그리고 앱이 지원하는
+모든 Windows(1809 이상)에서 뜬다. .NET 10으로 만들면 그 시작 단계에서 .NET 10을 먼저 요구하게 된다.
+
+런처가 하는 일은 셋이다. (1) 앱이 이미 풀려 있고 같은 빌드면 곧바로 시작한다 — **첫 실행 뒤로는 파일
+하나를 확인하고 프로세스 하나를 띄우는 것이 전부**라서 폼 라이브러리조차 올리지 않는다. (2) 아니면
+진행 창을 띄우고 풀되, 옆 폴더에 **완전히 쓴 다음에 폴더째 바꾼다**. 도중에 전원이 나가거나 디스크가
+차도 이전 버전이 그대로 남는다. (3) 실행 중인 이전 버전은 닫는다 — 열린 파일이 있는 폴더는 Windows가
+옮겨 주지 않는다. 풀리는 곳이 **고정된 폴더**인 데에는 이유가 있다. Windows 시작 시 실행은 실행 중인
+exe의 경로를 레지스트리에 적는데, 버전마다 달라지는 경로면 업데이트 한 번에 그 항목이 끊어진다.
+`--install-ai` 는 풀린 폴더의 `install-ai.bat` 을 열어 준다.
+
+**작아지는 방법.** 처음에는 245MB(압축 후 104MB)였다. 줄인 것은 셋이다.
+
+- `Microsoft.WindowsAppSDK` 메타패키지 대신 **필요한 구성요소만** 참조한다(`Base`, `Foundation`,
+  `InteractiveExperiences`, `WinUI`, `DWrite`, `Runtime`). 메타패키지는 AI·ML·Search·Widgets까지
+  끌어오는데, 이 앱은 그 어느 것도 쓰지 않는다. ONNX Runtime과 DirectML만 38MB였다.
+  **Windows App SDK 버전을 올릴 때는 메타패키지의 의존 목록을 보고 여섯 줄의 버전을 함께 올린다.**
+- 디버거용 런타임 파일(`mscordaccore*`, `mscordbi`)과 PDB 판독기(`Microsoft.DiaSymReader.Native`)를
+  뺀다. 실행 중에 아무도 읽지 않는다.
+- zip은 가능하면 `SmallestSize` 로 압축한다(PowerShell 7). Windows PowerShell 5.1에서는 `Optimal`.
+
+남은 80MB의 대부분은 .NET 런타임(CoreLib·coreclr·System.*, 약 17MB), Windows SDK 투영
+(`Microsoft.Windows.SDK.NET.dll`, 6MB), WinUI(약 14MB), 캐릭터 PNG(15MB)다. 더 줄일 수 있는 길은
+있지만 위험이 붙는다.
+
+- **트리밍(`PublishTrimmed`)**: 런타임과 Windows SDK 투영에서 20~30MB 더 줄겠지만, WinUI와 CsWinRT는
+  리플렉션과 이름으로 찾는 활성화를 쓰고 Dapper도 그렇다. 시작은 되는데 특정 화면에서만 죽는 형태로
+  깨지기 쉬워서, 모든 화면을 돌려 보는 검사가 생기기 전에는 켜지 않는다.
+- **PNG 팔레트화**: 스프라이트 시트를 256색으로 줄이면 15MB가 5MB가 되지만 그림이 바뀐다.
+  원본은 그대로 두고 publish 단계에서만 바꾸는 방식이어야 한다.
 
 받는 쪽에 필요한 것은 Windows 10 1809 이상(x64)과 Visual C++ 재배포 가능 패키지뿐이다. 후자는
 self-contained Windows App SDK가 요구하는 유일한 시스템 구성 요소이고 publish 출력에 들어가지 않는다.
+`scripts/install-ai.bat` 과 `scripts/install-ai.ps1` 도 앱과 함께 풀린다. 받는 사람은 저장소를 볼 일이
+없고, 그에게 로컬 AI 준비는 "`install-ai.bat` 을 누른다" 한 줄이어야 하기 때문이다. 스크립트가 하는
+일과 옵션은 [README의 AI 설치 장](../README.md#ai-설치하고-연결하기)에 있다. 배치 파일은 실행 로직을
+갖지 않는 실행기일 뿐이다 — 한글 메시지는 BOM이 붙은 `.ps1` 안에 두고, `.bat` 은 ASCII만 담는다.
+콘솔 코드 페이지가 무엇이든 안내가 깨지지 않게 하려는 것이다.
 
-### 단일 exe를 사용하지 않는 이유
+### 앱 자체를 단일 exe로 만들지 않는 이유
 
 .NET 10에서 Windows App SDK 네이티브 파일을 하나의 exe에 묶으면, 일부 환경에서 WinUI 활성화가
 시작되기 전에 `0x80040111 (ClassFactory cannot supply requested class)`로 종료된다. Microsoft가 추적
 중인 [WindowsAppSDK #6058](https://github.com/microsoft/WindowsAppSDK/issues/6058)과 같은 증상이다.
-폴더형 self-contained 배포는 같은 바이너리와 런타임을 사용하면서도 이 경로를 거치지 않으며, 실제
-실행 검사를 통과했다. 해당 문제가 해결되고 지원 조합에서 재검증되기 전까지 단일 exe는 만들지 않는다.
+거기에 더해 WinUI는 리소스 인덱스(`DeskNote.pri`)와 이미지를 **exe 옆의 파일로** 찾으므로, 묶은 파일
+안에서는 그것들도 풀어 줘야 한다. 그래서 앱은 폴더형 self-contained 로 두고, 하나로 만드는 일은
+그 바깥의 런처가 맡는다. 앱이 단일 파일 publish를 지원하게 되면 이 런처는 필요 없어진다.
 
 ARM64 프로젝트 빌드는 지원하지만 배포 패키지와 시작 검사는 아직 win-x64만 자동화한다. ARM64 배포를
-추가할 때는 별도 하드웨어에서 같은 시작 검사를 통과시킨 뒤 전용 ZIP으로 제공한다.
+추가할 때는 별도 하드웨어에서 같은 시작 검사를 통과시킨 뒤 전용 파일로 제공한다.
 
 > **`EnableMsixTooling` 은 켜 두어야 한다.** 이 속성이 꺼져 있으면 publish 출력에서 `DeskNote.pri` 가
 > 조용히 빠지고, 앱은 빌드도 실행도 되다가 **창을 만드는 순간** `XamlParseException` 으로 죽는다.
@@ -114,7 +157,7 @@ python assets/icon/build_icon.py
 python assets/companion/build_sleep_sprites.py
 ```
 
-`src/DeskNote.App/Assets/Companion/{종}-sleep.png` 일곱 장을 각 종의 `-rest.png` 에서 다시
+`src/DeskNote.App/Assets/Companion/{종}-sleep.png` 여섯 장(오리 제외)을 각 종의 `-rest.png` 에서 다시
 만든다. 눈을 감기고 몸을 눕히는 두 가지 연산이며, 근거는
 [docs/companion.md](companion.md#바탕화면-행동)에 있다. Pillow와 NumPy가 필요하다. 결과물은
 커밋되므로 앱을 빌드하는 사람이 이것을 돌릴 일은 없고, `-rest.png` 를 바꿨을 때만 다시 돌린다.
@@ -122,6 +165,19 @@ python assets/companion/build_sleep_sprites.py
 스크립트는 만들어 낸 그림의 위·아래 경계를 출력한다. 그 값이 `DesktopPetWindow` 의
 `SleepHeadTopFraction` 계열 상수의 출처이므로, 자세를 조정했으면 출력된 값으로 상수도 맞춰야
 성장 표식과 말풍선이 누운 펫의 머리를 따라간다.
+
+오리는 이 스크립트에 들어 있지 않다. 눈이 하이라이트 없는 점이라 눈 찾기가 통하지 않고, 처음부터
+선 그림과 누운 그림 두 장으로 들어왔기 때문이다. 오리의 세 시트는 따로 만든다.
+
+```bash
+python assets/companion/build_duck_sprites.py
+```
+
+원본 두 장은 `assets/companion/duck/` 에 있다. `duck-walk.png` 는 선 그림을 발을 축으로 좌우로 흔든
+뒤뚱걸음, `duck-rest.png` 는 같은 그림의 호흡과 눈 깜빡임, `duck-sleep.png` 는 누운 그림에 감은 눈을
+그린 것이다. 모두 회전과 균일 확대만 쓰므로 비율 규칙을 지킨다. 출력하는 위·아래 경계는 다른 종과
+같은 값(발 0.78, 선 머리 0.21, 누운 머리 0.36)에 맞춰져 있어 `DesktopPetWindow` 의 상수를 바꿀 필요가
+없다.
 
 ## 문서 이미지
 
@@ -141,14 +197,43 @@ python assets/companion/build_sleep_sprites.py
 `Environment.GetFolderPath(LocalApplicationData)` 는 그 변수가 아니라 셸의 known folder를 읽는다.
 
 ```powershell
-$demo = "$env:TEMP\desknote-docs"
-dotnet run --project tools/DemoSeeder -- $demo
-Start-Process .\dist\DeskNote-win-x64\DeskNote.exe -ArgumentList "--data", $demo
+$demo = "D:\desknote-docs"
+dotnet run --project tools/DemoSeeder -- $demo --pet goku --name 오공
+$env:DESKNOTE_THEME = "light"
+Start-Process .\dist\DeskNote-win-x64\DeskNote.exe -ArgumentList "--data `"$demo`""
 ```
 
-`tools/DemoSeeder` 는 지어낸 메모 일곱 개와 노트북 둘을 넣고 펫을 켜 둔다. 펫은 `움직이기` 를 끈
+데이터 폴더는 **사용자 이름이 들어가지 않는 경로**에 둔다. 설정의 `일반` 탭이 그 경로를 그대로
+보여 주기 때문에, `%TEMP%` 아래에 두고 그 탭을 찍으면 사진에 사용자 이름이 남는다. 경로의 따옴표도
+한 덩어리로 넘겨야 한다 — 공백이 든 경로를 `-ArgumentList "--data", $demo` 로 넘기면 따옴표 없이
+붙어서 앱이 엉뚱한 폴더를 연다.
+
+사진은 모두 **밝은 테마**로 찍는다. 찍는 컴퓨터가 어두운 테마여도 Windows 설정을 바꾸지 않도록
+`DESKNOTE_THEME`(`light` 또는 `dark`) 환경 변수가 시스템 테마 감지를 대신한다. 값이 없으면 평소대로
+시스템을 따른다.
+
+`tools/DemoSeeder` 는 지어낸 메모 일곱 개와 노트북 둘을 넣고 펫을 켜 둔다. `--motion` 을 주면 펫을 걷는
+채로 두고(움직임을 확인할 때), `--pet <키>` 로 종을, `--name <이름>` 으로 펫의 이름을 고른다. 펫은 `움직이기` 를 끈
 상태로 시작하는데, **걷는 펫은 창 위치를 읽고 포인터가 도착하는 사이에 자리를 옮겨** 클릭이 빗나가기
 때문이다.
+
+### 그려서 움직이는 캐릭터의 시트
+
+손오공·어린 오공·무천도사·베지터·피콜로는 바탕화면에서 매 프레임 그려지지만, 설정·대시보드·성장 안내는
+다른 펫처럼 `Assets/Companion/{키}-walk|rest|sleep.png` 를 한 칸 잘라 쓴다. 캐릭터를 고치면 시트를 다시
+만든다.
+
+```powershell
+dotnet run --project tools/PetSheets -- sheets src/DeskNote.App/Assets/Companion
+dotnet run --project tools/PetSheets -- contact $env:TEMP\pet-contact
+```
+
+`sheets` 는 세 시트를 쓰고 `PetArtBounds` 에 붙일 다섯 줄을 출력한다. `contact` 는 모든 상태와 15가지
+시그니처를 시간 순으로 늘어놓은 점검용 그림을 만든다 — 자세를 고친 뒤에는 이 그림을 눈으로 본다.
+
+문서의 `rig-signatures.png` (열다섯 기술의 한 장면씩)와 `cat-stretch.png` (고양이 기지개 시트)는 창을
+찍은 것이 아니라 이 접촉 시트와 시트 파일에서 만든다 — `python assets/companion/build_doc_images.py <접촉
+시트 폴더>`. 캐릭터나 기술을 고치면 그 그림도 다시 만든다.
 
 창은 `tools/capture-window.ps1` 로 찍고(창 단위 `PrintWindow` + DWM 프레임 기준 자르기),
 `tools/point-window.ps1` 로 포인터를 넣거나 누른다. 포인터는 대상 창의 rect 안으로만 이동하며 끝나면
@@ -156,8 +241,9 @@ Start-Process .\dist\DeskNote-win-x64\DeskNote.exe -ArgumentList "--data", $demo
 WinUI는 커서의 위치가 아니라 **입력 큐**를 보므로 실제 입력 이벤트로 움직여야 한다.
 
 한 화면보다 긴 창은 두 장으로 나눠 찍는다. 설정 창(`settings-character.png`,
-`settings-behavior.png`)이 그런 경우로, 기본 크기 그대로 두고 휠로 위·아래 끝까지 굴린 뒤 각각
-찍었다. 창을 `MoveWindow` 로 늘려 한 장에 담으려고 하면 안 된다 — `AppWindow` 가 모르는 사이에
+`settings-behavior.png`)이 그런 경우로, 기본 크기 그대로 두고 `point-window.ps1 -Wheel <칸>`(음수가
+아래로)으로 굴린 뒤 각각 찍었다. `움직이기` 에 기대는 스위치는 그 스위치가 꺼져 있으면 흐려지므로,
+`behavior` 사진은 시더가 끈 `움직이기` 를 설정 창에서 켠 뒤(저장하지 않는다) 찍는다. 창을 `MoveWindow` 로 늘려 한 장에 담으려고 하면 안 된다 — `AppWindow` 가 모르는 사이에
 크기가 바뀌어 그 뒤의 활성화가 이상하게 동작한다.
 
 **UI를 바꾸면 그 화면의 이미지도 함께 다시 찍는다.** `docs/images/` 는 추적되는 파일이고, 낡은 사진은

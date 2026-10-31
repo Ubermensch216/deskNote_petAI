@@ -117,13 +117,15 @@ public sealed partial class CompanionWindow : Window
             presenter.IsMaximizable = false;
         }
 
+        // The theme goes on before the palette is read from it, or a window opened under a theme
+        // other than the one the application started in paints its first frame in the wrong one.
+        ThemeService.ApplyThemeToWindow(this);
         LocalizeChrome();
         BuildTiles();
         ApplyAccessibleName();
         ApplyPalette();
         UpdateSnapshot(snapshot);
 
-        ThemeService.ApplyThemeToWindow(this);
         ThemeService.ThemeChanged += OnThemeChanged;
 
         // The palette is resolved per theme, and the window can be open when Windows switches.
@@ -926,7 +928,8 @@ public sealed partial class CompanionWindow : Window
     {
         var normalizedAssetKey = assetKey switch
         {
-            "rabbit" or "cat" or "dog" or "fennec" or "otter" or "dragon" or "monkey" => assetKey,
+            "rabbit" or "cat" or "dog" or "fennec" or "otter" or "dragon" or "monkey" or "duck"
+                or "goku" or "kidgoku" or "roshi" or "vegeta" or "piccolo" => assetKey,
             _ => "rabbit",
         };
 
@@ -999,6 +1002,12 @@ public sealed partial class CompanionWindow : Window
         "otter" => "Settings_PetOtter",
         "dragon" => "Settings_PetDragon",
         "monkey" => "Settings_PetMonkey",
+        "duck" => "Settings_PetDuck",
+        "goku" => "Settings_PetGoku",
+        "kidgoku" => "Settings_PetKidGoku",
+        "roshi" => "Settings_PetRoshi",
+        "vegeta" => "Settings_PetVegeta",
+        "piccolo" => "Settings_PetPiccolo",
         _ => "Settings_PetRabbit",
     });
 

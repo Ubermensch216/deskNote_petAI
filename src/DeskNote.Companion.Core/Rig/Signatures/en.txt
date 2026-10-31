@@ -1,0 +1,117 @@
+# Names, descriptions and timed shouts for the signature moves.
+# Format:  <character>.<index>|name|Name   /   |desc|Description   /   |shout|<start second>|shout
+# A shout is the bubble's second line, so it has to fit on one (about 24 characters).
+# An empty shout silences the pet from that moment on.
+
+# Goku
+goku.0|name|Kamehameha
+goku.0|desc|Cups both hands round a ball of blue ki and fires it in one go
+goku.0|shout|0|Ka…
+goku.0|shout|1.0|Ka-me…
+goku.0|shout|1.9|Ka-me-ha-me…
+goku.0|shout|2.7|Ka-me-ha-me…
+goku.0|shout|3.2|HAAAA!!
+goku.0|shout|5.8|Whew…
+goku.0|shout|6.8|Hehe
+goku.1|name|Instant Transmission
+goku.1|desc|Two fingers to the forehead, gone with a pop, back somewhere else
+goku.1|shout|0|Focus…
+goku.1|shout|1.4|Zip!
+goku.1|shout|2.0|
+goku.1|shout|3.4|Ta-da!
+goku.1|shout|4.2|I'm back!
+goku.2|name|Super Saiyan
+goku.2|desc|A roar, hair turning gold, and lightning and aura bursting out
+goku.2|shout|0|Nnngh…
+goku.2|shout|1.0|AAAAAAH!!
+goku.2|shout|3.1|HAAH!!
+goku.2|shout|3.7|Super Saiyan!
+goku.2|shout|7.0|Phew~
+
+# Kid Goku
+kid.0|name|Flying Nimbus
+kid.0|desc|Calls a cloud, hops on and drifts across the sky
+kid.0|shout|0|Hiyah!
+kid.0|shout|1.1|Nimbus~!
+kid.0|shout|2.4|Wheee~!
+kid.0|shout|5.5|So much fun~!
+kid.0|shout|6.8|Bye-bye~!
+kid.1|name|Power Pole
+kid.1|desc|Twirls the pole, stretches it to the sky and brings it down
+kid.1|shout|0|Power Pole!
+kid.1|shout|1.0|Hyah! Hyah!
+kid.1|shout|3.0|Grow longer~!
+kid.1|shout|4.6|Take that!!
+kid.1|shout|6.0|Back to normal~
+kid.2|name|Great Ape
+kid.2|desc|Sees the full moon, turns into a giant ape and pounds his chest
+kid.2|shout|0|Huh? A full moon…
+kid.2|shout|1.2|Uh… UH-OOOH…!
+kid.2|shout|3.2|OOOAAARGH!!
+kid.2|shout|7.4|Huh? I'm back…
+
+# Roshi
+roshi.0|name|Original Kamehameha
+roshi.0|desc|The first one. A huge beam, then a hand on the aching back
+roshi.0|shout|0|Ka…
+roshi.0|shout|1.2|Ka-me…
+roshi.0|shout|2.2|Ka-me-ha-me…
+roshi.0|shout|3.4|HAAAAA!!!
+roshi.0|shout|6.2|My back…
+roshi.1|name|MAX Power
+roshi.1|desc|Takes a breath and swells into his prime, muscles and all
+roshi.1|shout|0|My back…
+roshi.1|shout|1.0|Nnngh…
+roshi.1|shout|3.0|MAX POWER!!
+roshi.1|shout|5.4|…
+roshi.1|shout|6.2|*cough cough*
+roshi.2|name|Demon Seal Wave
+roshi.2|desc|Brings out a rice cooker and seals the evil away inside
+roshi.2|shout|0|Mafuba~
+roshi.2|shout|2.2|MAFUBA!!
+roshi.2|shout|5.2|Clap!
+roshi.2|shout|5.8|Phew…
+roshi.2|shout|7.0|*pant pant*
+
+# Vegeta
+vegeta.0|name|Big Bang Attack
+vegeta.0|desc|Gathers ki in one palm and sends a huge blast to burst on impact
+vegeta.0|shout|0|Hmph…
+vegeta.0|shout|0.8|Big… Bang…
+vegeta.0|shout|2.8|ATTACK!!
+vegeta.0|shout|4.5|Hmph. Is that all?
+vegeta.1|name|Final Flash
+vegeta.1|desc|Both hands out front, and a blinding golden beam
+vegeta.1|shout|0|Final…
+vegeta.1|shout|2.2|Final… FLASH!!
+vegeta.1|shout|3.4|HAAAAAH!!!
+vegeta.1|shout|6.2|Haah… haah…
+vegeta.2|name|Prince's Aura
+vegeta.2|desc|Arms folded, rising into the air, blue aura bursting out
+vegeta.2|shout|0|Heh…
+vegeta.2|shout|1.6|I am…
+vegeta.2|shout|3.0|the Saiyan prince,
+vegeta.2|shout|4.2|VEGETA!
+vegeta.2|shout|5.4|Come at me!
+
+# Piccolo
+piccolo.0|name|Special Beam Cannon
+piccolo.0|desc|Two fingers to the forehead, ki gathered, a twisting beam fired
+piccolo.0|shout|0|Spe…
+piccolo.0|shout|1.2|Spe-cial…
+piccolo.0|shout|2.4|Special Beam…
+piccolo.0|shout|3.6|CANNON!!
+piccolo.0|shout|6.2|Hmph…
+piccolo.1|name|Stretching Arms
+piccolo.1|desc|Stretches an arm like rubber to hit someone far away
+piccolo.1|shout|0|…
+piccolo.1|shout|0.9|Stretch!
+piccolo.1|shout|1.8|HAH!!
+piccolo.1|shout|3.5|Take this too!
+piccolo.1|shout|5.2|Hmph…
+piccolo.2|name|Floating Meditation
+piccolo.2|desc|Floats cross-legged in meditation, then snaps his eyes open
+piccolo.2|shout|0|…
+piccolo.2|shout|1.4|(meditating)
+piccolo.2|shout|6.5|!!
+piccolo.2|shout|7.2|Hm.

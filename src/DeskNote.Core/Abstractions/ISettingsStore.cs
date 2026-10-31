@@ -72,6 +72,24 @@ public static class SettingKeys
     /// <summary>Whether movement is replaced with static state changes.</summary>
     public const string CompanionReduceMotion = "companion.reduceMotion";
 
+    /// <summary>Whether the pet climbs the sides and top of the screen instead of staying on the floor.</summary>
+    public const string CompanionRoamScreen = "companion.roamScreen";
+
+    /// <summary>Whether the pet climbs open windows and walks along their tops.</summary>
+    public const string CompanionClimbWindows = "companion.climbWindows";
+
+    /// <summary>Whether a sitting pet turns to look at the pointer.</summary>
+    public const string CompanionWatchCursor = "companion.watchCursor";
+
+    /// <summary>Whether the pet walks over to the pointer.</summary>
+    public const string CompanionFollowCursor = "companion.followCursor";
+
+    /// <summary>Whether the pet slides out of the way of the pointer.</summary>
+    public const string CompanionDodgeCursor = "companion.dodgeCursor";
+
+    /// <summary>How often a pet that has signature moves breaks into one when it sits down to rest.</summary>
+    public const string CompanionSignatureFrequency = "companion.signatureFrequency";
+
     /// <summary>Local quiet-hours start in 24-hour HH:mm form.</summary>
     public const string CompanionQuietHoursStart = "companion.quietHours.start";
 

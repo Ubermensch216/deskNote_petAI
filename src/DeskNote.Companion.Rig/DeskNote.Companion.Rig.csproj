@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      The characters are painted with GDI+, which is Windows-only. Nothing else in this project is,
+      but a library that says so honestly is better than one that compiles everywhere and throws
+      on the first frame.
+    -->
+    <TargetFramework>net10.0-windows</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DeskNote.Companion.Core\DeskNote.Companion.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Drawing.Common" />
+  </ItemGroup>
+
+</Project>

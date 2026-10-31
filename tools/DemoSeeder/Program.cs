@@ -8,11 +8,23 @@ using DeskNote.Data;
 // tool is that nobody's actual notes end up in the README. Run the app against the same folder
 // with `--data <path>` to photograph it.
 //
-//   dotnet run --project tools/DemoSeeder -- <data directory>
+//   dotnet run --project tools/DemoSeeder -- <data directory> [--motion] [--pet <key>] [--name <name>] [--cursor <none|watch|follow|dodge>]
+//
+// `--motion` leaves the pet walking, for checking how it moves; `--pet` picks the species by its
+// asset key (rabbit, cat, dog, fennec, otter, dragon, monkey, duck, goku, kidgoku, roshi, vegeta,
+// piccolo); `--name` is what it is called; `--cursor` is how it treats the pointer.
 
 var root = args.Length > 0
     ? Path.GetFullPath(args[0])
     : throw new ArgumentException("Pass the data directory to seed, the same one the app gets with --data.");
+
+var motion = args.Contains("--motion");
+var petFlag = Array.IndexOf(args, "--pet");
+var pet = petFlag >= 0 && petFlag + 1 < args.Length ? args[petFlag + 1] : "otter";
+var nameFlag = Array.IndexOf(args, "--name");
+var petName = nameFlag >= 0 && nameFlag + 1 < args.Length ? args[nameFlag + 1] : "Bori";
+var cursorFlag = Array.IndexOf(args, "--cursor");
+var cursor = cursorFlag >= 0 && cursorFlag + 1 < args.Length ? args[cursorFlag + 1] : "watch";
 
 Directory.CreateDirectory(root);
 
@@ -27,13 +39,16 @@ var settings = new SqliteSettingsStore(connections);
 
 // The pet is off by default, and the dashboard is one of the things being photographed.
 await settings.SetAsync(SettingKeys.CompanionEnabled, "true");
-await settings.SetAsync(SettingKeys.CompanionSelectedPet, "otter");
-await settings.SetAsync(SettingKeys.CompanionPetName, "Bori");
+await settings.SetAsync(SettingKeys.CompanionSelectedPet, pet);
+await settings.SetAsync(SettingKeys.CompanionPetName, petName);
+await settings.SetAsync(SettingKeys.CompanionWatchCursor, (cursor == "watch").ToString().ToLowerInvariant());
+await settings.SetAsync(SettingKeys.CompanionFollowCursor, (cursor == "follow").ToString().ToLowerInvariant());
+await settings.SetAsync(SettingKeys.CompanionDodgeCursor, (cursor == "dodge").ToString().ToLowerInvariant());
 
 // A walking pet moves out from under the pointer between reading its position and
 // clicking it, so the demo instance stands still. It is the same still frame a user sees
 // with 움직이기 turned off.
-await settings.SetAsync(SettingKeys.CompanionReduceMotion, "true");
+await settings.SetAsync(SettingKeys.CompanionReduceMotion, motion ? "false" : "true");
 
 var payments = await library.CreateNotebookAsync("결제 시스템");
 var onboarding = await library.CreateNotebookAsync("온보딩");

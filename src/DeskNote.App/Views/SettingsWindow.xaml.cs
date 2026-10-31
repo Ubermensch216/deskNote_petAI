@@ -62,6 +62,13 @@ public sealed partial class SettingsWindow : Window
     private readonly ToggleSwitch _proactiveEnabled = NewSwitch();
     private readonly ToggleSwitch _alwaysVisible = NewSwitch();
     private readonly ToggleSwitch _petMovement = NewSwitch();
+    private readonly ToggleSwitch _petRoam = NewSwitch();
+    private readonly ToggleSwitch _petClimbWindows = NewSwitch();
+    private readonly ToggleSwitch _petWatch = NewSwitch();
+    private readonly ToggleSwitch _petFollow = NewSwitch();
+    private readonly ToggleSwitch _petDodge = NewSwitch();
+    private readonly ToggleSwitch _signatureMoves = NewSwitch();
+    private SignatureFrequency _signatureFrequency = SignatureFrequency.Normal;
     private readonly ToggleSwitch _aiEnabled = NewSwitch();
 
     private BehaviorRow? _aiEnabledRow;
@@ -118,7 +125,19 @@ public sealed partial class SettingsWindow : Window
             ClearStatus();
         };
 
-        foreach (var toggle in new[] { _companionEnabled, _proactiveEnabled, _alwaysVisible, _petMovement })
+        foreach (var toggle in new[]
+        {
+            _companionEnabled,
+            _proactiveEnabled,
+            _alwaysVisible,
+            _petMovement,
+            _petRoam,
+            _petClimbWindows,
+            _petWatch,
+            _petFollow,
+            _petDodge,
+            _signatureMoves,
+        })
         {
             toggle.Toggled += (_, _) =>
             {
@@ -127,6 +146,23 @@ public sealed partial class SettingsWindow : Window
                 ClearStatus();
             };
         }
+
+        // Following and dodging are opposite answers to the same question, so turning one on turns
+        // the other off. Turning a switch off from here raises its own Toggled, which does nothing.
+        _petFollow.Toggled += (_, _) =>
+        {
+            if (_petFollow.IsOn)
+            {
+                _petDodge.IsOn = false;
+            }
+        };
+        _petDodge.Toggled += (_, _) =>
+        {
+            if (_petDodge.IsOn)
+            {
+                _petFollow.IsOn = false;
+            }
+        };
 
         foreach (var picker in new[] { QuietStart, QuietEnd })
         {
@@ -398,6 +434,13 @@ public sealed partial class SettingsWindow : Window
         _proactiveEnabled.IsOn = value.ProactiveEnabled;
         _alwaysVisible.IsOn = value.AlwaysVisible;
         _petMovement.IsOn = !value.ReduceMotion;
+        _petRoam.IsOn = value.RoamScreen;
+        _petClimbWindows.IsOn = value.ClimbWindows;
+        _petWatch.IsOn = value.WatchCursor;
+        _petFollow.IsOn = value.FollowCursor;
+        _petDodge.IsOn = value.DodgeCursor && !value.FollowCursor;
+        _signatureFrequency = value.SignatureFrequency;
+        _signatureMoves.IsOn = value.SignatureFrequency != SignatureFrequency.Off;
         QuietStart.Time = value.QuietStart.ToTimeSpan();
         QuietEnd.Time = value.QuietEnd.ToTimeSpan();
 
@@ -411,6 +454,14 @@ public sealed partial class SettingsWindow : Window
         ProactiveEnabled = _proactiveEnabled.IsOn,
         AlwaysVisible = _alwaysVisible.IsOn,
         ReduceMotion = !_petMovement.IsOn,
+        RoamScreen = _petRoam.IsOn,
+        ClimbWindows = _petClimbWindows.IsOn,
+        WatchCursor = _petWatch.IsOn,
+        FollowCursor = _petFollow.IsOn,
+        DodgeCursor = _petDodge.IsOn,
+        SignatureFrequency = !_signatureMoves.IsOn
+            ? SignatureFrequency.Off
+            : _signatureFrequency == SignatureFrequency.Off ? SignatureFrequency.Normal : _signatureFrequency,
         SelectedPet = _selectedPet,
         PetName = CompanionSettings.NormalizePetName(PetNameInput.Text),
         PetSize = _petSize,
@@ -962,7 +1013,7 @@ public sealed partial class SettingsWindow : Window
     }
 
     /// <summary>
-    /// The seven pets, as seven portraits.
+    /// The pets, as portraits.
     /// </summary>
     /// <remarks>
     /// The dropdown this replaces asked a user to open it before they could see what they had, and
@@ -1165,6 +1216,18 @@ public sealed partial class SettingsWindow : Window
                 Description: "Settings_AlwaysVisibleDescription", Switch: _alwaysVisible),
             (Emoji: "\U0001F3C3", Title: "Settings_ReduceMotion",
                 Description: "Settings_ReduceMotionDescription", Switch: _petMovement),
+            (Emoji: "🧗", Title: "Settings_RoamScreen",
+                Description: "Settings_RoamScreenDescription", Switch: _petRoam),
+            (Emoji: "\U0001F4BB", Title: "Settings_ClimbWindows",
+                Description: "Settings_ClimbWindowsDescription", Switch: _petClimbWindows),
+            (Emoji: "\U0001F440", Title: "Settings_WatchCursor",
+                Description: "Settings_WatchCursorDescription", Switch: _petWatch),
+            (Emoji: "\U0001F463", Title: "Settings_FollowCursor",
+                Description: "Settings_FollowCursorDescription", Switch: _petFollow),
+            (Emoji: "\U0001F4A8", Title: "Settings_DodgeCursor",
+                Description: "Settings_DodgeCursorDescription", Switch: _petDodge),
+            (Emoji: "★", Title: "Settings_SignatureMoves",
+                Description: "Settings_SignatureMovesDescription", Switch: _signatureMoves),
         };
 
         foreach (var (emoji, title, description, toggle) in rows)
@@ -1446,6 +1509,15 @@ public sealed partial class SettingsWindow : Window
         {
             row.Switch.IsEnabled = enabled;
             row.Root.Opacity = enabled ? 1 : 0.4;
+        }
+
+        // Everything after "move the pet" is a way of moving, or a reason to, and means nothing
+        // while the pet is told to stand still.
+        var moves = enabled && _petMovement.IsOn;
+        foreach (var row in _behaviorRows.Skip(4))
+        {
+            row.Switch.IsEnabled = moves;
+            row.Root.Opacity = moves ? 1 : 0.4;
         }
 
         var quietApplies = enabled && _proactiveEnabled.IsOn;

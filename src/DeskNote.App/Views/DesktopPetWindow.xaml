@@ -122,7 +122,8 @@
             PointerPressed="OnPetPointerPressed"
             PointerMoved="OnPetPointerMoved"
             PointerReleased="OnPetPointerReleased"
-            PointerCaptureLost="OnPetPointerCaptureLost">
+            PointerCaptureLost="OnPetPointerCaptureLost"
+            RightTapped="OnPetRightTapped">
             <!-- Rotation first, so a sway happens in the pet's own space and mirrors with it
                  when it turns around. Both scale factors are always equal: see
                  ApplyFacingTransform. -->
@@ -144,8 +145,71 @@
                     Canvas.Top="0"
                     Source="ms-appx:///Assets/Companion/rabbit-walk.png"
                     Stretch="Fill" />
+
+                <!-- The drawn characters are painted into this each frame instead. It is far larger
+                     than the frame the pet stands in, because a beam, a stretched arm or a great ape
+                     has to have somewhere to go, and it is placed in code so that the figure's feet
+                     land on the frame's foot line. -->
+                <Image
+                    x:Name="RigImage"
+                    Stretch="Fill"
+                    Visibility="Collapsed" />
             </Canvas>
         </Grid>
+
+        <!-- The rotor that lets the pet down gently. A vector prop, like the care props: a drawn
+             rotor stays sharp at every size and is one shape for seven species. Its blades are
+             squeezed and released by the animation tick to read as spinning. -->
+        <Canvas
+            x:Name="RotorProp"
+            Width="64"
+            Height="30"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Bottom"
+            IsHitTestVisible="False"
+            RenderTransformOrigin="0.5,1"
+            Visibility="Collapsed">
+            <Canvas.RenderTransform>
+                <ScaleTransform x:Name="RotorScale" />
+            </Canvas.RenderTransform>
+            <Rectangle
+                Canvas.Left="30"
+                Canvas.Top="14"
+                Width="4"
+                Height="16"
+                RadiusX="2"
+                RadiusY="2"
+                Fill="#5B6770" />
+            <Ellipse
+                Canvas.Left="31"
+                Canvas.Top="10"
+                Width="2"
+                Height="8"
+                Fill="#3F484F" />
+            <Grid Canvas.Left="2" Canvas.Top="7" Width="60" Height="8" RenderTransformOrigin="0.5,0.5">
+                <Grid.RenderTransform>
+                    <ScaleTransform x:Name="RotorBlades" />
+                </Grid.RenderTransform>
+                <Ellipse
+                    Width="28"
+                    Height="6"
+                    Margin="0,0,32,0"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    Fill="#E8A33D"
+                    Stroke="#B9791F"
+                    StrokeThickness="1" />
+                <Ellipse
+                    Width="28"
+                    Height="6"
+                    Margin="32,0,0,0"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Fill="#E8A33D"
+                    Stroke="#B9791F"
+                    StrokeThickness="1" />
+            </Grid>
+        </Canvas>
 
         <!-- Drawn after the sprite so the ornament is never hidden behind the head it sits on,
              and never takes the pointer: every click inside the pet's box belongs to the pet.
